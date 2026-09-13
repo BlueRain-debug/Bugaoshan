@@ -43,7 +43,7 @@ flutter build web --release
 The repo ships three small CMD wrappers at the project root that just chain the corresponding `flutter` / `dart` command:
 
 - `_build_generator.bat` → `dart run build_runner build --delete-conflicting-outputs`
-- `_build_icon.bat` → `flutter pub run flutter_launcher_icons`
+- `_build_icon.bat` → `dart run flutter_launcher_icons`
 - `_build_l10n.bat` → `flutter gen-l10n`
 
 ### Commit Convention
