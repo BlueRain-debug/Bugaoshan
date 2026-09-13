@@ -57,7 +57,7 @@ cd Bugaoshan
 flutter pub get
 
 # 运行代码生成（DI & 国际化）
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build --delete-conflicting-outputs
 
 # 运行 App
 flutter run

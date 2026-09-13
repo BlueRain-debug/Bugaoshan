@@ -97,9 +97,11 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 │   ├── aur/                    # future PKGBUILD requirements (not implemented)
 │   ├── flatpak/                # source + generated Flatpak manifests
 │   └── linux/                  # shared desktop/AppStream/icon assets
-├── tool/                       # Icon generation scripts
+├── tool/                       # Tooling scripts (icons, iOS install, release checks)
 │   ├── generate_adaptive_old_icon.py
-│   └── generate_icons.dart
+│   ├── generate_icons.dart
+│   ├── install_ios_profile.sh
+│   └── pre_release_check.py    # release readiness static checks (strict / --ci gate modes)
 ├── screenshot/                 # App screenshots
 ├── build/                      # build output (gitignored)
 ├── lib/
@@ -139,14 +141,18 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 │       ├── 0003-make-course-display-settings-global.md
 │       └── 0004-use-distribution-wpe-on-linux.md
 └── .github/
-    ├── actions/setup/          # composite action: install Flutter 3.44, gen-l10n, git metadata
+    ├── actions/setup/          # composite action: install Flutter 3.44, pub mirror, gen code/l10n, git metadata
     ├── scripts/                # Python release automation
-    │   ├── git_meta.py             # export GIT_TAG / GIT_COMMIT / GIT_COMMIT_DATE / BUILD_TIME
-    │   ├── release_tags.py         # resolve version + prev tag
-    │   ├── release_changelog.py    # extract version section from CHANGELOG.md
-    │   ├── release_body.py         # build the GitHub release markdown body
-    │   └── release_prepare.py      # rename APK/zip/tar artifacts for upload
+    │   ├── git_meta.py                 # export GIT_TAG / GIT_COMMIT / GIT_COMMIT_DATE / BUILD_TIME
+    │   ├── resolve_release_version.py  # channel/tag resolution: formal idempotency, -preview[.N] / -rc[.N] naming, build_only gating
+    │   ├── release_tags.py             # resolve version + prev tag
+    │   ├── release_changelog.py        # extract [Unreleased] / [X.Y.Z] section from CHANGELOG.md
+    │   ├── release_body.py             # build the GitHub release markdown body
+    │   ├── release_prepare.py          # rename APK/zip/tar artifacts for upload
+    │   ├── metadata_changelog.py       # generate F-Droid per-ABI/locale changelog files
+    │   └── tests/                      # unittest suite run by pre-flight
     ├── workflows/
+    │   ├── pre-flight.yml      # PR/push quality gate & branch flow policy
     │   ├── release.yml         # releases on push to main/preview, target-gated tags, or manual dispatch
     │   ├── build-android.yml   # workflow_call → APK (split per ABI, obfuscated)
     │   ├── build-windows.yml   # workflow_call → Windows zip
