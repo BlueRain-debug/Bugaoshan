@@ -604,13 +604,13 @@ abstract class AppLocalizations {
   /// No description provided for @enablePageTransitionAnimation.
   ///
   /// In en, this message translates to:
-  /// **'Page Transition Animation'**
+  /// **'Dock Page Transition Animation'**
   String get enablePageTransitionAnimation;
 
   /// No description provided for @enablePageTransitionAnimationHint.
   ///
   /// In en, this message translates to:
-  /// **'Enable slide and fade animation when switching pages'**
+  /// **'Enable slide and fade animation when switching Dock pages'**
   String get enablePageTransitionAnimationHint;
 
   /// No description provided for @themeColor.

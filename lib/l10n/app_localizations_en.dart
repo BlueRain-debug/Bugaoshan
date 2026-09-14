@@ -281,11 +281,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Hint: Adjust the slider to preview the animation, click Confirm to save the settings';
 
   @override
-  String get enablePageTransitionAnimation => 'Page Transition Animation';
+  String get enablePageTransitionAnimation => 'Dock Page Transition Animation';
 
   @override
   String get enablePageTransitionAnimationHint =>
-      'Enable slide and fade animation when switching pages';
+      'Enable slide and fade animation when switching Dock pages';
 
   @override
   String get themeColor => 'Theme Color';
