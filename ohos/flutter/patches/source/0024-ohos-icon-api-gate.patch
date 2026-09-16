@@ -1,0 +1,92 @@
+diff --git a/lib/services/dynamic_icon_service.dart b/lib/services/dynamic_icon_service.dart
+--- a/lib/services/dynamic_icon_service.dart
++++ b/lib/services/dynamic_icon_service.dart
+@@ -17,5 +17,18 @@
+ class DynamicIconService {
+   static const MethodChannel _channel = kDynamicIconMethodChannel;
++
++  /// Checks the runtime API before opening HarmonyOS icon settings.
++  static Future<bool> supportsAlternateIcons() async {
++    if (!_isSupported) return false;
++    if (Platform.operatingSystem != 'ohos') return true;
++    final supported = await _channel
++        .invokeMethod<bool>('supportsAlternateIcons')
++        .timeout(const Duration(seconds: 5));
++    if (supported == null) {
++      throw StateError('HarmonyOS returned no icon support information');
++    }
++    return supported;
++  }
+ 
+   /// The native channel is implemented on Android and HarmonyOS; other platforms
+   /// fall back to safe defaults instead of throwing [MissingPluginException].
+diff --git a/lib/pages/settings/software_setting_page.dart b/lib/pages/settings/software_setting_page.dart
+--- a/lib/pages/settings/software_setting_page.dart
++++ b/lib/pages/settings/software_setting_page.dart
+@@ -15,5 +15,7 @@
+ import 'package:bugaoshan/providers/app_config_provider.dart';
+ import 'package:bugaoshan/providers/course_provider.dart';
++import 'package:bugaoshan/services/dynamic_icon_service.dart';
++import 'package:bugaoshan/utils/app_log.dart';
+ import 'package:bugaoshan/widgets/common/info_card.dart';
+ import 'package:bugaoshan/widgets/common/section_title.dart';
+ import 'package:bugaoshan/widgets/common/styled_tile.dart';
+@@ -23,5 +25,31 @@
+ class SoftwareSettingPage extends StatelessWidget {
+   const SoftwareSettingPage({super.key});
++
++  Future<void> _openAppIconSettings(BuildContext context) async {
++    if (Platform.operatingSystem == 'ohos') {
++      String? message;
++      try {
++        final supported = await DynamicIconService.supportsAlternateIcons();
++        if (!context.mounted) return;
++        if (!supported) {
++          message = AppLocalizations.of(context)!.ohosIconRequiresHarmonyOS7;
++        }
++      } catch (error) {
++        AppLog.e('DynamicIcon', 'Failed to check icon support: $error');
++        if (!context.mounted) return;
++        message = AppLocalizations.of(context)!.loadFailed;
++      }
++      if (!context.mounted) return;
++      if (message != null) {
++        ScaffoldMessenger.of(context)
++          ..hideCurrentSnackBar()
++          ..showSnackBar(SnackBar(content: Text(message)));
++        return;
++      }
++    }
++    if (!context.mounted) return;
++    popupOrNavigate(context, const SetAppIconPage());
++  }
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -45,7 +73,7 @@
+                 IconTile(
+                   icon: Icons.photo_size_select_actual_outlined,
+                   label: localizations.appIcon,
+-                  onTap: () => popupOrNavigate(context, const SetAppIconPage()),
++                  onTap: () => _openAppIconSettings(context),
+                 ),
+               IconTile(
+                 icon: Icons.timer,
+diff --git a/lib/l10n/app_en.arb b/lib/l10n/app_en.arb
+--- a/lib/l10n/app_en.arb
++++ b/lib/l10n/app_en.arb
+@@ -1028,4 +1028,5 @@
+     "iconSwitchNotSupported": "Dynamic icon switching is not supported on this platform",
++    "ohosIconRequiresHarmonyOS7": "This feature is not supported below HarmonyOS 7",
+     "featureNotSupported": "This feature is not supported on this platform",
+     "newIconSubtitle": "Bugaoshan New Icon",
+     "oldIconSubtitle": "Bugaoshan Classic Icon",
+diff --git a/lib/l10n/app_zh.arb b/lib/l10n/app_zh.arb
+--- a/lib/l10n/app_zh.arb
++++ b/lib/l10n/app_zh.arb
+@@ -966,4 +966,5 @@
+     "iconSwitchNotSupported": "当前平台不支持动态切换应用图标",
++    "ohosIconRequiresHarmonyOS7": "鸿蒙 7 以下不支持该功能",
+     "featureNotSupported": "当前平台不支持此功能",
+     "newIconSubtitle": "Bugaoshan 新图标",
+     "oldIconSubtitle": "Bugaoshan 经典图标",
