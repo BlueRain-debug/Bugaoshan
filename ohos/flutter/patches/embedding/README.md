@@ -1,0 +1,47 @@
+# Flutter OH 嵌入层主题补丁
+
+系统切换深浅色时，锁定的 Flutter OH 嵌入层在
+`FlutterAbilityAndEntryDelegate.changeColorMode()` 对平台节点调用 `rebuild()`。
+`EmbeddingNodeController.makeNode()` 会重新创建 BuilderNode；CPF WebView 的
+`aboutToDisappear()` 又会释放 Web 资源，可能造成文档重新加载或控制器失效。
+
+`ohos/flutter/patches/embedding/color-mode-update.patch` 将该主题分支改为对已有 BuilderNode 调用
+`updateConfiguration()`。API 从 12 起可用，当前工具链为 API 26。
+它传递当前系统配置并更新已有节点，不走 `makeNode()` 的新建流程。
+平台视图尺寸、方向和渲染表面的其他重建入口保持原逻辑。
+
+WebView 内部另持有一个 BuilderNode，因此还需
+[`webview-configuration-update.patch`](../plugins/webview-configuration-update.patch)：
+外层组件的 `onWillApplyTheme()` 将配置更新传给已有的 WebBuilderNode。
+三个通知页的 `WebDarkMode.Auto` 和上游深浅媒体查询继续负责网页配色，
+不新增 JS 配色、reload 或加载遮罩处理。
+
+## 构建接入
+
+1. `build_ohos.py` 在新副本的 `ohos/.flutter-embedding-runtime.json` 记录本次
+   Python 解释器、Git 程序与副本路径。该文件仅为本机生成物，不提交、不复制到下次副本。
+   位置避开 Hvigor Clean 的输出目录，DevEco 后续构建可复用当前环境。
+2. `flutterHvigorPlugin` 按 SDK、目标架构和构建模式选择原始嵌入层 HAR。
+3. 排在它之后的 `flutterEmbeddingPlugin` 读取选定的 override，调用
+   `ohos_embedding.py`。脚本只读取 SDK HAR，校验包名、版本、锁定引擎提交和
+   待改文件的 SHA-256，在副本的临时目录应用补丁，再打包新 HAR。
+4. 新 HAR 位于 `ohos/build/workspace/run-*/build/flutter-embedding/`，
+   位于副本内、原生 `ohos/build/` 外，避免被 Hvigor Clean 删除输入包。
+   文件名包含 SDK HAR、清单、补丁及应用脚本的内容摘要；内容变化会更换依赖 URL，
+   防止 OHPM 继续选用旧的输入。所有模块通过同一个 override 使用它。
+5. SDK 安装目录和 SDK 原始 HAR 不写入补丁，不另行编译或更换引擎二进制。
+   插件源码补丁仍由既有流程应用到鸿蒙专用 Pub 缓存。
+
+`--prepare-only` 记录运行配置并准备插件依赖；实际选择和修改 HAR 发生在 Hvigor
+配置阶段，覆盖命令行和 DevEco 构建。更新脚本、SDK 或补丁后，
+需要由构建入口生成新副本，使构建使用更新后的配置。
+
+## 维护和验收
+
+[manifest.json](manifest.json) 固定目标包、引擎提交和源文件哈希。
+升级 SDK 时，应核对所用架构及 debug/profile/release 模式的 HAR，重新审查源码、补丁和哈希，
+保持版本匹配检查有效。
+
+真机回归应覆盖网页加载前后切换主题、连续切换、前后台切换及旋转或尺寸变化，
+并检查通知页、志愿四川和验证码窗口的内容、滚动位置及交互。
+修复背景与已有验证记录见 [第四阶段说明](../../../docs/phases/phase4.md)。
