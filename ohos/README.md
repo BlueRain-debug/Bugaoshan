@@ -1,7 +1,8 @@
 # HarmonyOS 开发指南
 
 本目录包含不高山上（Bugaoshan）的 HarmonyOS 原生工程、Flutter OH 适配配置和开发工具。
-鸿蒙端与其他平台在同一分支维护，共享仓库根目录的业务代码；平台适配通过补丁应用到独立构建副本。
+鸿蒙端与其他平台在同一分支维护。编译工程通过文件链接共用根目录的业务代码，
+有适配的路径链接 `flutter/overrides/lib/` 中的完整 Dart 文件。
 
 上游与 Flutter OH 使用不同的 SDK 和依赖锁。构建鸿蒙版本时，请使用本目录的构建入口，
 由脚本加载 `ohos/flutter/` 中的配置，保持根目录的源码、依赖锁和生成文件供上游环境使用。
@@ -32,6 +33,9 @@ API 20 的能力差异及验证范围见 [兼容性说明](docs/compatibility/ap
 脚本继承终端环境，也支持通过 `--flutter-sdk` 和 `--ohos-sdk` 参数指定 SDK 根目录。
 本机路径和签名材料不应写入受版本控制的文件。
 
+Windows 需要启用系统开发者模式，或由管理员 PowerShell 创建符号链接。
+脚本不会修改系统设置，也不会在链接失败时退回复制共用源码。
+
 ## 构建
 
 完整参数、执行阶段、产物与签名说明及常见问题见 [构建脚本使用说明](tool/README.md)。
@@ -39,7 +43,7 @@ API 20 的能力差异及验证范围见 [兼容性说明](docs/compatibility/ap
 在仓库根目录执行：
 
 ```powershell
-# 可选：仅准备独立副本、解析依赖并检查插件注册
+# 准备 DevEco 入口，含依赖、代码生成及插件注册，不编译 HAP
 python ohos/tool/build_ohos.py --prepare-only
 
 # 构建 Debug HAP
@@ -49,34 +53,41 @@ python ohos/tool/build_ohos.py --mode debug
 python ohos/tool/build_ohos.py --mode release
 ```
 
-每次调用都会创建新的 `ohos/build/workspace/run-*/` 副本。脚本依次完成：
+Flutter 工作目录固定在 `ohos/.flutter-workspace/`，原生工程直接使用仓库 `ohos/`。
+工作目录没有第二个 `ohos/` 子工程，不创建 `run-*` 或复制共用 Dart 和资源。脚本依次完成：
 
-1. 校验工具链，复制应用源码和原生工程。
-2. 加载鸿蒙依赖配置、独立锁文件和有序源码补丁。
+1. 校验工具链和上游源码基线，建立或更新共用代码、鸿蒙覆盖文件及资源链接。
+2. 在本地文件中合并翻译、准备独立依赖配置，检查代码生成路径隔离。
 3. 严格解析依赖，应用插件补丁并检查 OH 插件注册。
-4. 生成 Dart 代码和本地化资源，构建 HAP 并校验应用版本。
+4. 生成 Dart 代码、本地化资源和根原生工程的插件注册文件。
+5. 普通构建在仓库 `ohos/` 调用 Hvigor Sync 和 `assembleHap`，并校验 HAP 版本。
 
-`--prepare-only` 在依赖准备完成后退出，不执行代码生成和 HAP 构建；该入口同样需要上表中的完整工具链。
+`--prepare-only` 完成前四步后退出，不编译 HAP；该入口同样需要上表中的完整工具链。
 补丁上下文、依赖锁或工具链不匹配时，脚本会停止并报告原因。
 
-应用版本来自根 `pubspec.yaml`。构建使用 `--no-codesign`，产物位于本次副本内；
+应用版本来自根 `pubspec.yaml`，通过本地属性注入 Hvigor，脚本报告的 unsigned HAP 位于
+`ohos/entry/build/default/outputs/default/entry-default-unsigned.hap`；
 真机部署需在 DevEco 中配置调试签名，正式发布与覆盖升级流程见 [同步计划](docs/sync-plan.md)。
 
-本机 `ohos/build-profile.json5` 存在时会复制到副本；否则使用
-[build-profile.json5.example](build-profile.json5.example)。`local.properties` 由 Flutter
-根据当前环境在副本中生成。
+本机 `ohos/build-profile.json5` 存在时作为原生构建配置输入；否则使用
+[build-profile.json5.example](build-profile.json5.example) 创建。已有本机配置原样保留；
+`local.properties` 中的 Flutter 路径和应用版本由准备入口更新。
 
 ## DevEco 真机调试
 
-1. 通过构建脚本生成 Debug 副本，记录终端输出的副本目录。
-2. 在 DevEco Studio 中打开该副本的 `ohos/`，即 `ohos/build/workspace/run-*/ohos/`。
-3. 配置设备与调试签名，然后使用 DevEco 的运行和调试功能。
+1. 执行 `python ohos/tool/build_ohos.py --prepare-only`。
+2. 在 DevEco Studio 中打开仓库原有的 **`ohos/`**，执行 Sync。
+3. 选择构建模式、配置设备与调试签名，然后使用 DevEco 的运行和调试功能。
 
-仓库根 `ohos/` 保存维护输入；调试副本还包含补丁后的 Dart 源码、独立 Pub 解析结果和生成的插件模块。
-DevEco 必须打开完整的调试副本，才能使用这套适配结果。
+根 `ohos/` 的 Hvigor 入口读取 `.flutter-workspace/` 中的源码和依赖，原生源码直接参与编译。
+原生改动直接维护在这个工程中，无需从生成工程中迁回。
 
-在副本中调试得到的修改需要整理回 `ohos/` 的原生源码或补丁，再重新生成副本验证。
-副本不会自动回写源码，也不会自动跟随仓库更新。重新生成后，应在 DevEco 中切换到新副本。
+已有手写 Dart 文件和资源的修改通过链接直接可见。DevEco 的 Sync/Build 配置阶段检查上游基线、
+更新链接和翻译，并在输入变化时更新生成代码。依赖声明、锁或插件补丁变化后，重新执行准备命令。
+编辑链接文件会修改它指向的维护文件；鸿蒙适配请直接编辑 `flutter/overrides/lib/`，
+不要在整个链接工程上运行 `dart format lib`，以免格式化共用源码。
+准备与 Flutter 编译共享文件锁；同一原生工程不要同时启动两个 Hvigor 构建。
+原有 `run-*` 工程不再更新，也不会被脚本自动删除。本次入口改造的构建与真机验收尚待执行。
 
 ## 目录结构
 
@@ -97,11 +108,14 @@ ohos/
 │   ├── pubspec_overrides.yaml         # 鸿蒙依赖覆盖
 │   ├── pubspec.lock                   # 鸿蒙独立依赖锁
 │   ├── toolchain.lock.json            # 正式工具链版本与提交
+│   ├── overrides/lib/                # 适配后的完整 Dart 文件
+│   ├── l10n/                         # 鸿蒙新增或覆盖的翻译条目
+│   ├── source-manifest.json          # 文件覆盖及上游基线
 │   └── patches/
-│       ├── source/                    # 有序 Dart / ARB 补丁
 │       ├── plugins/                   # 第三方插件补丁与版本约束
-│       └── embedding/                 # Flutter OH HAR 补丁与源码哈希
-├── tool/                              # 构建、补丁应用与依赖清单脚本
+│       ├── embedding/                 # Flutter OH HAR 补丁与源码哈希
+│       └── hvigor/                    # 显式原生工程路径适配与 SDK 源码哈希
+├── tool/                              # 构建、源码组装、插件补丁与依赖清单脚本
 ├── tests/
 │   ├── python/                        # 构建与补丁脚本测试
 │   └── flutter/                       # OH 专项测试模板
@@ -112,13 +126,17 @@ ohos/
 │   ├── compatibility/                # 系统版本兼容性
 │   ├── audits/                       # 代码审查与问题排查记录
 │   └── phases/                       # 各阶段实现与验收说明
-└── build/                             # 本地生成物，不提交
-    ├── workspace/run-*/               # 独立构建副本
-    └── pub-cache/                     # 鸿蒙专用 Pub 缓存
+├── .flutter-workspace/                # 本地 Flutter 包，不含原生工程，不提交
+│   ├── lib/、assets/、test/            # 共用文件链接及独立生成代码
+│   ├── .dart_tool/                    # 鸿蒙解析与生成缓存
+│   ├── tooling/                       # 本地 Hvigor 适配和注册工具
+│   └── build/                         # Flutter 编译结果与嵌入层 HAR
+├── .pub-cache/                        # 鸿蒙专用 Pub 缓存，不提交
+└── build/                             # 正常原生构建输出，不提交
 ```
 
 DevEco 缓存、`oh_modules/`、`node_modules/`、模块构建目录及本机配置由 `.gitignore` 管理。
-构建脚本复制维护输入时会排除生成目录，避免旧缓存和历史副本进入新构建。
+链接清单只管理 Flutter 工作目录中的文件；不会复制原生工程。仍会产生正常的编译输出。
 
 ## 测试与验证
 
@@ -128,8 +146,8 @@ DevEco 缓存、`oh_modules/`、`node_modules/`、模块构建目录及本机配
 python -m unittest discover -s ohos/tests/python -p "test_*.py"
 ```
 
-OH 专项 Flutter 测试以 `*.dart.template` 维护，准备副本时会复制为 `test/ohos/*.dart`。
-在完成依赖解析和代码生成的鸿蒙副本根目录，使用同一 Flutter OH SDK 运行：
+OH 专项 Flutter 测试以 `*.dart.template` 维护，准备工程时会链接为 `test/ohos/*.dart`。
+在准备完成的 `ohos/.flutter-workspace/` 中，使用同一 Flutter OH SDK 运行：
 
 ```powershell
 dart analyze lib
@@ -145,9 +163,16 @@ flutter test --no-pub test/ohos/platform_adapters_test.dart test/webview_notice_
 
 ## 贡献与上游同步
 
-鸿蒙适配的修改集中在 `ohos/`：原生功能修改对应 ArkTS 源码和资源，共享 Dart / ARB
-适配保存为 [源码补丁](flutter/patches/source/README.md)。更新补丁时同步清单，保持应用顺序，
-并按前置补丁后的源码核对上下文。构建副本用于调试和验证，不应作为维护源码提交。
+鸿蒙适配的修改集中在 `ohos/`：原生功能修改对应 ArkTS 源码和资源，共享 Dart 适配保存为
+[完整覆盖文件](flutter/overrides/README.md)，翻译保存为 [ARB 条目](flutter/l10n/README.md)。
+构建入口按 [源码清单](flutter/source-manifest.json) 检查上游基线，再选择链接和合并翻译；
+上游对应文件变化时先合并适配，再更新基线。Flutter 工作目录不作为维护源码提交。
+
+源码同步检查可独立执行，无需 Flutter 或原生工具链：
+
+```powershell
+python ohos/tool/ohos_sources.py --check
+```
 
 调整插件版本时，更新鸿蒙依赖配置，并显式重新生成鸿蒙锁文件：
 
@@ -156,13 +181,13 @@ python ohos/tool/build_ohos.py --update-lockfile
 python ohos/tool/generate_ohos_dependency_inventory.py
 ```
 
-审查锁文件、Git 提交和补丁差异，随后重新生成副本并执行相关检查。
+审查锁文件、Git 提交和补丁差异，随后重新执行 `--prepare-only` 和相关检查。
 依赖清单输出到 `ohos/docs/dependencies/lock-inventory.md`，应由脚本生成。
 普通构建严格使用现有锁文件，不自动升级依赖。
 
 ## 参考文档
 
-- [Flutter 适配机制](docs/flutter-adaptation.md)：源码、插件和嵌入层补丁的工作方式。
+- [Flutter 适配机制](docs/flutter-adaptation.md)：源码覆盖、翻译合并、插件和嵌入层补丁的工作方式。
 - [依赖替代矩阵](docs/dependencies/replacements.md)与[完整依赖对照](docs/dependencies/lock-inventory.md)。
 - [API 20 兼容性说明](docs/compatibility/api20.md)。
 - [通知页与 WebView 排查记录](docs/audits/notice-webview.md)。

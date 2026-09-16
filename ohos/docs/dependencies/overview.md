@@ -45,7 +45,7 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 | `image_picker` | `^1.2.2` | 1.2.3 | 1.2.1 Git | CPF OH 实现已解析和注册 |
 | `window_manager` | `^0.5.1` | 0.5.2 | - | 已从 OH 副本排除，窗口状态和退出服务通过 OH 补丁适配 |
 | `screen_retriever` | `^0.2.0` | 0.2.2 | - | 已从 OH 副本排除，OH 不执行桌面窗口位置校验 |
-| `system_theme` | `^3.2.0` | 3.3.0 | 3.2.0 | 系统强调色，尚无 OH 实现 |
+| `system_theme` | `^3.2.0` | 3.3.0 | 3.2.0 | 无 OH 实现；0026 移除调用，直接使用原有强调色回退 |
 | `google_fonts` | `^8.1.0` | 8.2.1 | 8.2.1 | Dart/Flutter，使用网络与文件缓存 |
 | `share_plus` | `^13.1.0` | 13.3.0 | 12.0.1 Git | CPF OH 实现已解析和注册 |
 | `gal` | `^2.3.0` | 2.3.3 | image_gallery_saver_plus 3.0.5 Git | 已迁移为系统确认保存原始图片文件 |
@@ -53,7 +53,7 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 | `flutter_inappwebview` | Git commit | 6.2.0-beta.3 | 6.1.5 Git | 已接入 OH 1.1.3，并通过窄组件适配下载回调 |
 | `tyme` | `^1.4.4` | 1.5.0 | 1.5.0 | 纯 Dart |
 | `json_annotation` | `^4.12.0` | 4.12.0 | 4.12.0 | 纯 Dart |
-| `device_info_plus` | `^13.2.0` | 13.2.0 | - | 已从 OH 副本排除，以 OH 源码补丁引入空结果接口 |
+| `device_info_plus` | `^13.2.0` | 13.2.0 | - | 已从 OH 副本排除；OH 覆盖文件接入原生环境信息，安卓专用查询为空 |
 | `encrypt` | `^5.0.3` | 5.0.3 | 5.0.3 | 纯 Dart |
 
 两个 Git 直接依赖的来源也由锁文件记录：
@@ -105,12 +105,12 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 | `gal` | 保存图片到系统相册 | 已迁移至 image_gallery_saver_plus，待真机验证 |
 | `open_filex` | 用系统应用打开附件 | CPF 实现已解析和注册，待真机验证 |
 | `flutter_inappwebview` | 三类通知、JS bridge、Cookie 下载 | OH 6.1.5 与下载回调适配已接入，待真机验证 |
-| `system_theme` | 系统强调色 | 需 OH 实现或共享代码回退 |
+| `system_theme` | 系统强调色 | OH 补丁直接使用原有蓝色回退，不调用插件；深浅模式独立跟随系统 |
 
-`flutter_app_group_directory` 和 `sqflite_common_ffi` 的现有调用被 iOS/桌面平台判断隔离，
-当前 OH 不需为它们注册实现，但仍参与 OH 依赖解析。
+`flutter_app_group_directory` 的调用由 iOS 平台判断隔离，`0026` 已移除鸿蒙入口中的
+`sqflite_common_ffi` import 和初始化分支。两者仍参与 OH 依赖解析，OH 不注册其原生实现。
 `device_info_plus`、`window_manager` 和 `screen_retriever` 已通过构建副本依赖排除和窄接口
-源码补丁移出 OH 依赖图；`screen_retriever` 的四个平台/接口传递包也已移除。
+源码覆盖实现移出 OH 依赖图；`screen_retriever` 的四个平台/接口传递包也已移除。
 
 ## 5. 当前鸿蒙专用解析
 
@@ -120,7 +120,7 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 - 排除根直接依赖 `device_info_plus`、`window_manager`、`screen_retriever`、`file_picker` 和 `gal`。
 - 加入正式 `file_picker_ohos 10.3.8` 和 `image_gallery_saver_plus 3.0.5`；固定提交见覆盖配置和锁表。
 
-[平台隔离补丁](../../flutter/patches/source/0002-mobile-plugin-scope.patch) 让副本中的
+[平台隔离覆盖文件](../../flutter/overrides/lib/services/window_state_service.dart) 让副本中的
 `WindowStateService` 不执行桌面窗口操作，`ExitService` 保留移动端等待 300 ms 后
 `exit(0)` 的行为；根服务和其他平台依赖保持原样。
 
@@ -151,8 +151,8 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 
 此前的 AOT 阻塞来自 Windows 传递依赖的 win32 5/6 API 冲突。迁移文件选择器后，
 `windows_file_picker` 已移出 OH 依赖图，`win32` 自然解析为 5.15.0，当前 Dart AOT 已通过。
-文件导出、相册和 WebView 的接口均由源码补丁在副本中创建，相关调用也只在副本修改。
-补丁与专用缓存机制见 [../flutter-adaptation.md](../flutter-adaptation.md)。前述 AOT 通过是补丁迁移前
+文件导出、相册和 WebView 的接口均从覆盖目录复制到副本，相关调用也采用对应适配文件。
+源码组装与专用缓存机制见 [../flutter-adaptation.md](../flutter-adaptation.md)。前述 AOT 通过是本次文件覆盖迁移前
 的记录，迁移后的流程尚待用户验证。
 
 CPF `url_launcher_ohos` 对 HTTP(S) 的默认模式会进入应用内网页，要求

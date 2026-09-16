@@ -1,209 +1,163 @@
 # 鸿蒙构建脚本使用说明
 
-[build_ohos.py](build_ohos.py) 使用锁定的正式 Flutter OH 工具链，在独立副本中应用鸿蒙适配、
-解析依赖并构建 HAP。以下命令均以 **PowerShell、仓库根目录** 为运行环境。
-工程结构与平台适配约定见 [鸿蒙开发指南](../README.md)。
+[build_ohos.py](build_ohos.py) 准备鸿蒙独立 Flutter 工作目录，并通过仓库原有的 `ohos/`
+原生工程构建 HAP。共用 Dart 和资源通过符号链接引用，不复制第二套原生工程。
+以下命令均在 **仓库根目录的 PowerShell** 中执行。
 
-## 快速使用
-
-配置好当前终端的工具链后，执行：
+## DevEco 构建与调试
 
 ```powershell
-# 默认构建 Release HAP
+python ohos/tool/build_ohos.py --prepare-only
+```
+
+该命令完成工具链校验、源码链接、鸿蒙依赖解析、插件补丁、代码生成和原生插件注册，
+**不编译 HAP**。完成后，在 DevEco Studio 中打开仓库原有的 **`ohos/`**，
+执行 Sync，选择 Debug 或 Release，再使用 DevEco 的构建、运行或调试功能。
+本机设备及调试签名在这个原生工程中配置。
+
+Flutter 工作目录是 `ohos/.flutter-workspace/`，其中没有 `ohos/` 子工程。
+原生源码、原生调试改动和 DevEco 配置都直接位于仓库 `ohos/`；无需从其他工程整理回来。
+原有 `ohos/build/workspace/run-*` 或 `app/` 不再使用，脚本不移动或删除旧文件。
+
+## 命令行构建
+
+```powershell
+# 默认 Release
 python ohos/tool/build_ohos.py
 
-# 构建 Debug HAP，用于 DevEco 真机调试
 python ohos/tool/build_ohos.py --mode debug
-
-# 构建 Profile HAP，用于性能调试
 python ohos/tool/build_ohos.py --mode profile
-
-# 显式构建 Release HAP
 python ohos/tool/build_ohos.py --mode release
-
-# 仅准备副本和依赖，不执行代码生成或 HAP 构建
-python ohos/tool/build_ohos.py --prepare-only
-
-# 查看参数帮助
 python ohos/tool/build_ohos.py --help
 ```
 
-每条命令独立使用。每次调用都会创建新的 `ohos/build/workspace/run-*/`；
-先执行 `--prepare-only` 再执行构建命令，会得到两个副本，后者不会复用前者。
+普通构建先完成与 `--prepare-only` 相同的准备，再在根 `ohos/` 调用 Hvigor Sync 和
+`assembleHap`。它和 DevEco 使用同一个原生工程及 Flutter 适配入口。
 
-## 环境与 SDK 选择
-
-需要 Python 3.10 或更新版本、Git、Flutter OH，以及配套的 DevEco Studio 原生工具链。
-在当前 PowerShell 的 `PATH` 中配置 `python`、`git`、Flutter OH 的 `flutter`，
-以及 DevEco 配套的 `hvigorw`、`ohpm` 和 `node`。
-
-当前编译基线为 Flutter OH `3.41.10-ohos-1.0.1`、Dart `3.11.5` 和 HarmonyOS API 26。
-精确版本和提交以 [toolchain.lock.json](../flutter/toolchain.lock.json) 为准。
-脚本会校验 Flutter 版本、仓库来源、正式标签、framework/engine 提交和 Dart 版本，
-并校验 HarmonyOS SDK、DevEco、Hvigor、OHPM 和 Node 版本。
-安装兼容下限为 API 20；这不表示可以用 API 20 SDK 编译，详见 [兼容性说明](../docs/compatibility/api20.md)。
-
-SDK 按以下优先级选择：
-
-| SDK | 查找顺序（从左到右） |
-| --- | --- |
-| Flutter OH | `--flutter-sdk` → 当前 `PATH` 中的 `flutter` |
-| HarmonyOS | `--ohos-sdk` → `OHOS_SDK_HOME` → `HOS_SDK_HOME` → `DEVECO_SDK_HOME` → `flutter config` 的 `ohos-sdk` |
-
-如果 PowerShell 已配置这些环境，直接运行快速使用中的命令即可。
-也可仅为本次调用指定路径，下面的占位内容需替换为实际 SDK 根目录：
-
-```powershell
-python ohos/tool/build_ohos.py --mode debug --flutter-sdk '<Flutter OH SDK 根目录>' --ohos-sdk '<DevEco SDK 根目录>'
-```
-
-`--flutter-sdk` 指向包含 `bin/` 的 Flutter OH 根目录。
-`--ohos-sdk` 指向包含 `default/openharmony/` 的 DevEco SDK 根目录，不能直接指向 `default/openharmony/`。
-脚本按 DevEco 安装布局查找 SDK 上一级的 `product-info.json` 和 `tools/`，
-当前 `PATH` 中的 `hvigorw` 也必须来自同一套 DevEco 安装。
-
-构建继承当前终端环境，并为子进程设置以下值：
-
-| 项目 | 行为 |
-| --- | --- |
-| `PATH` | 将选定 Flutter OH 的 `bin/` 放在前面 |
-| `PUB_CACHE` | 使用仓库内的 `ohos/build/pub-cache/` |
-| `PUB_HOSTED_URL` | 固定为 `https://pub.flutter-io.cn`，与锁文件来源一致 |
-| `FLUTTER_STORAGE_BASE_URL` | 未配置时使用 `https://storage.flutter-io.cn` |
-| 三个 HarmonyOS SDK 环境变量 | 统一为本次选定的 SDK 路径 |
-
-这些设置只作用于脚本的子进程环境。依赖解析需要能够访问对应 Pub 镜像和 Git 仓库。
-完整构建还会读取应用仓库的 Git 提交和标签作为版本元数据，请使用保留相关标签历史的 Git 检出目录。
-
-## 参数说明
-
-| 参数 | 默认值 | 作用 |
-| --- | --- | --- |
-| `--flutter-sdk PATH` | 从 `PATH` 查找 | 指定 Flutter OH SDK 根目录 |
-| `--ohos-sdk PATH` | 从环境或 Flutter 配置查找 | 指定 HarmonyOS SDK 根目录 |
-| `--mode debug\|profile\|release` | `release` | 设置 HAP 编译模式 |
-| `--prepare-only` | 关闭 | 完成副本、依赖和插件准备后退出 |
-| `--update-lockfile` | 关闭 | 重新解析依赖，回写鸿蒙锁文件后退出 |
-| `-h` / `--help` | — | 显示帮助并退出 |
-
-`--prepare-only` 与 `--update-lockfile` 不能同时使用。
-这两个操作均需要完整工具链；添加 `--mode` 不会让它们执行 HAP 构建。
-
-## 执行流程
-
-| 步骤 | 普通构建 | `--prepare-only` | `--update-lockfile` |
-| --- | --- | --- | --- |
-| 校验 Flutter OH 与完整原生工具链 | 是 | 是 | 是 |
-| 新建副本、加载依赖配置、应用源码补丁 | 是 | 是 | 是 |
-| 复制 OH 测试模板、同步应用版本 | 是 | 是 | 是 |
-| 解析依赖 | 强制遵循锁文件 | 强制遵循锁文件 | 允许更新锁文件 |
-| 应用插件补丁、检查 OH 插件注册 | 是 | 是 | 是 |
-| 回写维护目录的鸿蒙锁文件 | 否 | 否 | 是 |
-| 运行 `build_runner` 和 `gen-l10n` | 是 | 否 | 否 |
-| 构建 HAP、校验包内版本 | 是 | 否 | 否 |
-
-副本的依赖来自根 `pubspec.yaml` 加上 [鸿蒙依赖配置](../flutter/README.md)，
-使用 `ohos/flutter/pubspec.lock`，源码适配按 [补丁清单](../flutter/patches/source/manifest.json) 顺序应用。
-根源码、根锁文件及根目录的 Pub 解析结果保持独立。
-
-普通构建在副本中执行的主要命令如下，SDK 路径和 Git 元数据由脚本填充：
-
-```text
-flutter pub get --no-example --enforce-lockfile
-dart run build_runner build --delete-conflicting-outputs
-flutter gen-l10n
-flutter build hap --<mode> --no-pub --no-codesign --dart-define=...
-```
-
-脚本将根 `pubspec.yaml` 的 `version: x.y.z+N` 同步为副本的 `versionName: x.y.z` 和
-`versionCode: N`，构建后检查原生配置与 HAP 内 `pack.info` 是否一致。
-它不会自动增加版本号，也不会读取设备上旧安装包的版本。
-
-该入口不自动执行格式检查、静态分析或测试；相关命令见 [测试说明](../tests/README.md)。
-双 SDK 持续检查入口仍在 [阶段六计划](../docs/sync-plan.md#阶段六建立持续同步检查) 中。
-
-## 副本、产物与 DevEco 调试
-
-| 路径（相对仓库根目录） | 内容 |
-| --- | --- |
-| `ohos/build/workspace/run-*/` | 本次 Flutter 应用副本，包含补丁后的源码和独立 Pub 配置 |
-| `ohos/build/workspace/run-*/ohos/` | DevEco 应打开的原生工程 |
-| `ohos/build/workspace/run-*/ohos/entry/build/` | 原生编译输出与 HAP |
-| `ohos/build/pub-cache/` | 鸿蒙专用 Pub 缓存，插件补丁也在此应用 |
-
-HAP 通常位于本次副本的：
+最终检查并输出的文件固定为：
 
 ```text
 ohos/entry/build/default/outputs/default/entry-default-unsigned.hap
 ```
 
-以终端中的 `构建副本：…` 和实际构建目录为准。脚本保留历史副本；旧副本不会自动跟随源码更新。
+脚本不再按修改时间挑选任意 HAP。版本来自根 `pubspec.yaml` 的 `version: x.y.z+N`，
+通过本地 `local.properties` 注入 Hvigor 的应用配置，随后校验该 HAP 内的 `pack.info`。
+准备过程不改写维护中的 `AppScope/app.json5`，也不自动增加版本号。
 
-真机调试时，运行 `--mode debug`，然后在 DevEco 打开本次副本的 `ohos/`，配置设备和调试签名。
-维护目录 `ohos/` 不包含完整的鸿蒙 Pub 解析结果和生成的插件模块，直接打开它构建可能出现插件
-`Cannot find module`。副本中调整的适配应整理回维护目录的原生代码或源码补丁，再重新生成副本。
+本次改造尚未执行构建或真机验证；历史功能验收不等于新构建入口已经通过验证。
 
-如果只运行了 `--prepare-only`，副本仍需完成代码生成与构建，不能视为可直接部署的产物。
+## 环境与参数
 
-### Release 与签名
+需要 Python 3.10+、Git、正式 Flutter OH，以及配套 DevEco Studio。
+在当前 PowerShell 的 `PATH` 中配置 `python`、`git`、`flutter`、`hvigorw`、`ohpm` 和 `node`。
+Windows 创建符号链接需要启用开发者模式或使用管理员 PowerShell；脚本不会代为修改系统设置，
+权限不足时报告错误，不退回复制共用源码。
 
-`--mode release` 只选择 Release 编译模式。脚本始终传入 `--no-codesign`，并检查 unsigned HAP
-是否存在；未签名 HAP 需要完成签名后才能安装。脚本没有签名或发布参数。
+当前基线是 Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`、HarmonyOS API 26，
+精确版本、来源及提交以 [工具链锁](../flutter/toolchain.lock.json) 为准。
+脚本核对 SDK 正式标签、framework/engine 提交、Dart、DevEco、Hvigor、OHPM 和 Node。
+应用最低安装 API 20 与编译 SDK 版本不同，见 [API 20 兼容性](../docs/compatibility/api20.md)。
 
-本机 `ohos/build-profile.json5` 存在时会被复制进副本，否则使用
-[配置模板](../build-profile.json5.example)。本机配置可能使原生构建同时生成 signed HAP。
-当前最终版本校验会选择修改时间最新的 `.hap`，因此 `构建完成：…` 也可能指向 signed 文件。
-该输出只确认构建与版本校验通过，不验证签名类型、证书或可安装设备范围。
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| `--flutter-sdk PATH` | 当前 `PATH` 中的 Flutter | 包含 `bin/` 的 Flutter OH SDK 根目录 |
+| `--ohos-sdk PATH` | 环境变量或 Flutter 配置 | 包含 `default/openharmony/` 的 DevEco SDK 根目录 |
+| `--mode debug|profile|release` | `release` | 命令行 HAP 构建模式 |
+| `--prepare-only` | 关闭 | 完成依赖、代码生成及原生入口准备后退出 |
+| `--update-lockfile` | 关闭 | 允许重新解析并回写鸿蒙锁文件后退出 |
 
-调试签名通常受描述文件中的设备范围约束；正式分发需要符合渠道要求的签名和描述文件。
-文件名包含 `signed` 或采用 Release 模式，都不能单独证明可直接公开分发。
-正式签名和覆盖升级安排见 [同步计划](../docs/sync-plan.md)。
-
-## 更新鸿蒙依赖锁
-
-在有意调整鸿蒙依赖时，先修改 `ohos/flutter/` 中的依赖配置及相关插件补丁约束，然后执行：
+后两个参数互斥；附加 `--mode` 不会使其编译 HAP。
+Flutter 查找顺序为显式参数、`PATH`；HarmonyOS 查找顺序为显式参数、`OHOS_SDK_HOME`、
+`HOS_SDK_HOME`、`DEVECO_SDK_HOME`、`flutter config` 的 `ohos-sdk`。
+如果 PowerShell 已配置好工具链，直接执行准备或构建命令即可。
 
 ```powershell
-# 在新副本中解析依赖，完成插件检查后回写 ohos/flutter/pubspec.lock
-python ohos/tool/build_ohos.py --update-lockfile
-
-# 根据根锁和鸿蒙锁生成依赖对照文档
-python ohos/tool/generate_ohos_dependency_inventory.py
-
-# 仅检查依赖对照文档是否与锁文件一致，不写文件
-python ohos/tool/generate_ohos_dependency_inventory.py --check
+python ohos/tool/build_ohos.py --prepare-only --flutter-sdk '<Flutter OH SDK 根目录>' --ohos-sdk '<DevEco SDK 根目录>'
 ```
 
-`--update-lockfile` 使用 `flutter pub get --no-example`，不带 `--enforce-lockfile`；
-它按依赖约束重新解析，不等同于将所有包升级到最新版本。此操作不生成 Dart 代码、不构建 HAP，
-也不修改根 `pubspec.lock`。
+子进程使用 `ohos/.pub-cache/`，`PUB_HOSTED_URL` 与锁文件一致为 `https://pub.flutter-io.cn`；
+`FLUTTER_STORAGE_BASE_URL` 未设置时使用 `https://storage.flutter-io.cn`。
+依赖解析需要访问对应 Pub 镜像和 Git 仓库。Git 元数据需要检出目录保留提交和相关标签。
 
-审查鸿蒙锁文件、固定 Git 提交和 [依赖对照文档](../docs/dependencies/lock-inventory.md) 的变化后，
-再进行普通构建与相关验证。普通构建遇到锁不匹配时会停止，不会自动回写鸿蒙锁。
+准备时仅在忽略的本地运行配置中记录选中的 SDK、Python、Git 路径和必要镜像设置。
+DevEco 后续构建沿用它们，不依赖从图形界面启动的 DevEco 是否继承 PowerShell 环境。
+移动仓库、Python 或 SDK 后重新执行准备命令；受版本控制的文件中不保存本机路径。
+
+## 文件归属
+
+| 路径（相对仓库根） | 用途 |
+| --- | --- |
+| `lib/`、`assets/` | 共用上游源码和资源 |
+| `ohos/flutter/overrides/lib/` | 鸿蒙适配后的完整 Dart 文件 |
+| `ohos/flutter/l10n/` | 中英文翻译差异条目 |
+| `ohos/flutter/pubspec.lock` | 维护中的鸿蒙锁文件 |
+| `ohos/.flutter-workspace/lib/` | 真实目录；手写 Dart 逐文件链接，生成 Dart 和合并 ARB 为本地普通文件 |
+| `ohos/.flutter-workspace/assets/` | 指向根 `assets/` 的目录链接 |
+| `ohos/.flutter-workspace/test/` | 共用测试及 OH 测试模板的文件链接 |
+| `ohos/.flutter-workspace/pubspec*.yaml`、`pubspec.lock`、`.dart_tool/` | 鸿蒙独立的 Pub 配置、解析与生成缓存 |
+| `ohos/.flutter-workspace/tooling/` | 本地 SDK Hvigor 适配副本和插件声明读取器 |
+| `ohos/.flutter-workspace/build/` | Flutter 编译输出、补丁处理后的嵌入层 HAR |
+| `ohos/.pub-cache/` | 鸿蒙 Pub 缓存及插件补丁应用位置 |
+| `ohos/entry/` | 唯一原生模块，DevEco 直接使用 |
+| `ohos/entry/build/`、`ohos/build/`、`ohos/.hvigor/` | 正常原生编译输出及缓存 |
+
+`.flutter-workspace/`、`.pub-cache/`、运行配置、插件注册文件和构建输出均不提交。
+仍会产生正常的 `build` 目录；取消的是复制原生工程，不是取消编译产物。
+
+已有手写源码改动通过链接直接可见。DevEco 的 Sync/Build 配置阶段调用
+[ohos_native.py](ohos_native.py)：检查依赖准备记录、上游基线，刷新增删文件及翻译，
+在生成器输入或生成文件变化时执行 `build_runner` 和 `gen-l10n`，并从 OH 解析结果生成原生注册文件。
+未变化的生成结果复用。Pub 配置、锁文件或插件补丁变化时停止并要求重新执行 `--prepare-only`。
+
+不要编辑 `.flutter-workspace/lib/` 下的共享链接来做鸿蒙专用适配，也不要对整个链接目录执行格式化，
+因为文件链接的写入会作用于原文件。请直接编辑 `ohos/flutter/overrides/lib/` 中对应的维护文件。
+生成器输出只能写入工作目录的普通文件；脚本拒绝链接生成目录或链接已有生成文件。
+脚本准备和 Flutter assemble 共享文件锁；同一原生工程仍应避免同时启动两个 Hvigor 构建。
+
+## 原生构建接入
+
+`hvigorconfig.ts` 从独立 Flutter 包的 `.flutter-plugins-dependencies` 注入 OH 模块。
+`hvigorfile.ts` 使用本地的 SDK Hvigor 适配层，分别传入 Flutter 工作目录和原生工程目录。
+插件注册类从解析到的插件 `pubspec.yaml` 读取，不硬编码插件名单或类名。
+
+[Hvigor 补丁](../flutter/patches/hvigor/README.md) 校验锁定 SDK 的原文件哈希，仅生成本地适配副本。
+它保留 SDK 的任务依赖和资源/AOT 复制流程，增加显式原生路径以及 Python 参数数组执行器，
+使带空格的工具路径和参数正确传递。无需修改 SDK 安装目录或安装 SDK 附带的旧 Hvigor 开发依赖。
+
+[嵌入层补丁](../flutter/patches/embedding/README.md) 仍在模式选择后处理 SDK HAR，
+放在 `.flutter-workspace/build/flutter-embedding/`，由全部原生模块引用。
+SDK 本体保持原样。普通命令行构建不再使用 `flutter build hap`，
+因为该命令假定原生项目位于当前 Flutter 包内部的 `ohos/`。
+
+## 依赖更新、检查与签名
+
+```powershell
+python ohos/tool/build_ohos.py --update-lockfile
+python ohos/tool/generate_ohos_dependency_inventory.py
+python ohos/tool/generate_ohos_dependency_inventory.py --check
+python ohos/tool/build_ohos.py --prepare-only
+```
+
+`--update-lockfile` 只回写 `ohos/flutter/pubspec.lock`，不修改根锁。
+它不构建 HAP，也不完成完整 DevEco 准备；成功后会撤销旧运行配置，必须再执行 `--prepare-only`。
+普通准备使用 `flutter pub get --no-example --enforce-lockfile`，不自动升级锁文件。
+
+构建脚本不自动执行格式检查、静态分析或测试，相关入口见 [测试说明](../tests/README.md)。
+双 SDK 持续检查仍在 [阶段六计划](../docs/sync-plan.md#阶段六建立持续同步检查) 中。
+
+Release 仅表示编译模式。脚本没有签名或发布参数，最后报告 unsigned HAP。
+原生 Hvigor 使用本机 `ohos/build-profile.json5`；不存在时从 `.example` 创建，已有配置原样保留。
+若本机已配置签名，原生工具可能同时生成 signed HAP；脚本不将它作为 unsigned 构建结果。
+未签名包不能直接分发安装，正式签名、描述文件和覆盖升级应按渠道要求另行验收。
 
 ## 常见问题
 
-| 现象 | 处理方式 |
+| 现象 | 处理 |
 | --- | --- |
-| Flutter 或原生工具链版本不匹配 | 按工具链锁配置正式 SDK；检查当前 `PATH` 是否指向其他 Flutter 或 DevEco 安装 |
-| 找不到 HarmonyOS SDK | 检查 SDK 查找优先级；确认当前进程能读取环境变量，路径包含 `default/openharmony/` |
-| `hvigorw` 缺失或来自其他安装 | 将选定 DevEco 的 `tools/hvigor/bin/` 配置到当前 `PATH` |
-| `--enforce-lockfile` 失败 | 核对上游依赖变化、鸿蒙覆盖和锁文件；需要调整依赖时按上一节显式更新 |
-| 源码补丁与上游不匹配 | 更新报错指向的 `ohos/flutter/patches/source/` 补丁及其上下文，按顺序核对；不要直接改根源码 |
-| 插件补丁或注册检查失败 | 核对鸿蒙插件版本、固定 Git 提交和 `ohos/flutter/patches/plugins/` 中的清单 |
-| DevEco 报插件 `Cannot find module` | 确认打开的是本次隔离副本的 `ohos/`，且副本依赖准备成功 |
-| 改动在设备上未生效 | 检查 DevEco 工程路径；旧副本不会自动同步维护目录的修改 |
-
-命令成功返回 `0`；构建步骤或校验失败时通常输出 `鸿蒙构建失败：…` 并返回 `1`；
-参数错误返回 `2`。失败时先查看首个失败步骤及其输出。
-
-## 同目录辅助工具
-
-| 文件 | 用途 |
-| --- | --- |
-| [generate_ohos_dependency_inventory.py](generate_ohos_dependency_inventory.py) | 生成或检查完整 Dart 依赖对照，仅依赖 Python 标准库 |
-| [ohos_patches.py](ohos_patches.py) | 构建入口调用的补丁应用与插件校验辅助模块 |
-| [ohos_embedding.py](ohos_embedding.py) | 在隔离副本中生成带适配补丁的 Flutter OH HAR |
-| [flutter_embedding_plugin.ts](flutter_embedding_plugin.ts) | 将 HAR 适配接入 Hvigor 构建过程 |
-
-后面三个工具由构建流程调用，日常构建使用 `build_ohos.py` 即可。
+| 缺少 `.flutter-workspace/tooling/flutter-hvigor-plugin` 或运行配置 | 在仓库根执行 `--prepare-only` 后重新 Sync |
+| 依赖配置或解析结果变化 | 重新执行 `--prepare-only`，不要在仓库根运行 OH Pub get |
+| 上游源码基线不匹配 | 合并对应覆盖文件的上游变化，再更新清单哈希 |
+| Windows 无权创建链接 | 启用系统开发者模式，或在管理员 PowerShell 中运行准备命令 |
+| 插件 `Cannot find module` | 确认准备成功，DevEco 打开的是仓库 `ohos/`，随后执行 Sync |
+| SDK/Python 移动后无法构建 | 在配置好新路径的 PowerShell 重新执行准备命令 |
+| HAP 已安装但启动异常 | 保留本次完整日志与构建模式，按真机日志定位；构建完成不代表启动验收通过 |

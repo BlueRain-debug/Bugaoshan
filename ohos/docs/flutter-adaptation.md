@@ -1,69 +1,66 @@
 # 鸿蒙 Flutter 适配
 
-根工程维护共享业务、上游依赖和上游锁文件。`ohos/tool/build_ohos.py` 将当前源码复制到
-`ohos/build/workspace/run-*/`，再应用 `ohos/flutter/` 的配置和补丁。环境及 DevEco 调试入口见
-[鸿蒙开发说明](../README.md)。根源码不保留鸿蒙适配修改。
+根工程维护共享业务、上游依赖和上游锁文件。构建入口先检查对应上游源码基线，
+在 `ohos/.flutter-workspace/` 通过文件链接共用根 Dart 源码，有覆盖的路径链接鸿蒙完整 Dart 文件。
+`assets/` 直接链接根资源目录；生成代码、合并后的翻译及依赖配置使用独立本地文件。
+原生工程直接使用仓库 `ohos/`，Flutter 工作目录内不放置原生工程。
+环境及 DevEco 调试入口见 [鸿蒙开发说明](../README.md)。持久修改只保存在 `ohos/`。
 
 | 位置 | 用途 |
 | --- | --- |
+| `ohos/flutter/overrides/lib/` | 适配后的完整 Dart 文件；未覆盖文件直接使用上游 |
+| `ohos/flutter/source-manifest.json` | 文件及翻译条目的上游基线；新增项使用 null |
+| `ohos/flutter/l10n/` | 鸿蒙新增或覆盖的 ARB 条目 |
+| `ohos/tool/ohos_sources.py` | 只读基线检查、完整文件复制和翻译合并 |
+| `ohos/tool/ohos_links.py` | 建立共用源码链接、维护链接清单、检查代码生成隔离 |
+| `ohos/tool/ohos_native.py` | 连接根原生工程，刷新生成代码、插件注册及版本属性 |
+| `ohos/flutter/patches/hvigor/` | SDK Hvigor 路径适配与源码哈希 |
 | `ohos/flutter/pubspec_dependencies.json` | 仅在副本增加 OH 依赖、排除不使用的根依赖 |
-| `ohos/flutter/pubspec_overrides.yaml` | 固定 CPF 主包和平台接口/实现的 Git 提交 |
-| `ohos/flutter/pubspec.lock` | 鸿蒙稳定 SDK 对应的依赖锁 |
-| `ohos/flutter/patches/source/manifest.json` | 源码补丁顺序与制作时的上游基线提交 |
-| `ohos/flutter/patches/source/*.patch` | SDK 与平台调用适配，以及第四阶段通知页布局适配 |
-| `ohos/flutter/patches/plugins/manifest.json` | 原生插件补丁的包名、版本、Git 提交和补丁文件 |
-| `ohos/flutter/patches/plugins/*.patch` | 可直接审查的原生源码差异 |
-| `ohos/flutter/patches/embedding/` | Flutter OH 嵌入层的主题配置补丁、HAR 包版本和源码哈希 |
-| `ohos/flutter/patches/plugins/secure-storage.json` | 安全存储 9.2.4 options 回退与 macOS 参数兼容补丁 |
-| `ohos/tests/flutter/platform_adapters_test.dart.template` | 仅在 OH 依赖副本中运行的文件保存和相册适配测试 |
-| `ohos/tests/python/test_*.py` | 从原 `.github/scripts/tests/` 迁入的 OH 构建和补丁脚本测试 |
+| `ohos/flutter/pubspec_overrides.yaml` | 固定 CPF 主包及平台接口/实现的 Git 提交 |
+| `ohos/flutter/pubspec.lock` | 鸿蒙稳定 SDK 对应的独立依赖锁 |
+| `ohos/flutter/patches/plugins/` | 插件补丁、版本清单和安全存储兼容处理 |
+| `ohos/flutter/patches/embedding/` | Flutter OH HAR 主题配置补丁、包版本与源码哈希 |
+| `ohos/tests/` | 源码组装与插件脚本测试、OH Flutter 测试模板 |
 
-## 源码补丁
+## Dart 文件覆盖
 
-全部 Dart 适配维护为 [有序补丁](../flutter/patches/source/README.md)，不再维护 `source_overrides/`。
-以下辅助文件由补丁创建在构建副本中，根目录不保存这些文件：
+[覆盖目录](../flutter/overrides/README.md) 只保存有鸿蒙适配的完整文件，目前 65 个：
+52 个替换上游文件、13 个鸿蒙新增文件。它们通过同一个包名和最终 `lib/` 与共用文件一起编译。
+构建时不再对应用源码执行 `git apply`。旧 26 个补丁及最终目标的对应关系见
+[迁移记录](audits/source-overlay-migration.md)。
 
-- `lib/utils/file_save.dart`：使用 `file_picker_ohos`，
-  将其 `String?` 返回值统一为保存成功/取消。
-- `lib/utils/gallery_save.dart`：将 PNG/JPEG/GIF/WebP/BMP 原始字节
-  写入临时文件，经 `image_gallery_saver_plus.saveFile` 和系统保存确认弹窗保存。
-  取消返回 false，失败抛出异常，结束后清理临时文件；不进行 PNG 重编码。
-- `lib/widgets/webview/download_webview.dart`：副本中的页面以 `Future<bool>` 表达下载接管结果，
-  映射到 CPF 6.1.5 的 `onDownloadStartRequest`，并启用 OH WebView 入口。
-  `0014` 在此统一复制页面设置并强制 `OverScrollMode.NEVER`，覆盖当前全部 WebView，
-  包括通知、志愿四川和附件验证码窗口；后续新增 WebView 入口也应复用此组件。
-  `0015` 在 State 中保留同一 `InAppWebView`，回调转发给最新页面状态；控制器只由插件释放。
-  增加离页确认回调和一次性的主题切换诊断。`0018` 移除 `0017` 的主题刷新并关闭通知页探测，
-  三个通知页由 ArkWeb AUTO 切换；其他页面保留诊断。Cookie、请求头、任务状态和验证码业务继续来自上游。
-- `lib/utils/mobile_device_info.dart`：`0021` 将设备信息接入原生 `bugaoshan/environment_info`
-  通道，读取品牌、型号、系统版本、API 等级及 ABI；安卓专用 ABI 查询仍为空，不引回 `device_info_plus`。
-- `lib/widgets/webview/tuanwei_mobile_layout.dart`：在上游美化脚本前后补充青春川大移动端视口和布局，
-  关闭网页缩放，宽表格局部滚动；只处理匹配站点及通知结构的文档。实现与待验收范围见
-  [通知页说明](audits/notice-webview.md)。
-- `lib/widgets/webview/tuanwei_notice_loader.dart`：首帧不透明遮罩、等待通知 DOM、确认美化完成后显示，
-  以及失败/超时后的重试界面。`0016` 提取共用的 `NoticeLayoutLoader`，让教务处和学工部
-  复用该显示时序；青春川大子类继续使用自己的移动端布局。手动 retry 先启动遮罩并等待
-  Flutter 帧完成，再调用当前控制器的 reload，失败显示重试；主题切换不调用 retry。
-- `lib/widgets/webview/notice_webview_scripts.dart`：在教务处美化脚本后追加搜索框的动态深浅色规则，
-  并提供主题切换后的媒体查询和动画帧诊断。三个通知页使用 `ForceDark.AUTO` 跟随系统；
-  青春川大通知页定向接管本域名、空消息的离页确认。原理及验收边界见 [通知页说明](audits/notice-webview.md)。
-- `lib/widgets/webview/notice_layout_ready.dart`：三个通知页文档开始时隐藏原网页，等待美化、
-  资源及字体就绪、布局稳定后撤销网页隐藏，再经过两个动画帧通知 Flutter 撤掉遮罩。
-  复用同一原生 WebView；重复注入不会重新隐藏已显示的文档，超时保留失败重试界面。
+- `main.dart`、`app.dart` 和主题相关文件：鸿蒙启动及主题回退，移除非 OH 的入口调用。
+- `widgets/common/auth_scoped_indexed_stack.dart`：导航页首次访问时创建，保留状态及认证隔离。
+- `utils/file_save.dart`、`gallery_save.dart`、`image_pick.dart`、`open_file.dart`：
+  接入 CPF 选择、保存及打开接口，统一结果和失败处理。
+- `widgets/webview/download_webview.dart`：OH WebView 入口、下载回调、全局禁用回弹及实例生命周期。
+- `widgets/webview/tuanwei_mobile_layout.dart`、`tuanwei_notice_loader.dart`：
+  青春川大移动视口、CSS 重排及加载控制，关闭缩放。
+- `widgets/webview/notice_layout_ready.dart`、`notice_webview_scripts.dart`：
+  布局稳定后展示、教务处搜索框配色。主题由 ArkWeb AUTO 和原生配置更新处理，不自动 reload。
+- 认证、API 和表单文件：保留登录恢复、账号隔离、并发保护、上传与错误处理。
+- `services/ohos_course_card_snapshot.dart`、`ohos_course_card_sync.dart`：课表快照、前台和设置同步。
+- `utils/mobile_device_info.dart`、动态图标及开发者页文件：环境信息、图标 API 保护和文案。
 
-补丁同时修改副本中的调用处、排序回调、主题 import、窗口状态和退出服务，隔离不使用的桌面插件。
-应用器在独立临时 Git 目录中处理相关文件，全部补丁成功后才写回构建副本，不在副本中保留 `.git`。
-只允许修改副本 `lib/` 下的 Dart 文件及明确列出的 `lib/l10n/app_en.arb`、
-`lib/l10n/app_zh.arb` 文案；上下文不匹配即停止，要求更新补丁。
+原生卡片和平台通道仍在 `ohos/entry/src/main/ets/`；数据库、认证和业务仍采用上游架构。
+迁移只改变维护与组装方式，既有功能验收记录不会自动成为新组装流程的构建通过记录。
 
-第五阶段 `0019`、`0020` 接入动态图标和安卓对齐课表服务卡片。
-`0021` 补齐开发者页设备信息、完整复制及读取失败重试；`0022` 去掉鸿蒙切换图标的重启文案。
-`0023` 移除开发者页 UI Preview 入口及对应分隔线。
-`0024` 在点击应用图标入口时查询原生 API 支持；低于 26 提示“鸿蒙 7 以下不支持该功能”，停留在设置页。
-卡片展示快照和生命周期同步辅助文件仅由补丁在副本中创建，原生实现维护在
-`entry/src/main/ets/cards/` 和 `entry/src/main/ets/platform/`。
-新文案由副本既有的 `flutter gen-l10n` 步骤生成，不手工修改生成的 Dart 本地化文件。
-第五阶段已获用户整体验收确认，代码与验收记录见 [第五阶段说明](phases/phase5.md)。
+## 翻译、分析和上游同步
+
+[翻译目录](../flutter/l10n/README.md) 保存每种语言 8 项差异，按键合并到副本 ARB。
+上游其他文案与元数据保留，本地化 Dart 文件由副本既有 `flutter gen-l10n` 步骤生成。
+
+构建前检查所有覆盖文件的上游哈希，以及翻译条目的原值哈希。变化时列出对应路径或键，
+在写入任何覆盖文件前停止；先合并上游变化，再更新对应基线，不静默覆盖上游新实现。
+普通文件未被覆盖时直接采用上游。检查范围不包含上游所有接口关系，持续同步仍需双 SDK 验证。
+
+覆盖目录的独立 `analysis_options.yaml` 排除维护用 `lib/**`，避免根 SDK 扫描不完整的 OH 源码。
+这个配置不会进入副本最终 `lib/`；实际分析和测试仍使用根工程规则及鸿蒙依赖。
+
+```powershell
+# 仓库根目录，只读检查源码输入，不运行 Flutter 或构建
+python ohos/tool/ohos_sources.py --check
+```
 
 ## 插件补丁
 
@@ -79,8 +76,8 @@
 
 第三阶段新增 `open-file-result.patch`、`share-files-result.patch`、`image-picker-result.patch`，
 修复系统打开结果、分享文件准备及错误回复、选图取消和失败分类。
-配套应用源码补丁是 `0005` 至 `0007`，行为和权限依据见 [第三阶段代码说明](phases/phase3.md)。
-后续 `0008` 至 `0012` 补齐登录恢复、账号切换、表单和上传的异常路径；
+配套 Dart 实现已迁入覆盖目录（原 `0005` 至 `0007`），行为和权限依据见 [第三阶段代码说明](phases/phase3.md)。
+原 `0008` 至 `0012` 的最终实现补齐登录恢复、账号切换、表单和上传的异常路径；
 `secure-storage-results.patch` 修复 OH 安全存储的错误回传和并发操作。
 旧数据处理与逐项审查结果见 [代码审查记录](audits/phase3-code.md)。
 
@@ -88,7 +85,7 @@
 `_selectOptions()` 增加空 options 回退，并补上根源码使用的 macOS 参数别名。
 它校验包版本和待替换原文；根依赖继续使用 10.x。
 
-上述插件补丁只应用到 `ohos/build/pub-cache/` 专用缓存。每次先校验包版本、提交及补丁上下文；
+上述插件补丁只应用到 `ohos/.pub-cache/` 专用缓存。每次先校验包版本、提交及补丁上下文；
 完整应用过的补丁允许重入，遇到源码漂移立即失败。不要直接修改全局 Pub 缓存作为维护方式。
 安全存储补丁现将六处捕获后重新抛出的异常转换为明确的 `Error`，满足 ArkTS 的 `arkts-limited-throw` 限制。
 已应用旧版的缓存通过清单中的 `previousPatch` 识别，再应用 `upgradePatch`；下一次运行构建入口时自动处理。
@@ -108,8 +105,8 @@ python ohos/tool/generate_ohos_dependency_inventory.py
 
 只有依赖有意变更时才执行 `python ohos/tool/build_ohos.py --update-lockfile`。
 测试维护目录及运行位置见 [测试说明](../tests/README.md)。构建脚本将
-`ohos/tests/flutter/*.dart.template` 复制为副本的 `test/ohos/*.dart`，遇到已有同名文件即停止。
-在已应用补丁和完成代码生成的构建副本根目录中，使用同一 Flutter OH SDK 执行：
+`ohos/tests/flutter/*.dart.template` 链接为工程的 `test/ohos/*.dart`，遇到与根测试同名的文件即停止。
+在已组装源码并完成代码生成的构建副本根目录中，使用同一 Flutter OH SDK 执行：
 
 ```powershell
 flutter test --no-pub test/ohos/platform_adapters_test.dart test/webview_notice_handlers_test.dart

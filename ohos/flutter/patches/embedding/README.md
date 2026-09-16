@@ -18,23 +18,24 @@ WebView 内部另持有一个 BuilderNode，因此还需
 
 ## 构建接入
 
-1. `build_ohos.py` 在新副本的 `ohos/.flutter-embedding-runtime.json` 记录本次
-   Python 解释器、Git 程序与副本路径。该文件仅为本机生成物，不提交、不复制到下次副本。
+1. `build_ohos.py` 在仓库 `ohos/.flutter-embedding-runtime.json` 记录本次
+   Python 解释器、Git 程序与工程路径。该文件仅为本机生成物，不提交；下次准备时更新。
    位置避开 Hvigor Clean 的输出目录，DevEco 后续构建可复用当前环境。
 2. `flutterHvigorPlugin` 按 SDK、目标架构和构建模式选择原始嵌入层 HAR。
 3. 排在它之后的 `flutterEmbeddingPlugin` 读取选定的 override，调用
    `ohos_embedding.py`。脚本只读取 SDK HAR，校验包名、版本、锁定引擎提交和
    待改文件的 SHA-256，在副本的临时目录应用补丁，再打包新 HAR。
-4. 新 HAR 位于 `ohos/build/workspace/run-*/build/flutter-embedding/`，
-   位于副本内、原生 `ohos/build/` 外，避免被 Hvigor Clean 删除输入包。
+4. 新 HAR 位于 `ohos/.flutter-workspace/build/flutter-embedding/`，
+   位于 Flutter 工作目录内、原生 `ohos/build/` 外，避免被 Hvigor Clean 删除输入包。
    文件名包含 SDK HAR、清单、补丁及应用脚本的内容摘要；内容变化会更换依赖 URL，
    防止 OHPM 继续选用旧的输入。所有模块通过同一个 override 使用它。
 5. SDK 安装目录和 SDK 原始 HAR 不写入补丁，不另行编译或更换引擎二进制。
    插件源码补丁仍由既有流程应用到鸿蒙专用 Pub 缓存。
 
-`--prepare-only` 记录运行配置并准备插件依赖；实际选择和修改 HAR 发生在 Hvigor
+`--prepare-only` 记录运行配置、准备插件依赖及生成代码；实际选择和修改 HAR 发生在 Hvigor
 配置阶段，覆盖命令行和 DevEco 构建。更新脚本、SDK 或补丁后，
-需要由构建入口生成新副本，使构建使用更新后的配置。
+需要重新运行准备入口。脚本向嵌入层工具分别传入根原生工程和 Flutter 工作目录，
+DevEco 和命令行构建均使用同一接入。
 
 ## 维护和验收
 

@@ -8,8 +8,9 @@
 
 ## 维护位置
 
-应用源码适配保存在 `ohos/flutter/patches/source/0005-*.patch` 至 `0012-*.patch`，顺序登记在
-`ohos/flutter/patches/source/manifest.json`，由现有构建脚本在前两阶段补丁之后应用。
+应用源码适配已从原 `0005` 至 `0012` 补丁迁至 `ohos/flutter/overrides/lib/`，
+由 `ohos/flutter/source-manifest.json` 记录上游基线，构建时复制覆盖。
+原编号与当前文件的映射见 [迁移记录](../audits/source-overlay-migration.md)。
 根源码和依赖文件保持上游状态，没有新增根目录辅助 Dart 文件。
 
 插件补丁新增 `open-file-result.patch`、`share-files-result.patch`、`image-picker-result.patch`，

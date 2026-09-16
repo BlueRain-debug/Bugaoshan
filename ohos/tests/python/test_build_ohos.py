@@ -1,6 +1,7 @@
 """Verify the OH build entry keeps platform dependencies out of the main tree."""
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -77,7 +78,7 @@ class OhosBuildTest(unittest.TestCase):
 
     def test_workspace_has_ohos_dependencies_and_does_not_modify_sources(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             files = {
                 "pubspec.yaml": (
                     "name: example\n"
@@ -92,6 +93,8 @@ class OhosBuildTest(unittest.TestCase):
                 "pubspec.lock": "upstream lock\n",
                 ".dart_tool/package_config.json": "upstream package config\n",
                 "lib/main.dart": "original source\n",
+                "lib/shared.dart": "shared source\n",
+                "lib/models/example.g.dart": "// GENERATED CODE\noriginal generated source\n",
                 "assets/libs/data.txt": "application asset\n",
                 "ohos/flutter/pubspec.lock": "ohos lock\n",
                 "ohos/flutter/pubspec_overrides.yaml": "dependency_overrides: {}\n",
@@ -114,21 +117,21 @@ class OhosBuildTest(unittest.TestCase):
                 "ohos/tests/flutter/platform_adapters_test.dart.template": (
                     "void main() {}\n"
                 ),
-                "ohos/flutter/patches/source/manifest.json": json.dumps(
+                "ohos/flutter/source-manifest.json": json.dumps(
                     {
                         "schemaVersion": 1,
-                        "patches": [{"patch": "mobile-device-info.patch"}],
+                        "files": [
+                            {
+                                "path": "lib/main.dart",
+                                "upstreamSha256": hashlib.sha256(b"original source\n").hexdigest(),
+                            },
+                            {"path": "lib/utils/mobile_device_info.dart", "upstreamSha256": None},
+                        ],
+                        "localizations": [],
                     }
                 ),
-                "ohos/flutter/patches/source/mobile-device-info.patch": (
-                    "diff --git a/lib/main.dart b/lib/main.dart\n"
-                    "--- a/lib/main.dart\n+++ b/lib/main.dart\n"
-                    "@@ -1 +1 @@\n-original source\n+patched source\n"
-                    "diff --git a/lib/utils/mobile_device_info.dart b/lib/utils/mobile_device_info.dart\n"
-                    "new file mode 100644\n"
-                    "--- /dev/null\n+++ b/lib/utils/mobile_device_info.dart\n"
-                    "@@ -0,0 +1 @@\n+Future<void> deviceInfo() async {}\n"
-                ),
+                "ohos/flutter/overrides/lib/main.dart": "patched source\n",
+                "ohos/flutter/overrides/lib/utils/mobile_device_info.dart": "Future<void> deviceInfo() async {}\n",
                 "ohos/entry/src/main/ets/EntryAbility.ets": "native entry\n",
                 "ohos/entry/src/main/ets/plugins/GeneratedPluginRegistrant.ets": "stale plugins\n",
                 "ohos/node_modules/package/index.js": "generated module\n",
@@ -142,7 +145,17 @@ class OhosBuildTest(unittest.TestCase):
                 path.write_text(content, encoding="utf-8")
 
             workspace = build_ohos.prepare_workspace(root)
-            self.assertTrue(workspace.is_relative_to(root / "ohos" / "build" / "workspace"))
+            self.assertEqual(workspace, root / "ohos/.flutter-workspace")
+            self.assertTrue((workspace / "lib/main.dart").is_symlink())
+            self.assertEqual(
+                (workspace / "lib/main.dart").resolve(),
+                root / "ohos/flutter/overrides/lib/main.dart",
+            )
+            self.assertTrue((workspace / "lib/shared.dart").is_symlink())
+            self.assertEqual((workspace / "lib/shared.dart").resolve(), root / "lib/shared.dart")
+            self.assertTrue((workspace / "assets").is_symlink())
+            self.assertEqual((workspace / "assets").resolve(), root / "assets")
+            self.assertFalse((workspace / "lib/models/example.g.dart").is_symlink())
             self.assertEqual((workspace / "pubspec.lock").read_text(), "ohos lock\n")
             self.assertEqual(
                 (workspace / "pubspec_overrides.yaml").read_text(),
@@ -164,9 +177,10 @@ class OhosBuildTest(unittest.TestCase):
             self.assertFalse((root / "test/ohos/platform_adapters_test.dart").exists())
             self.assertFalse((root / "lib/utils/mobile_device_info.dart").exists())
             self.assertFalse((workspace / ".git").exists())
+            self.assertFalse((workspace / "ohos/flutter/overrides").exists())
             self.assertTrue((workspace / "assets/libs/data.txt").is_file())
             self.assertFalse((workspace / "ohos/local.properties").exists())
-            self.assertTrue((workspace / "ohos/build-profile.json5").is_file())
+            self.assertFalse((workspace / "ohos").exists())
             self.assertFalse((workspace / "ohos/node_modules").exists())
             self.assertFalse((workspace / "ohos/.hvigor").exists())
             self.assertFalse((workspace / "ohos/build").exists())
@@ -174,13 +188,34 @@ class OhosBuildTest(unittest.TestCase):
             self.assertFalse(
                 (workspace / "ohos/entry/src/main/ets/plugins/GeneratedPluginRegistrant.ets").exists()
             )
-            (workspace / "lib/main.dart").write_text("generated source\n")
+            # Writing generated code must not change the root's tracked output.
+            (workspace / "lib/models/example.g.dart").write_text("OH generated source\n")
             for name, content in files.items():
                 self.assertEqual((root / name).read_text(), content, name)
 
             second_workspace = build_ohos.prepare_workspace(root)
-            self.assertNotEqual(workspace, second_workspace)
+            self.assertEqual(workspace, second_workspace)
             self.assertEqual((second_workspace / "lib/main.dart").read_text(), "patched source\n")
+            self.assertEqual(
+                (second_workspace / "lib/models/example.g.dart").read_text(), "OH generated source\n",
+            )
+            (root / "lib/shared.dart").write_text("updated shared source\n")
+            self.assertEqual((workspace / "lib/shared.dart").read_text(), "updated shared source\n")
+            (root / "ohos/flutter/overrides/lib/main.dart").write_text("updated OH source\n")
+            self.assertEqual((workspace / "lib/main.dart").read_text(), "updated OH source\n")
+
+            # Removing an OH override restores the shared file at the same URI.
+            manifest_path = root / "ohos/flutter/source-manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["files"] = []
+            manifest_path.write_text(json.dumps(manifest))
+            (root / "ohos/flutter/overrides/lib/main.dart").unlink()
+            (root / "ohos/flutter/overrides/lib/utils/mobile_device_info.dart").unlink()
+            (root / "ohos/tests/flutter/platform_adapters_test.dart.template").unlink()
+            build_ohos.prepare_workspace(root)
+            self.assertEqual((workspace / "lib/main.dart").resolve(), root / "lib/main.dart")
+            self.assertFalse((workspace / "lib/utils/mobile_device_info.dart").is_symlink())
+            self.assertFalse((workspace / "test/ohos/platform_adapters_test.dart").is_symlink())
 
     def test_flutter_secure_storage_patch_is_exact_and_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -336,21 +371,6 @@ class OhosBuildTest(unittest.TestCase):
                     build_ohos.validate_harmony_toolchain(sdk, expected), deveco,
                 )
 
-    def test_git_metadata_is_passed_as_dart_defines(self):
-        metadata = {
-            "GIT_TAG": "v2.5.1",
-            "GIT_COMMIT": "abc123",
-            "GIT_COMMIT_DATE": "2026-09-13 12:00:00 +0800",
-        }
-        self.assertEqual(
-            build_ohos.dart_define_arguments(metadata),
-            [
-                "--dart-define=GIT_TAG=v2.5.1",
-                "--dart-define=GIT_COMMIT=abc123",
-                "--dart-define=GIT_COMMIT_DATE=2026-09-13 12:00:00 +0800",
-            ],
-        )
-
     def test_workspace_version_is_synced_without_modifying_the_source(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -368,21 +388,16 @@ class OhosBuildTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            workspace = root / "ohos/build/workspace/run-test"
+            workspace = root / "ohos/.flutter-workspace"
             workspace_pubspec = workspace / "pubspec.yaml"
-            workspace_app = workspace / "ohos/AppScope/app.json5"
             workspace_pubspec.parent.mkdir(parents=True, exist_ok=True)
-            workspace_app.parent.mkdir(parents=True, exist_ok=True)
             workspace_pubspec.write_text(source_pubspec.read_text(encoding="utf-8"))
-            workspace_app.write_text(source_app.read_text(encoding="utf-8"))
 
             self.assertEqual(
                 build_ohos.sync_workspace_version(root, workspace),
                 ("2.5.1", 20501),
             )
-            synced = json.loads(workspace_app.read_text(encoding="utf-8"))
-            self.assertEqual(synced["app"]["versionName"], "2.5.1")
-            self.assertEqual(synced["app"]["versionCode"], 20501)
+            self.assertFalse((workspace / "ohos").exists())
             self.assertEqual(
                 json.loads(source_app.read_text(encoding="utf-8"))["app"],
                 {"versionName": "2.2.0", "versionCode": 3},
@@ -401,7 +416,7 @@ class OhosBuildTest(unittest.TestCase):
     def test_workspace_pubspec_version_must_match_the_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            workspace = root / "ohos/build/workspace/run-test"
+            workspace = root / "ohos/.flutter-workspace"
             files = {
                 root / "pubspec.yaml": "version: 2.5.1+20501\n",
                 workspace / "pubspec.yaml": "version: 2.5.0+20500\n",
@@ -434,44 +449,44 @@ class OhosBuildTest(unittest.TestCase):
                         {"summary": {"app": {"version": {"name": "2.5.1", "code": 20501}}}}
                     ),
                 )
-            self.assertEqual(build_ohos.verify_hap_version(workspace), hap)
+            self.assertEqual(build_ohos.verify_hap_version(workspace, hap), hap)
 
     def test_unsigned_hap_is_required_from_a_successful_build(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            hap = workspace / "ohos/entry/build/default/outputs/default/entry-unsigned.hap"
+            hap = workspace / "entry/build/default/outputs/default/entry-default-unsigned.hap"
             hap.parent.mkdir(parents=True)
             hap.touch()
             with patch.object(build_ohos, "run") as run:
                 self.assertEqual(
-                    build_ohos.build_hap(["flutter", "build", "hap"], workspace, {}),
+                    build_ohos.build_hap(["hvigorw", "assembleHap"], workspace, {}),
                     hap,
                 )
                 run.assert_called_once_with(
-                    ["flutter", "build", "hap"], workspace, {},
+                    ["hvigorw", "assembleHap"], workspace, {},
                 )
 
     def test_failed_hap_build_is_not_hidden_by_an_unsigned_artifact(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            hap = workspace / "ohos/entry/build/default/outputs/default/entry-unsigned.hap"
+            hap = workspace / "entry/build/default/outputs/default/entry-default-unsigned.hap"
             hap.parent.mkdir(parents=True)
             hap.touch()
             error = build_ohos.subprocess.CalledProcessError(
-                1, ["flutter", "build", "hap"],
+                1, ["hvigorw", "assembleHap"],
             )
             with (
                 patch.object(build_ohos, "run", side_effect=error),
                 self.assertRaises(build_ohos.subprocess.CalledProcessError),
             ):
-                build_ohos.build_hap(["flutter", "build", "hap"], workspace, {})
+                build_ohos.build_hap(["hvigorw", "assembleHap"], workspace, {})
 
     def test_missing_platform_lockfile_fails_before_creating_workspace(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with self.assertRaises(ValueError):
                 build_ohos.prepare_workspace(root)
-            self.assertFalse((root / "ohos/build").exists())
+            self.assertFalse((root / "ohos/.flutter-workspace").exists())
 
     def test_normal_resolution_enforces_the_platform_lockfile(self):
         with patch.object(build_ohos, "run") as run:

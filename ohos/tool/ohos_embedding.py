@@ -14,13 +14,13 @@ import tarfile
 import tempfile
 
 
-def prepare_embedding_runtime(workspace):
+def prepare_embedding_runtime(workspace, native):
     """Remember this invocation's Python for later DevEco/Hvigor builds."""
     git = shutil.which("git")
     if git is None:
         raise ValueError("PATH 中找不到 git，无法准备嵌入层补丁运行配置。")
     # Keep the launcher outside build outputs so DevEco Clean cannot remove it.
-    (workspace / "ohos" / ".flutter-embedding-runtime.json").write_text(
+    (native / ".flutter-embedding-runtime.json").write_text(
         json.dumps({
             "schemaVersion": 1,
             "workspace": str(workspace.resolve()),
@@ -69,16 +69,18 @@ def _patch_sources(sources, patch):
         return {relative: (staging / relative).read_bytes() for relative in sources}
 
 
-def patch_embedding(source, workspace):
+def patch_embedding(source, workspace, native):
     workspace = workspace.resolve()
-    native = workspace / "ohos"
-    # Hvigor cleans native/ohos/build. Its input HAR must live outside that tree.
+    native = native.resolve()
+    if workspace != native / ".flutter-workspace":
+        raise ValueError("嵌入层输出必须位于原生工程的 .flutter-workspace 内。")
+    # Hvigor cleans native/build. Its input HAR must live outside that tree.
     output = (workspace / "build" / "flutter-embedding").resolve()
     if not output.is_relative_to(workspace):
         raise ValueError("嵌入层输出目录不在当前鸿蒙副本内。")
     runtime_path = native / ".flutter-embedding-runtime.json"
     if not runtime_path.is_file():
-        raise ValueError("请先通过 ohos/tool/build_ohos.py 准备鸿蒙隔离副本。")
+        raise ValueError("请先通过 ohos/tool/build_ohos.py --prepare-only 准备 Flutter 工作目录。")
     runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
     if runtime.get("schemaVersion") != 1 or Path(runtime["workspace"]).resolve() != workspace:
         raise ValueError("嵌入层运行配置与当前构建副本不匹配。")
@@ -166,8 +168,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--native-project", type=Path, required=True)
     args = parser.parse_args()
-    artifact = patch_embedding(args.source, args.workspace)
+    artifact = patch_embedding(args.source, args.workspace, args.native_project)
     print(json.dumps({"archive": str(artifact)}, ensure_ascii=False))
 
 

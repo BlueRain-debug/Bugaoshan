@@ -21,7 +21,8 @@
 ## 2. 维护边界
 
 - 持久改动仅位于 `ohos/`，继续同一分支、稳定 Flutter OH SDK 和 API 26 工具链。
-- Dart、设置入口、本地化等改动以有序源码补丁保存到 `flutter/patches/source/`，仅应用到构建副本。
+- Dart 和设置入口现在以完整文件保存到 `flutter/overrides/lib/`，文案差异保存到 `flutter/l10n/`，
+  经 `source-manifest.json` 基线检查后仅组装到构建副本；原补丁编号见 [迁移记录](../audits/source-overlay-migration.md)。
 - 原生能力分别放入独立 ArkTS 文件，`EntryAbility.ets` 只负责通道注册、分发和生命周期清理。
 - 不新增第三方插件，不修改已通过的 WebView/嵌入层补丁；本机路径及签名材料不写入仓库。
 - 代理负责代码与文档，用户负责依赖解析、构建和真机测试；代码完成与真机通过分开标记。

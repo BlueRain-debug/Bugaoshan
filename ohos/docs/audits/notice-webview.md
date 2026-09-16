@@ -13,7 +13,7 @@
 
 - 三个入口共用 [WebViewNoticePage](../../../lib/widgets/webview/webview_notice_page.dart)。
 - 美化脚本沿用根 `assets/js/jwc_notice_beautify.js`、`party_notice_beautify.js`、`tuanwei_notice_beautify.js`。
-- [0004 补丁](../../flutter/patches/source/0004-webview-downloads.patch) 启用 OH WebView，增加下载组件并适配 CPF 下载回调；
+- [OH WebView 覆盖文件](../../flutter/overrides/lib/widgets/webview/download_webview.dart)（原 `0004`）启用 OH WebView，增加下载组件并适配 CPF 下载回调；
   没有修改三份 JS、美化样式、视口或主题设置。
 - OH 使用 CPF `flutter_inappwebview` 主包 6.1.5 / OH 实现 1.1.3，锁定提交
   `528fa913763148719cde7dae2dc22dc33f15da36`。以下插件结论以该提交为准，不能外推到所有鸿蒙 WebView。
@@ -49,12 +49,13 @@ OH 插件同时默认开启 `loadWithOverviewMode`，映射到 ArkWeb 的 `overv
 
 处理方向：在 OH 通知页适配中显式设置移动端视口（`width=device-width, initial-scale=1`），
 结合明确的概览缩放设置处理布局；按用户最新要求关闭网页手势缩放。再根据真机仍有问题的具体元素补充容器样式，
-不按某台手机写死宽高或偏移量。这些更改应保存为 OH 源码补丁，只在构建副本应用。
+不按某台手机写死宽高或偏移量。这些更改现在保存为 OH 完整 Dart 覆盖文件，只在构建副本应用。
 
 ## 青春川大移动端适配实现
 
 用户确认目标为 `https://tuanwei.scu.edu.cn/index/gg.htm`，网站没有移动端适配。
-实现已保存为 [0013 补丁](../../flutter/patches/source/0013-tuanwei-mobile-layout.patch)，按顺序登记在源码补丁清单。
+实现现保存为 [青春川大布局文件](../../flutter/overrides/lib/widgets/webview/tuanwei_mobile_layout.dart)，
+原 `0013` 及后续修改已合成为最终文件，登记在源码覆盖清单。
 用户随后反馈退出重进偶尔出现原网页；本次更新遮罩与加载时序，更新后的效果待用户验收。
 
 采用现有 WebView 加站点专用布局适配，继续使用上游通知美化、附件、图片和导航逻辑。
@@ -116,7 +117,7 @@ OH 插件同时默认开启 `loadWithOverviewMode`，映射到 ArkWeb 的 `overv
 
 ### 5. 保存位置与验收
 
-已新增 `ohos/flutter/patches/source/0013-tuanwei-mobile-layout.patch` 并登记清单，
+当时新增的 `0013-tuanwei-mobile-layout.patch` 现已迁为完整 Dart 文件，
 通过补丁在构建副本的 `lib/widgets/webview/` 增加 `tuanwei_mobile_layout.dart`（JS/CSS 布局）
 和 `tuanwei_notice_loader.dart`（加载状态与遮罩），接入通知组件。
 现有补丁工具只接受 `lib/` 下的 Dart 文件，因此不直接修改根 `assets/js/`，也不扩大脚本允许的修改范围。
@@ -131,7 +132,7 @@ OH 插件同时默认开启 `loadWithOverviewMode`，映射到 ArkWeb 的 `overv
 
 ## 三个通知页等布局稳定后展示
 
-[0016 补丁](../../flutter/patches/source/0016-notice-layout-before-display.patch) 处理两个显示间隙：
+[布局就绪实现](../../flutter/overrides/lib/widgets/webview/notice_layout_ready.dart)（原 `0016`）处理两个显示间隙：
 教务处和学工部原先在脚本读取前没有遮罩，并使用 0.99 透明度及淡出；青春川大虽然已有首帧遮罩，
 但两个动画帧并不能保证稍后到达的字体、图片和网站样式不会再次改变布局。
 
@@ -172,7 +173,7 @@ OH 插件会在进度事件重放文档开始脚本，因此使用文档级标�
 设备的媒体查询返回值。原配置与用户看到三个网页都保持浅色的现象吻合。
 上游共享组件本身也没有显式同步应用主题；OH 默认关闭深色使这一遗漏在鸿蒙端直接暴露。
 
-当前由 [0018 补丁](../../flutter/patches/source/0018-notice-native-theme.patch) 采用鸿蒙原生主题切换：
+当前由 [通知页覆盖文件](../../flutter/overrides/lib/widgets/webview/webview_notice_page.dart)（原 `0018` 的最终实现）采用鸿蒙原生主题切换：
 三个通知页设为 `ForceDark.AUTO`，插件映射为 `WebDarkMode.Auto`，直接绑定到 ArkUI 的
 `Web(...).darkMode(...)`。应用当前使用 `ThemeMode.system`，网页由 ArkWeb 随系统变化更新
 深浅色偏好，现有 `@media (prefers-color-scheme: dark)` 自动选择配色。

@@ -79,7 +79,7 @@
 | `image_picker` | 1.2.3 | 可替换，已解析注册 | OH 已固定 CPF 1.2.1 和 `image_picker_ohos` 0.8.13+7 |
 | `window_manager` | 0.5.2 | 不采用，已从 OH 排除 | OH 补丁适配窗口状态及退出服务，退出保留移动端行为；根源码不变 |
 | `screen_retriever` | 0.2.2 | 不采用，已从 OH 排除 | OH 不执行桌面窗口位置校验，四个平台/接口传递包也已移除 |
-| `system_theme` | 3.3.0 | 无稳定 CPF 替代 | 上游在缺少插件时捕获 `MissingPluginException` 并使用 fallback color，可保留并真机验证 |
+| `system_theme` | 3.3.0 | 无稳定 CPF 替代 | OH `0026` 补丁移除调用，直接使用原有蓝色回退；深浅模式继续跟随系统，依赖锁暂保留该包 |
 | `google_fonts` | 8.2.1 | 无稳定 CPF 替代 | CPF 文档仅列为 Developing；包本身是 Dart/Flutter 逻辑，继续使用上游并验证网络字体与缓存 |
 | `share_plus` | 13.3.0 | 可替换，已接入 | OH 固定 CPF 稳定分支的 12.0.1；项目使用的 `SharePlus.instance.share(ShareParams(...))` 存在 |
 | `gal` | 2.3.3 | 已迁移接入 | OH 使用 image_gallery_saver_plus 3.0.5；经系统确认保存临时原始图片文件，处理取消/错误和清理 |
@@ -105,7 +105,7 @@
 
 ## 4. 剩余接入与验证顺序
 
-1. 三项迁移与窄接口已保存为 OH 源码补丁，说明见 [../flutter-adaptation.md](../flutter-adaptation.md)；
+1. 三项迁移与窄接口现在保存为 OH 完整 Dart 覆盖文件，说明见 [../flutter-adaptation.md](../flutter-adaptation.md)；
    OH 锁自然选择 win32 5.15.0，未使用强制覆盖。此前构建记录属于补丁迁移前，新的流程待用户验证。
 2. 第三阶段已编写 OH external 模式、选图、附件打开、分享和日历调用补丁，并修复
    open_filex、share_plus、image_picker_ohos 的原生结果处理。见

@@ -14,9 +14,11 @@
 - 原生嵌入层及内部 WebBuilderNode 改为更新系统配置，由 ArkWeb AUTO 与上游深浅 CSS 切换配色。
 - [x] 本次原生主题修复运行通过。依据用户“这个部分正常运行了”的反馈，关闭已显示页面切换深浅色时刷新、卡住及 Load Failed 的问题。
 
-补丁分别位于 `patches/source/0004-*.patch`、`0013-*.patch` 至 `0018-*.patch`，
-以及 `ohos/flutter/patches/embedding/` 和 `ohos/flutter/patches/plugins/webview-configuration-update.patch`。
-`0017` 是顺序补丁的历史上下文，最终自动刷新逻辑由 `0018` 移除；不应单独删除中间补丁。
+应用源码现维护在 `ohos/flutter/overrides/lib/widgets/webview/`，由完整文件直接覆盖副本。
+原 `0004`、`0013` 至 `0018` 已合成为最终实现，`0017` 的自动刷新不在最终文件中；
+旧编号映射见 [迁移记录](../audits/source-overlay-migration.md)。
+原生补丁继续位于 `ohos/flutter/patches/embedding/` 和
+`ohos/flutter/patches/plugins/webview-configuration-update.patch`。
 
 ## 已验收范围
 
@@ -31,7 +33,7 @@
 | 4 | 主题和滚动的补充场景 | 保留已通过的原生配置更新方案；若新问题涉及其他场景，区分首次创建、前后台恢复和尺寸变化，不重新加入主题 reload | 首次深浅主题、快速切换、前后台及旋转/尺寸变化；三个通知页、志愿四川和验证码窗口上下无回弹且正常滚动、输入、操作 |
 
 附件代码依据：根 `lib/widgets/webview/webview_notice_handlers.dart`、
-`captcha_webview_dialog.dart` 与 `0004`/后续适配补丁。根文件仅用于阅读，修复只进入 OH 补丁。
+`captcha_webview_dialog.dart` 及覆盖目录中的对应文件。根文件仅用于阅读，修复只进入 OH 覆盖文件。
 上游已有“强制下载验证码”设置，必要时可复用它进入验证码窗口；它不能替代真实服务器
 要求验证码时的完整验证，也不需要为验收新增业务入口。
 

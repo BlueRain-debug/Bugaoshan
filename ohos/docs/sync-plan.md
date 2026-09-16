@@ -16,9 +16,10 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 ## 1. 维护约定
 
 - 所有平台在同一分支维护，不建立独立的鸿蒙分支。
-- 共用根目录 `lib/`、`assets/` 和 `pubspec.yaml`，不复制维护第二套业务代码。
+- 共用根目录 `lib/`、`assets/` 和 `pubspec.yaml`；只为有鸿蒙适配的 Dart 文件维护完整覆盖版本。
 - 鸿蒙工作的持久修改范围严格限定为 `ohos/`，前两阶段亦适用；相关脚本统一放在 `ohos/tool/`。
-- 源码适配只保存为 `ohos/flutter/patches/source/` 下的补丁；根源码、文档和测试保持上游状态。
+- Dart 适配保存为 `ohos/flutter/overrides/lib/` 下的完整文件，翻译差异放在 `ohos/flutter/l10n/`；
+  `source-manifest.json` 登记上游基线，组装前检查。根源码、文档和测试保持上游状态。
 - 代理当前只修改代码和文档，测试、依赖解析、构建及真机调试由用户执行。
 - 鸿蒙只使用正式稳定版 Flutter OH SDK，不使用 canary、beta、dev 等预览版本。
 - 其他平台继续使用上游 Flutter 环境；鸿蒙专用依赖配置和锁文件放在 `ohos/flutter/`。
@@ -50,6 +51,8 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 
 以下自动化检查和编译记录保留迁移前的历史证据；第三阶段四项功能的最新验收依据是
 2026-09-16 用户的真机反馈，不代表代理重新执行了检查，也不替代构建流程专项验证。
+2026-09-17 的新入口直接使用根 `ohos/`，共享源码通过 `.flutter-workspace/` 链接；
+这次入口改造只交付代码，依赖解析、代码生成、构建和真机验证由用户执行，尚未标记通过。
 
 - [x] 确定同分支、共享源码、鸿蒙独立依赖锁的目录方案。
 - [x] 创建 `ohos/flutter/pubspec_overrides.yaml` 和 `ohos/flutter/pubspec.lock`。
@@ -65,12 +68,18 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 - [x] 用户已使用迁移后的补丁与隔离副本完成构建和运行；依据后续构建反馈及 2026-09-16 原生主题修复运行确认，不代表专项自动化检查全部完成。
 - [x] 第三阶段代码以 `0005` 至 `0012` 源码补丁、4 项插件补丁及日历原生通道异常处理完成落盘。
 - [x] 由用户验证第三阶段下列四项平台能力与业务运行结果（2026-09-16 真机反馈）。
-- [x] 将构建及依赖清单脚本迁至 `ohos/tool/`，构建副本和专用缓存路径改为 `ohos/build/workspace/` 与 `ohos/build/pub-cache/`；同步文档和既有测试引用。
+- [x] 历史迁移：将构建及依赖清单脚本迁至 `ohos/tool/`，当时构建副本和专用缓存为 `ohos/build/workspace/` 与 `ohos/build/pub-cache/`；当前路径见下表。
 - [x] 用户已使用 `ohos/tool/build_ohos.py` 和 `ohos/build/workspace/` 新路径构建、调试；依据会话中的构建输出及后续运行反馈。
 - [x] 完成第四阶段通知页、附件与验证码、志愿四川、主题及滚动专项验证（2026-09-16 用户确认）。
 - [x] 完成第五阶段课表卡片、动态图标、环境信息及开发者页调整（2026-09-16 用户整体验收确认）。
 - [x] 完成维护目录整理：文档归入 `ohos/docs/`，插件补丁归入 `ohos/flutter/patches/plugins/`，
   测试归入 `ohos/tests/`；脚本、文档链接及测试模板准备逻辑已同步，迁移后的构建和测试待用户执行。
+- [x] 按用户新方案将 26 个源码补丁转换为 65 个完整 Dart 文件及两份 ARB 差异条目，
+  构建入口改为检查基线后复制覆盖和合并；详情见 [迁移记录](audits/source-overlay-migration.md)。
+- [ ] 用户执行文件覆盖迁移后的源码检查、格式、分析、测试和 HAP 构建；历史通过记录不代替本次验收。
+- [x] 将根 `ohos/` 接为唯一原生工程；共用源码改用文件链接，Flutter 解析和生成代码独立放在
+  `.flutter-workspace/`，Pub 缓存放在 `.pub-cache/`，接入本地 Hvigor 路径适配。
+- [ ] 用户执行新入口的准备、根 `ohos/` DevEco Sync/Build 和真机验证。
 - [ ] 完成第七阶段旧版本覆盖升级验证。
 
 当前九项 CPF 插件和后三项迁移均已接入：文件保存使用 `file_picker_ohos 10.3.8`，
@@ -94,7 +103,8 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 | [根 pubspec.lock](../../pubspec.lock) | 上游 Flutter 环境的依赖锁 |
 | [依赖覆盖](../flutter/pubspec_overrides.yaml) | 鸿蒙专用插件替换和兼容覆盖 |
 | [依赖增减配置](../flutter/pubspec_dependencies.json) | 只在隔离构建副本中注入或排除的直接依赖 |
-| [源码补丁](../flutter/patches/source/) | 仅应用到 OH 副本的 SDK、平台服务、文件/相册和 WebView 源码补丁 |
+| [Dart 覆盖文件](../flutter/overrides/README.md) | 适配后的完整文件，按同一路径复制到 OH 副本 |
+| [源码清单](../flutter/source-manifest.json)及[翻译条目](../flutter/l10n/README.md) | 文件基线检查及 ARB 按键合并 |
 | [Python 测试](../tests/python/) | 构建及补丁脚本测试 |
 | [Flutter 测试模板](../tests/flutter/) | 仅在 OH 副本还原为 Dart 文件的专项测试 |
 | [插件补丁](../flutter/patches/plugins/) | 原生插件补丁、版本清单和旧缓存迁移依据 |
@@ -106,11 +116,13 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 | [原生源码与资源](../entry/src/main/) | ArkTS 入口、原生通道、页面、权限和资源 |
 | [应用配置](../AppScope/) | 应用标识、版本字段和应用资源 |
 | [ohos/tool/build_ohos.py](../tool/build_ohos.py) | 鸿蒙依赖准备与构建入口 |
-| [ohos/tool/ohos_patches.py](../tool/ohos_patches.py) | 源码补丁和第三方插件补丁应用逻辑 |
+| [ohos/tool/ohos_sources.py](../tool/ohos_sources.py) | 上游基线检查、Dart 覆盖和 ARB 合并 |
+| [ohos/tool/ohos_patches.py](../tool/ohos_patches.py) | 第三方插件补丁应用逻辑 |
 | [ohos/tool/generate_ohos_dependency_inventory.py](../tool/generate_ohos_dependency_inventory.py) | 从两份锁文件重建完整 Dart 依赖对照表 |
 | [开发入口](../README.md) | 鸿蒙开发环境、构建及 DevEco 调试说明 |
-| `ohos/build/workspace/run-*/` | 自动生成的独立构建副本，不提交 |
-| `ohos/build/pub-cache/` | 鸿蒙专用 Pub 缓存与插件补丁应用位置，不提交 |
+| `ohos/.flutter-workspace/` | 链接共用源码的鸿蒙编译工程，依赖和生成物独立，不提交 |
+| `ohos/.pub-cache/` | 鸿蒙专用 Pub 缓存与插件补丁应用位置，不提交 |
+| `ohos/` | 唯一原生工程及 DevEco 打开位置，不再复制到 Flutter 工作目录 |
 
 `ohos/flutter/` 下的覆盖配置不会被根工程自动采用。构建脚本将它和鸿蒙锁文件复制到构建副本根目录后，Pub 才按这套配置解析。
 
@@ -131,9 +143,9 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 
 ### 阶段二：共享代码兼容、基础插件和构建基线
 
-- [x] 用 [SDK 补丁](../flutter/patches/source/0001-flutter-sdk-compat.patch) 处理排序 `onReorderItem` API 差异，正确调整旧回调向下移动时的索引偏移。
+- [x] 用 [SDK 适配文件](../flutter/overrides/lib/pages/settings/set_dock_page.dart) 处理排序 `onReorderItem` API 差异，正确调整旧回调向下移动时的索引偏移。
 - [x] 在同一补丁中处理主题 import / lint 差异，使用带原因的局部忽略。
-- [x] 兼容实现统一维护为 `ohos/flutter/patches/source/` 下的补丁，只应用到构建副本。
+- [x] 兼容实现统一维护在 `ohos/`，后续按新方案迁为 `ohos/flutter/overrides/lib/` 完整文件，只组装到构建副本。
 - [x] 接入 SharedPreferences、path_provider、sqflite、package_info_plus、flutter_secure_storage，并验证生成注册结果。
 - [x] 将 url_launcher、image_picker、share_plus、open_filex 同时切至 CPF 稳定来源，固定完整提交并验证生成注册结果。
 - [x] `flutter_secure_storage` 依照 EasyNode 的直接 OH 依赖、Git 覆盖和解析后补丁方式接入；依赖解析、OH 注册及 HAP 构建通过，登录及存储相关真机流程于 2026-09-16 由用户确认通过。主包与 OH 实现均固定到正式 tag `9.2.4-ohos-1.0.0` 的提交 `ecc4257040163da3c4dd64d4fced5d4d24676a53`。
@@ -153,10 +165,10 @@ ArkWeb AUTO 配合现有深浅 CSS，不再因主题变化主动刷新或重建 
 冲突。迁移 file_picker 后，后者已从 OH 依赖图移除，取消强制覆盖即可自然解析 win32 5.15.0。
 当前 Dart AOT 与全部 OH 原生插件编译已通过。
 
-文件/相册保存接口及 `DownloadWebView` 均由源码补丁在副本创建，并在副本修改调用处，
+文件/相册保存接口及 `DownloadWebView` 均从源码覆盖目录复制到副本，配套调用处采用同路径适配文件，
 根源码不保存这些适配文件。Cookie、HTTP 下载、任务状态及弹窗生命周期继续来自上游。
 原生插件补丁修复文件选择器忽略本次 bytes，以及相册插件并发/异常不返回结果的问题。
-插件补丁应用到 `ohos/build/pub-cache/`，源码补丁只写入构建副本；文件都位于
+插件补丁应用到 `ohos/.pub-cache/`，源码覆盖及翻译合并只写入构建副本；文件都位于
 `ohos/flutter/patches/`。版本、提交或上下文不匹配会停止构建。
 
 补丁迁移前的验证记录：严格锁定解析、代码生成、OH 副本全部 `lib/` 与专用测试静态分析通过；
@@ -178,7 +190,7 @@ Windows 默认插件声明会产生非阻塞提示，其 ArkTS 源码也有编�
 
 ### 阶段三：常用平台能力、新业务和旧用户升级
 
-本阶段源码适配也只追加到 `ohos/flutter/patches/source/`，原生改动保存在 `ohos/`；
+本阶段源码适配现在维护在 `ohos/flutter/overrides/lib/`，原生改动保存在 `ohos/`；
 下方根源码链接用于定位上游调用处，不表示允许直接修改这些文件。
 
 - [x] 编写外链、选图、附件打开和分享的源码适配补丁，文件保存及相册保存沿用第二阶段补丁；功能验收依据见下方用户反馈。

@@ -18,7 +18,7 @@ export function flutterEmbeddingPlugin(nativeProject: string): HvigorPlugin {
         }
         const runtimePath = path.join(nativeProject, '.flutter-embedding-runtime.json');
         if (!fs.existsSync(runtimePath)) {
-          throw new Error('请先通过 ohos/tool/build_ohos.py 准备隔离副本，再在 DevEco 打开该副本。');
+          throw new Error('请先运行 python ohos/tool/build_ohos.py --prepare-only，再在 DevEco 打开仓库 ohos/。');
         }
         const runtime = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
         if (runtime.schemaVersion !== 1 || typeof runtime.python !== 'string' || !runtime.python) {
@@ -28,7 +28,8 @@ export function flutterEmbeddingPlugin(nativeProject: string): HvigorPlugin {
         const result = spawnSync(runtime.python, [
           path.join(nativeProject, 'tool', 'ohos_embedding.py'),
           '--source', source,
-          '--workspace', path.dirname(nativeProject),
+          '--workspace', runtime.workspace,
+          '--native-project', nativeProject,
         ], { encoding: 'utf8', windowsHide: true, timeout: 60000 });
         if (result.error || result.status !== 0) {
           throw new Error(`准备 Flutter 嵌入层失败：${result.error?.message || result.stderr || result.stdout || result.status}`);
@@ -39,7 +40,7 @@ export function flutterEmbeddingPlugin(nativeProject: string): HvigorPlugin {
         }
         overrides['@ohos/flutter_ohos'] = `file:${artifact}`;
         context.setOverrides(overrides);
-        console.info(`Flutter 嵌入层：使用副本内的主题更新补丁 ${path.basename(artifact)}`);
+        console.info(`Flutter 嵌入层：使用本地主题更新补丁 ${path.basename(artifact)}`);
       });
     },
   };

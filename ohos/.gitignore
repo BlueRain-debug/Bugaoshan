@@ -2,6 +2,10 @@
 /oh_modules
 /local.properties
 /.flutter-embedding-runtime.json
+/.flutter-runtime.json
+/.flutter-workspace/
+/.flutter-workspace.lock
+/.pub-cache/
 /build/
 /tool/__pycache__/
 /tests/**/__pycache__/

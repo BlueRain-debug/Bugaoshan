@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""在独立副本中使用鸿蒙稳定版 SDK 准备依赖或构建 HAP。"""
+"""以文件链接共用源码，使用稳定版 SDK 准备鸿蒙工程或构建 HAP。"""
 
 import argparse
 import json
@@ -14,8 +14,12 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 import zipfile
 
-from ohos_patches import apply_dependency_patches, apply_source_patches
-from ohos_embedding import prepare_embedding_runtime
+from ohos_patches import apply_dependency_patches
+from ohos_sources import SOURCE_MANIFEST, plan_source_overrides
+from ohos_links import (
+    LinkedSource, assemble_linked_workspace, generated_dart,
+    validate_codegen_isolation, workspace_lock,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +41,7 @@ REQUIRED_OHOS_PLUGINS = (
     "sqflite_ohos",
     "url_launcher_ohos",
 )
-SOURCE_DIRECTORIES = ("lib", "assets", "test", "ohos")
+SOURCE_DIRECTORIES = ("lib", "test")
 SOURCE_FILES = (
     "pubspec.yaml",
     "analysis_options.yaml",
@@ -45,13 +49,6 @@ SOURCE_FILES = (
     ".metadata",
     "CHANGELOG.md",
     "LICENSE",
-)
-IGNORE_GENERATED = shutil.ignore_patterns(
-    ".git", ".idea", ".dart_tool", ".hvigor", ".appanalyzer", ".cxx",
-    ".test", ".preview", ".ohos", "__pycache__", "build", "node_modules",
-    "oh_modules", "libs", "flutter_assets", "GeneratedPluginRegistrant.ets",
-    "local.properties", "package.json", "package-lock.json", "oh-package-lock.json5",
-    ".flutter-embedding-runtime.json",
 )
 
 
@@ -198,6 +195,11 @@ def dependency_yaml(name, dependency):
 
 
 def add_ohos_dependencies(pubspec, config_path):
+    updated = ohos_pubspec(pubspec.read_text(encoding="utf-8"), config_path)
+    pubspec.write_text(updated, encoding="utf-8")
+
+
+def ohos_pubspec(content, config_path):
     config = read_json(config_path, "鸿蒙直接依赖配置")
     if config.get("schemaVersion") != 1:
         raise ValueError(f"不支持的鸿蒙直接依赖格式：{config_path}")
@@ -215,14 +217,13 @@ def add_ohos_dependencies(pubspec, config_path):
     if len(excluded) != len(set(excluded)):
         raise ValueError(f"鸿蒙排除依赖存在重复项：{config_path}")
 
-    content = pubspec.read_text(encoding="utf-8")
     section = re.search(
         r"^dependencies:\s*$\n(?P<body>.*?)(?=^[A-Za-z_][A-Za-z0-9_]*:\s*$)",
         content,
         re.MULTILINE | re.DOTALL,
     )
     if section is None:
-        raise ValueError(f"根 pubspec.yaml 缺少 dependencies 节：{pubspec}")
+        raise ValueError("根 pubspec.yaml 缺少 dependencies 节。")
     body = section.group("body")
     for name in excluded:
         pattern = re.compile(
@@ -241,8 +242,7 @@ def add_ohos_dependencies(pubspec, config_path):
         if re.search(rf"^  {re.escape(name)}:\s*$", content, re.MULTILINE):
             raise ValueError(f"根 pubspec.yaml 已声明鸿蒙专用依赖 {name}。")
         additions.append(dependency_yaml(name, dependency))
-    updated = content[:insert_at] + "\n" + "".join(additions) + content[insert_at:]
-    pubspec.write_text(updated, encoding="utf-8")
+    return content[:insert_at] + "\n" + "".join(additions) + content[insert_at:]
 
 
 def package_root(workspace, package_name):
@@ -378,73 +378,96 @@ def build_environment(sdk=None):
     return env
 
 
-def materialize_flutter_tests(workspace):
-    """Expose OH-only Dart tests inside the isolated package's test directory."""
-    templates = workspace / "ohos" / "tests" / "flutter"
+def materialize_flutter_tests(root, inputs):
+    """Expose OH templates as tests without writing into the shared test tree."""
+    templates = root / "ohos" / "tests" / "flutter"
     for template in sorted(templates.rglob("*.dart.template")):
         relative = template.relative_to(templates).with_suffix("")
-        destination = workspace / "test" / "ohos" / relative
-        if destination.exists():
+        destination = (Path("test") / "ohos" / relative).as_posix()
+        if destination in inputs:
             raise ValueError(f"鸿蒙测试模板与已有测试文件冲突：{destination}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(template, destination)
+        inputs[destination] = template
+
+
+def collect_sources(root, name, inputs):
+    directory = root / name
+    if not directory.is_dir():
+        return
+    for current, directories, files in os.walk(directory, followlinks=False):
+        current = Path(current)
+        directories.sort()
+        for item in directories + files:
+            path = current / item
+            if path.resolve() != path:
+                raise ValueError(f"维护源码不能通过链接引入其他文件：{path.relative_to(root)}")
+        for item in files:
+            source = current / item
+            inputs[source.relative_to(root).as_posix()] = source
 
 
 def prepare_workspace(root):
+    root = root.resolve()
     config = root / "ohos" / "flutter"
     for name in (
         "pubspec_overrides.yaml", "pubspec.lock", TOOLCHAIN_LOCK,
-        PUBSPEC_DEPENDENCIES, "patches/source/manifest.json",
+        PUBSPEC_DEPENDENCIES, SOURCE_MANIFEST,
     ):
         if not (config / name).is_file():
             raise ValueError(f"缺少鸿蒙依赖配置：{config / name}")
 
-    workspace_parent = root / "ohos" / "build" / "workspace"
-    workspace_parent.mkdir(parents=True, exist_ok=True)
-    # 每次创建新副本，避免旧源码残留，也允许多次构建彼此独立。
-    workspace = Path(tempfile.mkdtemp(prefix="run-", dir=workspace_parent))
+    # Validate the upstream baseline before creating any shared source links.
+    overrides, file_count, entry_count = plan_source_overrides(root, config)
+    inputs = {}
     for name in SOURCE_DIRECTORIES:
-        source = root / name
-        if source.is_dir():
-            shutil.copytree(
-                source, workspace / name,
-                ignore=IGNORE_GENERATED if name == "ohos" else None,
-            )
+        collect_sources(root, name, inputs)
+    if (root / "assets").is_dir():
+        inputs["assets"] = LinkedSource(root / "assets", directory=True)
     for name in SOURCE_FILES:
         source = root / name
         if source.is_file():
-            shutil.copy2(source, workspace / name)
+            inputs[name] = source
     for name in ("pubspec_overrides.yaml", "pubspec.lock"):
-        shutil.copy2(config / name, workspace / name)
-    add_ohos_dependencies(
-        workspace / "pubspec.yaml", config / PUBSPEC_DEPENDENCIES,
+        inputs[name] = config / name
+    inputs["pubspec.yaml"] = ohos_pubspec(
+        (root / "pubspec.yaml").read_text(encoding="utf-8"), config / PUBSPEC_DEPENDENCIES,
+    ).encode("utf-8")
+    for relative, content in overrides:
+        inputs[relative] = config / "overrides" / relative if relative.endswith(".dart") else content
+    materialize_flutter_tests(root, inputs)
+    registrant = root / "ohos/tool/plugin_registrant.dart.template"
+    if registrant.is_file():
+        inputs["tooling/plugin_registrant.dart"] = registrant
+    # Real directories contain file links, so adjacent build_runner outputs are
+    # created here. Never link generated Dart or ARB files back to either source tree.
+    local_generated = set()
+    for relative, source in list(inputs.items()):
+        if relative.startswith(("lib/", "test/")) and relative.endswith(".dart"):
+            if isinstance(source, Path):
+                if generated_dart(relative, source):
+                    local_generated.add(relative)
+                else:
+                    inputs[relative] = LinkedSource(source)
+    workspace = assemble_linked_workspace(
+        root, inputs, preserve_generated=local_generated,
     )
-    apply_source_patches(workspace, config)
-    materialize_flutter_tests(workspace)
-    build_profile = workspace / "ohos" / "build-profile.json5"
-    build_profile_example = workspace / "ohos" / "build-profile.json5.example"
-    if not build_profile.is_file() and build_profile_example.is_file():
-        shutil.copy2(build_profile_example, build_profile)
+    validate_codegen_isolation(workspace)
+    print(f"已组装鸿蒙源码：{file_count} 个 Dart 文件、{entry_count} 个翻译条目", flush=True)
     return workspace
 
 
-def source_git_metadata(root):
+def source_git_metadata(root, git="git"):
     exact_tags = command_output(
-        ["git", "tag", "--points-at", "HEAD", "--sort=-version:refname"], root,
+        [git, "tag", "--points-at", "HEAD", "--sort=-version:refname"], root,
     ).splitlines()
     if exact_tags:
         tag = exact_tags[0]
     else:
-        tag = command_output(["git", "describe", "--tags", "--abbrev=0"], root)
+        tag = command_output([git, "describe", "--tags", "--abbrev=0"], root)
     return {
         "GIT_TAG": tag,
-        "GIT_COMMIT": command_output(["git", "rev-parse", "HEAD"], root),
-        "GIT_COMMIT_DATE": command_output(["git", "log", "-1", "--format=%ci"], root),
+        "GIT_COMMIT": command_output([git, "rev-parse", "HEAD"], root),
+        "GIT_COMMIT_DATE": command_output([git, "log", "-1", "--format=%ci"], root),
     }
-
-
-def dart_define_arguments(metadata):
-    return [f"--dart-define={key}={value}" for key, value in metadata.items()]
 
 
 def read_pubspec_version(pubspec):
@@ -466,34 +489,13 @@ def sync_workspace_version(root, workspace):
     if workspace_version != (version_name, version_code):
         raise ValueError("构建副本的 pubspec.yaml 与根版本声明不一致。")
 
-    app_path = workspace / "ohos" / "AppScope" / "app.json5"
-    app = read_json(app_path, "鸿蒙应用版本信息")
-    app_info = app.get("app")
-    if not isinstance(app_info, dict):
-        raise ValueError(f"鸿蒙应用版本信息缺少 app 对象：{app_path}")
-    app_info["versionName"] = version_name
-    app_info["versionCode"] = version_code
-    app_path.write_text(
-        json.dumps(app, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
-    )
+    # Hvigor injects the version into its app context via native local.properties.
+    # The maintained AppScope/app.json5 is not rewritten during preparation.
     return version_name, version_code
 
 
-def verify_hap_version(workspace):
+def verify_hap_version(workspace, hap):
     expected_name, expected_code = read_pubspec_version(workspace / "pubspec.yaml")
-    app = read_json(workspace / "ohos" / "AppScope" / "app.json5", "鸿蒙应用版本信息")
-    app_info = app.get("app", {})
-    if app_info.get("versionName") != expected_name or app_info.get("versionCode") != expected_code:
-        raise ValueError(
-            "构建副本的鸿蒙版本未与根 pubspec.yaml 同步："
-            f"需要 {expected_name}+{expected_code}，"
-            f"当前为 {app_info.get('versionName')}+{app_info.get('versionCode')}。"
-        )
-
-    haps = list((workspace / "ohos" / "entry" / "build").glob("**/*.hap"))
-    if not haps:
-        raise ValueError("HAP 构建命令成功，但没有找到 .hap 产物。")
-    hap = max(haps, key=lambda path: path.stat().st_mtime_ns)
     with zipfile.ZipFile(hap) as archive:
         try:
             pack_info = json.loads(archive.read("pack.info"))
@@ -511,14 +513,12 @@ def verify_hap_version(workspace):
     return hap
 
 
-def build_hap(command, workspace, env):
-    run(command, workspace, env)
-    unsigned_haps = list(
-        (workspace / "ohos" / "entry" / "build").glob("**/*-unsigned.hap")
-    )
-    if not unsigned_haps:
+def build_hap(command, native, env):
+    run(command, native, env)
+    hap = native / "entry/build/default/outputs/default/entry-default-unsigned.hap"
+    if not hap.is_file():
         raise ValueError("HAP 构建命令成功，但没有找到 unsigned HAP 产物。")
-    return max(unsigned_haps, key=lambda path: path.stat().st_mtime_ns)
+    return hap
 
 
 def run(command, workspace, env):
@@ -545,7 +545,7 @@ def main(argv=None):
     )
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument(
-        "--prepare-only", action="store_true", help="仅准备构建副本并校验锁文件",
+        "--prepare-only", action="store_true", help="准备链接、依赖、代码生成和根 ohos 的 DevEco 构建入口，不构建 HAP",
     )
     actions.add_argument(
         "--update-lockfile", action="store_true",
@@ -577,36 +577,47 @@ def main(argv=None):
         f"({toolchain['harmonyOs']['sdkVersion']})",
         flush=True,
     )
-    workspace = prepare_workspace(ROOT)
-    prepare_embedding_runtime(workspace)
+    return build_workspace(args, flutter, dart, env)
+
+
+def build_workspace(args, flutter, dart, env):
+    from ohos_native import prepare_native_runtime, refresh_native
+
+    native = ROOT / "ohos"
     # 插件补丁仅写入鸿蒙专用 Pub 缓存，不修改其他平台使用的缓存。
-    env["PUB_CACHE"] = str(ROOT / "ohos" / "build" / "pub-cache")
-    print(f"构建副本：{workspace}", flush=True)
-    version_name, version_code = sync_workspace_version(ROOT, workspace)
-    print(f"鸿蒙应用版本：{version_name}+{version_code}", flush=True)
-    resolve_dependencies(flutter, workspace, env, args.update_lockfile)
-    patch_flutter_secure_storage(workspace)
-    apply_dependency_patches(workspace, ROOT / "ohos" / "flutter", package_root)
-    validate_ohos_plugins(workspace)
-
-    if args.update_lockfile:
-        target = ROOT / "ohos" / "flutter" / "pubspec.lock"
-        shutil.copy2(workspace / "pubspec.lock", target)
-        print(f"已更新鸿蒙锁文件：{target}", flush=True)
-        return 0
+    env["PUB_CACHE"] = str(native / ".pub-cache")
+    with workspace_lock(ROOT):
+        workspace = prepare_workspace(ROOT)
+        print(f"Flutter 工作目录：{workspace}\n原生工程：{native}", flush=True)
+        version_name, version_code = sync_workspace_version(ROOT, workspace)
+        print(f"鸿蒙应用版本：{version_name}+{version_code}", flush=True)
+        resolve_dependencies(flutter, workspace, env, args.update_lockfile)
+        patch_flutter_secure_storage(workspace)
+        apply_dependency_patches(workspace, native / "flutter", package_root)
+        validate_ohos_plugins(workspace)
+        if args.update_lockfile:
+            target = native / "flutter/pubspec.lock"
+            shutil.copy2(workspace / "pubspec.lock", target)
+            # A lock-only operation cannot leave an older native runtime enabled.
+            (native / ".flutter-runtime.json").unlink(missing_ok=True)
+            print(f"已更新鸿蒙锁文件：{target}；请再执行 --prepare-only。", flush=True)
+            return 0
+        prepare_native_runtime(ROOT, workspace, Path(flutter).parent.parent, env)
+    refresh_native(ROOT)
     if args.prepare_only:
-        print("依赖准备完成。此步骤不代表 HAP 已构建或通过真机验证。", flush=True)
+        print(f"准备完成。DevEco 请打开：{native}（尚未构建 HAP）。", flush=True)
         return 0
-
-    run([dart, "run", "build_runner", "build", "--delete-conflicting-outputs"], workspace, env)
-    run([flutter, "gen-l10n"], workspace, env)
-    metadata = source_git_metadata(ROOT)
-    build_hap(
-        [flutter, "build", "hap", f"--{args.mode}", "--no-pub", "--no-codesign",
-         *dart_define_arguments(metadata)],
-        workspace, env,
+    hvigor = shutil.which("hvigorw")
+    if hvigor is None:
+        raise ValueError("PATH 中找不到 hvigorw；请检查 DevEco 工具环境。")
+    # Match DevEco Sync so a fresh checkout also installs the dynamically included OH modules.
+    run([hvigor, "--sync", "-p", "product=default", "-p", f"buildMode={args.mode}",
+         "--no-daemon"], native, env)
+    hap = build_hap(
+        [hvigor, "assembleHap", "-p", "product=default", "-p", f"buildMode={args.mode}",
+         "--no-daemon"], native, env,
     )
-    hap = verify_hap_version(workspace)
+    verify_hap_version(workspace, hap)
     print(f"构建完成：{hap}", flush=True)
     return 0
 

@@ -10,7 +10,7 @@
 `legacy/` 的安全存储补丁仍被清单中的 `previousPatch` 引用，用于识别之前的缓存状态，
 随后通过 `upgradePatch` 升级。它属于维护输入，不能当作历史生成物删除。
 
-共享 Dart / ARB 补丁见 [source/](../source/README.md)；Flutter OH HAR 补丁见
+共享 Dart 覆盖文件见 [overrides/](../../overrides/README.md)，翻译条目见 [l10n/](../../l10n/README.md)；Flutter OH HAR 补丁见
 [embedding/](../embedding/README.md)。完整行为与历史依据见
 [Flutter 适配说明](../../../docs/flutter-adaptation.md)。
 
