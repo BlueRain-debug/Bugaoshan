@@ -1,0 +1,49 @@
+diff --git a/lib/services/dynamic_icon_service.dart b/lib/services/dynamic_icon_service.dart
+--- a/lib/services/dynamic_icon_service.dart
++++ b/lib/services/dynamic_icon_service.dart
+@@ -1,3 +1,5 @@
++import 'dart:io';
++
+ import 'package:flutter/foundation.dart'
+     show TargetPlatform, defaultTargetPlatform, kIsWeb;
+ import 'package:flutter/services.dart';
+@@ -15,13 +17,15 @@
+ class DynamicIconService {
+   static const MethodChannel _channel = kDynamicIconMethodChannel;
+ 
+-  /// The native channel is only implemented on Android; other platforms
++  /// The native channel is implemented on Android and HarmonyOS; other platforms
+   /// fall back to safe defaults instead of throwing [MissingPluginException].
+   ///
+   /// Uses [defaultTargetPlatform] instead of `Platform.isAndroid` so tests can
+   /// override the platform via [debugDefaultTargetPlatformOverride].
+   static bool get _isSupported =>
+-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
++      !kIsWeb &&
++      (Platform.operatingSystem == 'ohos' ||
++          defaultTargetPlatform == TargetPlatform.android);
+ 
+   /// Returns the list of available alternate icon names.
+   static Future<List<String>> getAvailableIcons() async {
+@@ -54,7 +58,8 @@
+         'iconName': iconName,
+       });
+     } on MissingPluginException {
+-      // Ignore: no native implementation on this platform.
++      // A missing OH channel must not report a successful icon change.
++      if (Platform.operatingSystem == 'ohos') rethrow;
+     }
+   }
+ }
+diff --git a/lib/pages/settings/software_setting_page.dart b/lib/pages/settings/software_setting_page.dart
+--- a/lib/pages/settings/software_setting_page.dart
++++ b/lib/pages/settings/software_setting_page.dart
+@@ -41,7 +41,7 @@
+                 label: localizations.modifyLanguage,
+                 onTap: () => popupOrNavigate(context, SetLanguagePage()),
+               ),
+-              if (Platform.isAndroid)
++              if (Platform.isAndroid || Platform.operatingSystem == 'ohos')
+                 IconTile(
+                   icon: Icons.photo_size_select_actual_outlined,
+                   label: localizations.appIcon,
