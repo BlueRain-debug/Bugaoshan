@@ -1,0 +1,139 @@
+diff --git a/lib/utils/calendar_export_utils.dart b/lib/utils/calendar_export_utils.dart
+--- a/lib/utils/calendar_export_utils.dart
++++ b/lib/utils/calendar_export_utils.dart
+@@ -2,7 +2,7 @@
+ import 'dart:convert';
+ import 'dart:io';
+ 
+-import 'package:file_picker/file_picker.dart';
++import 'package:bugaoshan/utils/file_save.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter/services.dart';
+ import 'package:open_filex/open_filex.dart';
+@@ -193,9 +193,9 @@
+   }) async {
+     final scaffoldMessenger = ScaffoldMessenger.of(context);
+ 
+-    Uri? destinationPath;
++    bool saved;
+     try {
+-      destinationPath = await FilePicker.saveFile(
++      saved = await saveFileBytes(
+         dialogTitle: l10n.exportScheduleAsIcsTo,
+         fileName: fileName,
+         bytes: bytes,
+@@ -220,7 +220,7 @@
+     scaffoldMessenger.showSnackBar(
+       SnackBar(
+         content: Text(
+-          destinationPath == null
++          !saved
+               ? l10n.exportScheduleAsIcsCanceled
+               : l10n.exportScheduleAsIcsSuccess,
+         ),
+diff --git a/lib/widgets/common/image_viewer.dart b/lib/widgets/common/image_viewer.dart
+--- a/lib/widgets/common/image_viewer.dart
++++ b/lib/widgets/common/image_viewer.dart
+@@ -1,7 +1,7 @@
+ import 'dart:io';
+ 
+ import 'package:flutter/material.dart';
+-import 'package:gal/gal.dart';
++import 'package:bugaoshan/utils/gallery_save.dart';
+ import 'package:http/http.dart' as http;
+ import 'package:path_provider/path_provider.dart';
+ import 'package:photo_view/photo_view.dart';
+@@ -110,12 +110,9 @@
+     AppLocalizations l10n,
+   ) async {
+     try {
+-      final granted = await Gal.requestAccess();
+-      if (!granted) throw StateError('Gallery access denied');
+-
+       final response = await http.get(Uri.parse(imageUrl), headers: headers);
+       if (response.statusCode != 200) throw Exception('Download failed');
+-      await Gal.putImageBytes(response.bodyBytes);
++      if (!await saveImageBytesToGallery(response.bodyBytes)) return;
+       if (context.mounted) {
+         ScaffoldMessenger.of(
+           context,
+diff --git a/lib/utils/file_save.dart b/lib/utils/file_save.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/utils/file_save.dart
+@@ -0,0 +1,17 @@
++import 'dart:typed_data';
++
++import 'package:file_picker_ohos/file_picker_ohos.dart';
++
++/// 保存字节到用户选择的位置；取消时返回 false，失败时抛出异常。
++Future<bool> saveFileBytes({
++  required String dialogTitle,
++  required String fileName,
++  required Uint8List bytes,
++}) async {
++  return await FilePicker.platform.saveFile(
++        dialogTitle: dialogTitle,
++        fileName: fileName,
++        bytes: bytes,
++      ) !=
++      null;
++}
+diff --git a/lib/utils/gallery_save.dart b/lib/utils/gallery_save.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/utils/gallery_save.dart
+@@ -0,0 +1,53 @@
++import 'dart:convert';
++import 'dart:io';
++
++import 'package:flutter/services.dart';
++import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
++import 'package:path_provider/path_provider.dart';
++
++/// 原样保存图片文件，由系统保存弹窗授权；取消时不显示成功提示。
++Future<bool> saveImageBytesToGallery(Uint8List bytes) async {
++  final extension = _imageExtension(bytes);
++  final temporaryRoot = await getTemporaryDirectory();
++  final directory = await temporaryRoot.createTemp('gallery-');
++  try {
++    final file = File('${directory.path}/image.$extension');
++    await file.writeAsBytes(bytes, flush: true);
++    final result = await ImageGallerySaverPlus.saveFile(file.path);
++    if (result is Map && result['isSuccess'] == true) return true;
++    if (result is Map && result['message'] == 'user refuses permission') {
++      return false;
++    }
++    throw PlatformException(
++      code: 'GALLERY_SAVE_FAILED',
++      message: result is Map ? result['message']?.toString() : null,
++    );
++  } finally {
++    await directory.delete(recursive: true);
++  }
++}
++
++String _imageExtension(Uint8List bytes) {
++  bool startsWith(List<int> signature) =>
++      bytes.length >= signature.length &&
++      List.generate(
++        signature.length,
++        (i) => bytes[i] == signature[i],
++      ).every((matches) => matches);
++
++  if (startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
++    return 'png';
++  }
++  if (startsWith([0xff, 0xd8, 0xff])) return 'jpg';
++  if (startsWith(ascii.encode('GIF87a')) ||
++      startsWith(ascii.encode('GIF89a'))) {
++    return 'gif';
++  }
++  if (bytes.length >= 12 &&
++      startsWith(ascii.encode('RIFF')) &&
++      ascii.decode(bytes.sublist(8, 12), allowInvalid: true) == 'WEBP') {
++    return 'webp';
++  }
++  if (startsWith([0x42, 0x4d])) return 'bmp';
++  throw const FormatException('Unsupported image format');
++}

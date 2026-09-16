@@ -1,0 +1,171 @@
+diff --git a/lib/widgets/webview/captcha_webview_dialog.dart b/lib/widgets/webview/captcha_webview_dialog.dart
+--- a/lib/widgets/webview/captcha_webview_dialog.dart
++++ b/lib/widgets/webview/captcha_webview_dialog.dart
+@@ -4,13 +4,14 @@
+ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+ 
+ import 'download_options.dart';
++import 'download_webview.dart';
+ 
+ // ── CAPTCHA WebView Dialog ────────────────────────────────────────────────────
+ 
+ /// Dialog that loads the CAPTCHA page directly in a WebView.
+ ///
+ /// The user completes the verification form on the original server page. When
+-/// the server returns the actual file after verification, [onDownloadStarting]
++/// the server returns the actual file after verification, the download callback
+ /// intercepts it, downloads the file, and calls [onDownloadComplete].
+ class CaptchaWebViewDialog extends StatefulWidget {
+   const CaptchaWebViewDialog({
+@@ -38,7 +39,7 @@
+   // 需要用 _closed + mounted 双重防护，避免对已关闭的弹窗执行 pop。
+   bool _closed = false;
+ 
+-  Future<DownloadStartResponse?> _onDownloadStarting(
++  Future<bool> _onDownloadRequested(
+     InAppWebViewController controller,
+     DownloadStartRequest request,
+   ) async {
+@@ -73,7 +74,7 @@
+         Navigator.pop(context, false);
+       }
+     }
+-    return DownloadStartResponse(handled: true);
++    return true;
+   }
+ 
+   @override
+@@ -98,12 +99,12 @@
+             Expanded(
+               child: Stack(
+                 children: [
+-                  InAppWebView(
++                  DownloadWebView(
+                     initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                     initialSettings: InAppWebViewSettings(
+                       javaScriptEnabled: true,
+                     ),
+-                    onDownloadStarting: _onDownloadStarting,
++                    onDownload: _onDownloadRequested,
+                     onLoadStop: (ctrl, uri) {
+                       if (mounted) setState(() => _loading = false);
+                     },
+diff --git a/lib/widgets/webview/webview_notice_handlers.dart b/lib/widgets/webview/webview_notice_handlers.dart
+--- a/lib/widgets/webview/webview_notice_handlers.dart
++++ b/lib/widgets/webview/webview_notice_handlers.dart
+@@ -276,14 +276,4 @@
+       return false;
+     }
+   }
+-
+-  Future<DownloadStartResponse?> onDownloadStarting(
+-    InAppWebViewController controller,
+-    DownloadStartRequest request,
+-  ) async {
+-    if (downloadOptions == null) return null;
+-    return DownloadStartResponse(
+-      handled: await handleDownloadStartRequest(request),
+-    );
+-  }
+ }
+diff --git a/lib/widgets/webview/webview_notice_page.dart b/lib/widgets/webview/webview_notice_page.dart
+--- a/lib/widgets/webview/webview_notice_page.dart
++++ b/lib/widgets/webview/webview_notice_page.dart
+@@ -7,7 +7,7 @@
+ import 'package:flutter/material.dart';
+ import 'package:flutter/services.dart' show rootBundle;
+ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+-import 'package:os_type/os_type.dart';
++import 'download_webview.dart';
+ import 'package:url_launcher/url_launcher.dart';
+ 
+ import 'download_options.dart';
+@@ -205,7 +205,7 @@
+ 
+   @override
+   Widget build(BuildContext context) {
+-    if (OS.isHarmony) {
++    if (!DownloadWebView.isSupported) {
+       return WebViewUnsupportedPage(title: widget.title);
+     }
+     return _buildWebViewPage(context);
+@@ -285,14 +285,17 @@
+         body: LayoutBuilder(
+           builder: (context, constraints) => Stack(
+             children: [
+-              InAppWebView(
++              DownloadWebView(
+                 onWebViewCreated: _onWebViewCreated,
+                 initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                 initialSettings: InAppWebViewSettings(
+                   javaScriptEnabled: true,
+                   useWideViewPort: false,
+                 ),
+-                onDownloadStarting: onDownloadStarting,
++                onDownload: widget.downloadOptions == null
++                    ? null
++                    : (controller, request) =>
++                          handleDownloadStartRequest(request),
+                 onLoadStart: _onLoadStart,
+                 onLoadStop: _onLoadStop,
+                 onReceivedError: (controller, request, error) {
+diff --git a/lib/widgets/webview/download_webview.dart b/lib/widgets/webview/download_webview.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/widgets/webview/download_webview.dart
+@@ -0,0 +1,55 @@
++import 'package:flutter/material.dart';
++import 'package:bugaoshan/utils/app_log.dart';
++import 'package:flutter_inappwebview/flutter_inappwebview.dart';
++
++/// 将页面下载逻辑与不同平台版本的 WebView 下载回调隔离。
++class DownloadWebView extends StatelessWidget {
++  static const bool isSupported = true;
++
++  const DownloadWebView({
++    super.key,
++    this.initialUrlRequest,
++    this.initialSettings,
++    this.onWebViewCreated,
++    this.onLoadStart,
++    this.onLoadStop,
++    this.onReceivedError,
++    this.onDownload,
++  });
++
++  final URLRequest? initialUrlRequest;
++  final InAppWebViewSettings? initialSettings;
++  final void Function(InAppWebViewController)? onWebViewCreated;
++  final void Function(InAppWebViewController, WebUri?)? onLoadStart;
++  final void Function(InAppWebViewController, WebUri?)? onLoadStop;
++  final void Function(
++    InAppWebViewController,
++    WebResourceRequest,
++    WebResourceError,
++  )?
++  onReceivedError;
++  final Future<bool> Function(InAppWebViewController, DownloadStartRequest)?
++  onDownload;
++
++  @override
++  Widget build(BuildContext context) {
++    final download = onDownload;
++    return InAppWebView(
++      initialUrlRequest: initialUrlRequest,
++      initialSettings: initialSettings,
++      onWebViewCreated: onWebViewCreated,
++      onLoadStart: onLoadStart,
++      onLoadStop: onLoadStop,
++      onReceivedError: onReceivedError,
++      onDownloadStartRequest: download == null
++          ? null
++          : (controller, request) async {
++              try {
++                await download(controller, request);
++              } catch (error) {
++                AppLog.e('DownloadWebView', 'Download callback failed: $error');
++              }
++            },
++    );
++  }
++}
