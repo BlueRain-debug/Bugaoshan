@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "flutter": {
+    "tag": "3.41.10-ohos-1.0.1",
+    "flutterVersion": "3.41.10-ohos-1.0.1",
+    "repositoryUrl": "https://gitcode.com/CPF-Flutter/flutter_flutter.git",
+    "frameworkRevision": "adaf911c35c9136a7d18fc424d714c9ec7724e60",
+    "engineRevision": "42d3d75a56efe1a2e9902f52dc8006099c45d937",
+    "dartSdkVersion": "3.11.5"
+  },
+  "harmonyOs": {
+    "apiVersion": "26",
+    "sdkVersion": "26.0.0.105",
+    "releaseType": "Release",
+    "devecoStudioVersion": "26.0.0.821",
+    "hvigorVersion": "6.26.4",
+    "ohpmVersion": "26.0.0.630",
+    "nodeVersion": "v24.14.1"
+  }
+}
