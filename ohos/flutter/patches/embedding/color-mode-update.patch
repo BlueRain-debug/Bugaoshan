@@ -1,0 +1,16 @@
+diff --git a/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets b/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
+--- a/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
++++ b/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
+@@ -625,9 +625,9 @@
+         const dvModel = this.flutterView?.getDVModel()?.children[index];
+         const params = dvModel?.getLayoutParams() as Record<string, ESObject>;
+         const nodeController = params['nodeController'] as EmbeddingNodeController;
+-        if (nodeController && nodeController.rebuild) {
+-          nodeController.rebuild();
+-        }
++        // A color change updates the existing ArkUI tree. Rebuilding replaces
++        // embedded Web components and can dispose their live controllers.
++        nodeController?.getBuilderNode()?.updateConfiguration();
+       }
+     }
+   }

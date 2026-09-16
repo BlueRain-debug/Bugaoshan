@@ -1,0 +1,127 @@
+diff --git a/lib/widgets/webview/download_webview.dart b/lib/widgets/webview/download_webview.dart
+--- a/lib/widgets/webview/download_webview.dart
++++ b/lib/widgets/webview/download_webview.dart
+@@ -23,3 +23,4 @@
+     this.onDownload,
+     this.onJsBeforeUnload,
++    this.onThemeChanged,
+   });
+@@ -45,4 +46,5 @@
+   onJsBeforeUnload;
++  final Future<void> Function(InAppWebViewController)? onThemeChanged;
+ 
+   @override
+   State<DownloadWebView> createState() => _DownloadWebViewState();
+@@ -59,4 +61,7 @@
+   bool _probeRunning = false;
+   bool _loading = true;
++  bool _themeRefreshPending = false;
++  bool _themeRefreshQueued = false;
++  bool _themeRefreshRunning = false;
+ 
+   String get _label =>
+@@ -86,4 +91,5 @@
+         AppLog.i('WebView', 'Created $_label');
+         widget.onWebViewCreated?.call(controller);
++        _queueThemeRefresh();
+         _queueThemeProbe();
+       },
+@@ -191,6 +197,12 @@
+       AppLog.i('WebView', 'Theme changed to ${brightness.name}; $_label');
+       _invalidateProbe();
+-      _probePending = true;
+-      _queueThemeProbe();
++      _probePending = false;
++      if (widget.onThemeChanged != null) {
++        _themeRefreshPending = true;
++        _queueThemeRefresh();
++      } else {
++        _probePending = true;
++        _queueThemeProbe();
++      }
+     }
+   }
+@@ -199,4 +211,5 @@
+   void didChangeAppLifecycleState(AppLifecycleState state) {
+     if (state == AppLifecycleState.resumed) {
++      _queueThemeRefresh();
+       _queueThemeProbe();
+     } else {
+@@ -208,7 +221,54 @@
+   void _invalidateProbe() {
+     _probeRevision++;
+     _probeTimer?.cancel();
+     _probeTimer = null;
+   }
+ 
++  void _queueThemeRefresh() {
++    if (!mounted ||
++        !_foreground ||
++        _controller == null ||
++        widget.onThemeChanged == null ||
++        !_themeRefreshPending ||
++        _themeRefreshQueued ||
++        _themeRefreshRunning) {
++      return;
++    }
++    // Parent loading state must be changed after the theme's build completes.
++    _themeRefreshQueued = true;
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      _themeRefreshQueued = false;
++      if (!mounted || !_foreground) return;
++      unawaited(_refreshForTheme());
++    });
++    WidgetsBinding.instance.ensureVisualUpdate();
++  }
++
++  Future<void> _refreshForTheme() async {
++    final controller = _controller;
++    final refresh = widget.onThemeChanged;
++    if (!mounted ||
++        !_foreground ||
++        controller == null ||
++        refresh == null ||
++        !_themeRefreshPending ||
++        _themeRefreshRunning) {
++      return;
++    }
++    _themeRefreshPending = false;
++    _themeRefreshRunning = true;
++    try {
++      AppLog.i(
++        'WebView',
++        'Reload current document for ${_brightness?.name}; $_label',
++      );
++      await refresh(controller);
++    } catch (error) {
++      AppLog.e('WebView', 'Theme reload failed: $error; $_label');
++    } finally {
++      _themeRefreshRunning = false;
++      _queueThemeRefresh();
++    }
++  }
++
+   void _queueThemeProbe() {
+diff --git a/lib/widgets/webview/webview_notice_page.dart b/lib/widgets/webview/webview_notice_page.dart
+--- a/lib/widgets/webview/webview_notice_page.dart
++++ b/lib/widgets/webview/webview_notice_page.dart
+@@ -418,4 +418,5 @@
+                 onLoadStart: _onLoadStart,
+                 onLoadStop: _onLoadStop,
++                onThemeChanged: _layoutLoader?.retry,
+                 onJsBeforeUnload:
+                     _tuanweiLoader == null ? null : _onTuanweiBeforeUnload,
+diff --git a/lib/widgets/webview/tuanwei_notice_loader.dart b/lib/widgets/webview/tuanwei_notice_loader.dart
+--- a/lib/widgets/webview/tuanwei_notice_loader.dart
++++ b/lib/widgets/webview/tuanwei_notice_loader.dart
+@@ -210,7 +210,10 @@
+       _fail(loadId, 'WebView unavailable');
+       return;
+     }
+     try {
++      // Paint the opaque cover before reloading the currently displayed URL.
++      await WidgetsBinding.instance.endOfFrame;
++      if (!_isCurrent(loadId)) return;
+       await controller.reload().timeout(const Duration(seconds: 5));
+     } catch (error) {
+       _fail(loadId, 'Reload failed: $error');
