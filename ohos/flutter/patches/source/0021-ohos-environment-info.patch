@@ -1,0 +1,296 @@
+diff --git a/lib/utils/mobile_device_info.dart b/lib/utils/mobile_device_info.dart
+--- a/lib/utils/mobile_device_info.dart
++++ b/lib/utils/mobile_device_info.dart
+@@ -1,3 +1,16 @@
++import 'package:flutter/services.dart';
++
++const _environmentChannel = MethodChannel('bugaoshan/environment_info');
++
+ Future<List<String>> getAndroidSupportedAbis() async => const [];
+ 
+-Future<Map<String, dynamic>> getMobileDeviceInfo() async => const {};
++/// OH-only device constants; failure is shown by the developer page.
++Future<Map<String, dynamic>> getMobileDeviceInfo() async {
++  final info = await _environmentChannel
++      .invokeMapMethod<String, String>('getDeviceInfo')
++      .timeout(const Duration(seconds: 5));
++  if (info == null || info.isEmpty) {
++    throw StateError('HarmonyOS returned no device information');
++  }
++  return info;
++}
+diff --git a/lib/pages/dev/environment_info_page.dart b/lib/pages/dev/environment_info_page.dart
+--- a/lib/pages/dev/environment_info_page.dart
++++ b/lib/pages/dev/environment_info_page.dart
+@@ -2,8 +2,10 @@
+ import 'package:flutter/services.dart';
+ 
+ import 'package:bugaoshan/injection/injector.dart';
++import 'package:bugaoshan/l10n/app_localizations.dart';
+ import 'package:bugaoshan/models/version_info.dart';
+ import 'package:bugaoshan/providers/app_info_provider.dart';
++import 'package:bugaoshan/utils/app_log.dart';
+ import 'package:bugaoshan/utils/mobile_device_info.dart';
+ import 'package:bugaoshan/widgets/common/styled_card.dart';
+ 
+@@ -16,79 +18,154 @@
+ 
+ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
+   final _provider = getIt<AppInfoProvider>();
+-  late Future<VersionInfo> _future;
+-  late Future<Map<String, dynamic>> _deviceInfoFuture;
+-  VersionInfo? _info;
++  late Future<_EnvironmentDetails> _future;
+ 
+   @override
+   void initState() {
+     super.initState();
+-    _future = _provider.getVersionInfo().then((v) => _info = v);
+-    _deviceInfoFuture = _getDeviceInfo();
+-  }
+-
+-  Future<Map<String, dynamic>> _getDeviceInfo() => getMobileDeviceInfo();
+-
+-  void _copyAll() {
+-    final info = _info;
+-    if (info == null) return;
+-    Clipboard.setData(ClipboardData(text: info.toString()));
+-    ScaffoldMessenger.of(
+-      context,
+-    ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
++    _future = _load();
++  }
++
++  Future<VersionInfo?> _readVersionInfo() async {
++    try {
++      return await _provider.getVersionInfo().timeout(
++        const Duration(seconds: 5),
++      );
++    } catch (error) {
++      AppLog.e('EnvironmentInfo', 'Failed to read app environment: $error');
++      return null;
++    }
++  }
++
++  Future<Map<String, dynamic>?> _readDeviceInfo() async {
++    try {
++      return await getMobileDeviceInfo();
++    } catch (error) {
++      AppLog.e('EnvironmentInfo', 'Failed to read device information: $error');
++      return null;
++    }
++  }
++
++  Future<_EnvironmentDetails> _load() async {
++    // Start both reads together; either section can still display if one fails.
++    final version = _readVersionInfo();
++    final device = _readDeviceInfo();
++    return _EnvironmentDetails(version: await version, device: await device);
++  }
++
++  Map<String, String> _sections(
++    _EnvironmentDetails details,
++    AppLocalizations l,
++  ) {
++    final version = details.version;
++    final device = details.device;
++    return {
++      if (version != null) ...{
++        'APP': version.app,
++        'Environment': version.environment,
++        'Flag': version.flag,
++        'Build': version.build,
++      } else
++        'Environment': l.loadFailed,
++      'Device': device == null
++          ? l.loadFailed
++          : device.isEmpty
++          ? l.noData
++          : device.entries.map((entry) {
++              final value = entry.value?.toString().trim() ?? '';
++              return '${entry.key}: ${value.isEmpty ? l.noData : value}';
++            }).join('\n'),
++    };
++  }
++
++  Future<void> _copyAll(String text) async {
++    try {
++      await Clipboard.setData(ClipboardData(text: text));
++      if (!mounted) return;
++      ScaffoldMessenger.of(context).showSnackBar(
++        SnackBar(
++          content: Text(AppLocalizations.of(context)!.ohosEnvironmentInfoCopied),
++        ),
++      );
++    } catch (error) {
++      AppLog.e('EnvironmentInfo', 'Failed to copy environment information: $error');
++      if (!mounted) return;
++      ScaffoldMessenger.of(context).showSnackBar(
++        SnackBar(
++          content: Text(
++            AppLocalizations.of(context)!.ohosEnvironmentInfoCopyFailed,
++          ),
++        ),
++      );
++    }
+   }
+ 
+   @override
+   Widget build(BuildContext context) {
+-    return Scaffold(
+-      appBar: AppBar(
+-        title: const Text('Environment Info'),
+-        actions: [
+-          IconButton(icon: const Icon(Icons.copy), onPressed: _copyAll),
+-        ],
+-      ),
+-      body: FutureBuilder<VersionInfo>(
+-        future: _future,
+-        builder: (context, snapshot) {
+-          if (snapshot.connectionState != ConnectionState.done) {
+-            return const Center(child: CircularProgressIndicator());
+-          }
+-          final info = snapshot.data!;
+-          return ListView(
+-            padding: const EdgeInsets.all(16),
+-            children: [
+-              _SectionCard(title: 'APP', content: info.app),
+-              _SectionCard(title: 'Environment', content: info.environment),
+-              _SectionCard(title: 'Flag', content: info.flag),
+-              _SectionCard(title: 'Build', content: info.build),
+-              FutureBuilder<Map<String, dynamic>>(
+-                future: _deviceInfoFuture,
+-                builder: (context, deviceSnapshot) {
+-                  if (deviceSnapshot.connectionState != ConnectionState.done) {
+-                    return const StyledCard(
+-                      margin: EdgeInsets.only(bottom: 12),
+-                      child: Padding(
+-                        padding: EdgeInsets.all(16),
+-                        child: Center(child: CircularProgressIndicator()),
++    final l = AppLocalizations.of(context)!;
++    return FutureBuilder<_EnvironmentDetails>(
++      future: _future,
++      builder: (context, snapshot) {
++        final done = snapshot.connectionState == ConnectionState.done;
++        final details = done ? snapshot.data : null;
++        final sections = details == null
++            ? <String, String>{}
++            : _sections(details, l);
++        return Scaffold(
++          appBar: AppBar(
++            title: Text(l.environmentInfo),
++            actions: [
++              if (done && (snapshot.hasError || details?.hasErrors == true))
++                IconButton(
++                  icon: const Icon(Icons.refresh),
++                  tooltip: l.retry,
++                  onPressed: () => setState(() => _future = _load()),
++                ),
++              IconButton(
++                icon: const Icon(Icons.copy),
++                tooltip: l.ohosEnvironmentInfoCopyAll,
++                onPressed: details == null
++                    ? null
++                    : () => _copyAll(
++                        sections.entries
++                            .map((entry) => '${entry.key}\n${entry.value}')
++                            .join('\n\n'),
+                       ),
+-                    );
+-                  }
+-                  final deviceInfo = deviceSnapshot.data ?? {};
+-                  if (deviceInfo.isEmpty) {
+-                    return const SizedBox.shrink();
+-                  }
+-                  final content = deviceInfo.entries
+-                      .map((e) => '${e.key}: ${e.value}')
+-                      .join('\n');
+-                  return _SectionCard(title: 'Device', content: content);
+-                },
+               ),
+             ],
+-          );
+-        },
+-      ),
++          ),
++          body: details == null
++              ? Center(
++                  child: snapshot.hasError
++                      ? Text(l.loadFailed)
++                      : const CircularProgressIndicator(),
++                )
++              : ListView(
++                  padding: const EdgeInsets.all(16),
++                  children: [
++                    for (final entry in sections.entries)
++                      _SectionCard(title: entry.key, content: entry.value),
++                    if (details.hasErrors)
++                      TextButton.icon(
++                        onPressed: () => setState(() => _future = _load()),
++                        icon: const Icon(Icons.refresh),
++                        label: Text(l.retry),
++                      ),
++                  ],
++                ),
++        );
++      },
+     );
+   }
++}
++
++class _EnvironmentDetails {
++  final VersionInfo? version;
++  final Map<String, dynamic>? device;
++
++  const _EnvironmentDetails({required this.version, required this.device});
++
++  bool get hasErrors => version == null || device == null;
+ }
+ 
+ class _SectionCard extends StatelessWidget {
+diff --git a/lib/providers/environment_info/native.dart b/lib/providers/environment_info/native.dart
+--- a/lib/providers/environment_info/native.dart
++++ b/lib/providers/environment_info/native.dart
+@@ -20,9 +20,13 @@
+       "Documents Dir: ${documentsDir.path}\n"
+       "Support Dir: ${supportDir.path}\n";
+ 
+-  environmentText +=
+-      "Is PC: ${OS.isPCOS}\n"
+-      "Is Mobile: ${OS.isMobileOS}\n";
++  // OH deviceType is reported by the native Device section. os_type's OH
++  // classification requires separate initialization and can assert in debug.
++  if (Platform.operatingSystem != 'ohos') {
++    environmentText +=
++        "Is PC: ${OS.isPCOS}\n"
++        "Is Mobile: ${OS.isMobileOS}\n";
++  }
+ 
+   return environmentText;
+ }
+diff --git a/lib/l10n/app_en.arb b/lib/l10n/app_en.arb
+--- a/lib/l10n/app_en.arb
++++ b/lib/l10n/app_en.arb
+@@ -192,6 +192,9 @@
+     "clearAllData": "Clear All Data",
+     "confirmMessage": "Are you sure?",
+     "environmentInfo": "Environment Info",
++    "ohosEnvironmentInfoCopyAll": "Copy all",
++    "ohosEnvironmentInfoCopied": "Environment information copied to clipboard",
++    "ohosEnvironmentInfoCopyFailed": "Could not copy environment information. Please try again.",
+     "devPage": "Developer Page",
+     "forceUpdate": "Update to Latest (Include Preview)",
+     "authLog": "Auth Log",
+diff --git a/lib/l10n/app_zh.arb b/lib/l10n/app_zh.arb
+--- a/lib/l10n/app_zh.arb
++++ b/lib/l10n/app_zh.arb
+@@ -171,6 +171,9 @@
+     "clearAllData": "清除所有数据",
+     "confirmMessage": "真的要这样做吗？",
+     "environmentInfo": "环境信息",
++    "ohosEnvironmentInfoCopyAll": "复制全部",
++    "ohosEnvironmentInfoCopied": "环境信息已复制到剪贴板",
++    "ohosEnvironmentInfoCopyFailed": "复制环境信息失败，请重试。",
+     "devPage": "开发者页面",
+     "forceUpdate": "更新到最新版本（含预览版）",
+     "authLog": "认证日志",
