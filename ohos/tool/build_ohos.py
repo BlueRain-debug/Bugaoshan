@@ -598,9 +598,9 @@ def build_workspace(args, flutter, dart, env):
         if args.update_lockfile:
             target = native / "flutter/pubspec.lock"
             shutil.copy2(workspace / "pubspec.lock", target)
-            # A lock-only operation cannot leave an older native runtime enabled.
-            (native / ".flutter-runtime.json").unlink(missing_ok=True)
-            print(f"已更新鸿蒙锁文件：{target}；请再执行 --prepare-only。", flush=True)
+            # The old runtime remains only as a source of local tool paths. Its
+            # dependency fingerprint is stale, so the next Sync must rebuild it.
+            print(f"已更新鸿蒙锁文件：{target}；下次 DevEco Sync 将自动重新准备。", flush=True)
             return 0
         prepare_native_runtime(ROOT, workspace, Path(flutter).parent.parent, env)
     refresh_native(ROOT)

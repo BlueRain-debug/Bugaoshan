@@ -7,7 +7,7 @@
 
 ## 结论
 
-- 当前配置最低安装版本已提高为 `6.0.0(20)`，本机配置和无本机配置时使用的模板均已更新。
+- 当前受版本控制的配置将最低安装版本设为 `6.0.0(20)`。
   已有 HAP 仍是修改前的 API 18 门槛；新构建将不再支持 API 18/19 安装。
 - 已审查的应用原生代码、插件关键路径及 Flutter 嵌入层未发现必须在 API 20 调用、且没有保护的更高版本接口。
 - 动态图标在 API 20 上显示不支持；当前 Flutter OH 的系统自动填充桥接在 API 20 上跳过。
@@ -33,9 +33,8 @@
 | HAP 应用版本 | `2.5.1` / `20501` | 抽查的已有产物版本 |
 | 设备类型 | `phone`、`tablet` | 当前应用声明的设备范围 |
 
-依据：`ohos/build-profile.json5`、`build-profile.json5.example`、`ohos/entry/src/main/module.json5` 及旧 HAP 内的 `module.json`。
-构建脚本复制维护配置；本机配置不存在时使用 `.example`，因此两处同步提高最低版本。
-模板同时显式设置 `targetSdkVersion: 26.0.0`，与当前工具链及本机配置保持一致。
+依据：`ohos/build-profile.json5`、`ohos/entry/src/main/module.json5` 及旧 HAP 内的 `module.json`。
+受版本控制的配置同时显式设置 `targetSdkVersion: 26.0.0`，与当前工具链保持一致。
 SDK 26 的构建工具可以配合较低的最低运行版本，但实际兼容性还取决于接口调用、字节码和系统行为。
 
 本轮不建议为了兼容 API 20 直接降低编译 SDK。现有稳定工具链在

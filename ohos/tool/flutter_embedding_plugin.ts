@@ -18,7 +18,7 @@ export function flutterEmbeddingPlugin(nativeProject: string): HvigorPlugin {
         }
         const runtimePath = path.join(nativeProject, '.flutter-embedding-runtime.json');
         if (!fs.existsSync(runtimePath)) {
-          throw new Error('请先运行 python ohos/tool/build_ohos.py --prepare-only，再在 DevEco 打开仓库 ohos/。');
+          throw new Error('Flutter OH 尚未初始化，请先在 DevEco 中执行 Sync。');
         }
         const runtime = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
         if (runtime.schemaVersion !== 1 || typeof runtime.python !== 'string' || !runtime.python) {

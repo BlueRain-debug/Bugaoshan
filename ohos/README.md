@@ -40,10 +40,12 @@ Windows 需要启用系统开发者模式，或由管理员 PowerShell 创建符
 
 完整参数、执行阶段、产物与签名说明及常见问题见 [构建脚本使用说明](tool/README.md)。
 
-在仓库根目录执行：
+DevEco Studio 可以直接打开仓库中的 `ohos/` 并执行 Sync。首次 Sync 会自动完成 Flutter OH
+环境准备；运行配置缺失、仓库或 SDK 路径变化、依赖声明或锁文件变化时也会自动重新准备。
+需要命令行构建或排查准备过程时，仍可在仓库根目录执行：
 
 ```powershell
-# 准备 DevEco 入口，含依赖、代码生成及插件注册，不编译 HAP
+# 可选：手动执行与首次 DevEco Sync 相同的准备，不编译 HAP
 python ohos/tool/build_ohos.py --prepare-only
 
 # 构建 Debug HAP
@@ -62,32 +64,40 @@ Flutter 工作目录固定在 `ohos/.flutter-workspace/`，原生工程直接使
 4. 生成 Dart 代码、本地化资源和根原生工程的插件注册文件。
 5. 普通构建在仓库 `ohos/` 调用 Hvigor Sync 和 `assembleHap`，并校验 HAP 版本。
 
-`--prepare-only` 完成前四步后退出，不编译 HAP；该入口同样需要上表中的完整工具链。
+DevEco Sync 会自动完成前四步；`--prepare-only` 是对应的手动入口，完成后退出且不编译 HAP。
+两个入口都需要上表中的完整工具链。首次 Sync 需能从系统 `PATH` 找到 Python、Flutter OH
+和 Git，并能定位 HarmonyOS SDK；成功后会复用本地记录的工具路径。
 补丁上下文、依赖锁或工具链不匹配时，脚本会停止并报告原因。
 
 应用版本来自根 `pubspec.yaml`，通过本地属性注入 Hvigor，脚本报告的 unsigned HAP 位于
 `ohos/entry/build/default/outputs/default/entry-default-unsigned.hap`；
 真机部署需在 DevEco 中配置调试签名，正式发布与覆盖升级流程见 [同步计划](docs/sync-plan.md)。
 
-本机 `ohos/build-profile.json5` 存在时作为原生构建配置输入；否则使用
-[build-profile.json5.example](build-profile.json5.example) 创建。已有本机配置原样保留；
+仓库直接提供 [build-profile.json5](build-profile.json5)，使 DevEco 在首次 Sync 之前就能识别这是
+HarmonyOS/Hvigor 工程。本机签名可由 DevEco 写入该文件，但签名路径、证书和密码不得提交；
 `local.properties` 中的 Flutter 路径和应用版本由准备入口更新。
 
 ## DevEco 真机调试
 
-1. 执行 `python ohos/tool/build_ohos.py --prepare-only`。
-2. 在 DevEco Studio 中打开仓库原有的 **`ohos/`**，执行 Sync。
+1. 在 DevEco Studio 中打开仓库原有的 **`ohos/`**，执行 Sync。
+2. 等待 Sync 自动准备 Flutter OH 工作目录、依赖、补丁、生成代码和插件注册。
 3. 选择构建模式、配置设备与调试签名，然后使用 DevEco 的运行和调试功能。
 
 根 `ohos/` 的 Hvigor 入口读取 `.flutter-workspace/` 中的源码和依赖，原生源码直接参与编译。
 原生改动直接维护在这个工程中，无需从生成工程中迁回。
 
 已有手写 Dart 文件和资源的修改通过链接直接可见。DevEco 的 Sync/Build 配置阶段检查上游基线、
-更新链接和翻译，并在输入变化时更新生成代码。依赖声明、锁或插件补丁变化后，重新执行准备命令。
+更新链接和翻译，并在输入变化时更新生成代码。依赖声明、锁或插件补丁变化后，下次 Sync 会自动重新准备。
 编辑链接文件会修改它指向的维护文件；鸿蒙适配请直接编辑 `flutter/overrides/lib/`，
 不要在整个链接工程上运行 `dart format lib`，以免格式化共用源码。
 准备与 Flutter 编译共享文件锁；同一原生工程不要同时启动两个 Hvigor 构建。
 原有 `run-*` 工程不再更新，也不会被脚本自动删除。本次入口改造的构建与真机验收尚待执行。
+
+修改 `hvigorconfig.ts` 或它导入的 `tool/*.ts` 后，已运行的 Hvigor daemon 可能继续使用内存中的旧模块。
+如果 Sync 仍重复修改前的配置错误，请在 `ohos/` 中执行 `hvigorw --stop-daemon`，或完全退出并重开
+DevEco Studio，再重新 Sync。终端只显示 `Schema validate failed` 时，可在忽略的本地目录
+`.hvigor/outputs/logs/details/details.json` 或最新的 `.hvigor/report/report-*.json` 中查看完整的
+`instancePath` 和校验规则。更多排查项见 [构建脚本使用说明](tool/README.md#常见问题)。
 
 ## 目录结构
 
@@ -102,7 +112,7 @@ ohos/
 ├── hvigorfile.ts                      # 原生构建任务
 ├── hvigorconfig.ts                    # Flutter 原生模块注入
 ├── oh-package.json5                   # 鸿蒙工程依赖
-├── build-profile.json5.example        # 构建配置模板
+├── build-profile.json5                # DevEco 工程识别与基础构建配置
 ├── flutter/
 │   ├── pubspec_dependencies.json      # 鸿蒙依赖增减配置
 │   ├── pubspec_overrides.yaml         # 鸿蒙依赖覆盖

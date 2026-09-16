@@ -6,14 +6,13 @@
 
 ## DevEco 构建与调试
 
-```powershell
-python ohos/tool/build_ohos.py --prepare-only
-```
-
-该命令完成工具链校验、源码链接、鸿蒙依赖解析、插件补丁、代码生成和原生插件注册，
-**不编译 HAP**。完成后，在 DevEco Studio 中打开仓库原有的 **`ohos/`**，
-执行 Sync，选择 Debug 或 Release，再使用 DevEco 的构建、运行或调试功能。
+在 DevEco Studio 中直接打开仓库的 **`ohos/`** 并执行 Sync。首次 Sync 会自动校验工具链、
+建立源码链接、解析鸿蒙依赖、应用插件补丁、生成代码并注册原生插件。完成后选择
+Debug 或 Release，再使用 DevEco 的构建、运行或调试功能。该自动准备不编译 HAP。
 本机设备及调试签名在这个原生工程中配置。
+
+首次 Sync 必须能从系统 `PATH` 找到 Python 3.10+、Git 和 Flutter OH，并能通过环境变量
+或 Flutter 配置定位 HarmonyOS SDK。后续 Sync 会复用已记录的工具路径。
 
 Flutter 工作目录是 `ohos/.flutter-workspace/`，其中没有 `ohos/` 子工程。
 原生源码、原生调试改动和 DevEco 配置都直接位于仓库 `ohos/`；无需从其他工程整理回来。
@@ -107,7 +106,8 @@ DevEco 后续构建沿用它们，不依赖从图形界面启动的 DevEco 是�
 已有手写源码改动通过链接直接可见。DevEco 的 Sync/Build 配置阶段调用
 [ohos_native.py](ohos_native.py)：检查依赖准备记录、上游基线，刷新增删文件及翻译，
 在生成器输入或生成文件变化时执行 `build_runner` 和 `gen-l10n`，并从 OH 解析结果生成原生注册文件。
-未变化的生成结果复用。Pub 配置、锁文件或插件补丁变化时停止并要求重新执行 `--prepare-only`。
+未变化的生成结果复用。运行配置缺失、路径变化，或 Pub 配置、锁文件、插件补丁变化时，
+Sync 会自动重新执行完整准备。`--prepare-only` 保留为手动排查和命令行工作流入口。
 
 不要编辑 `.flutter-workspace/lib/` 下的共享链接来做鸿蒙专用适配，也不要对整个链接目录执行格式化，
 因为文件链接的写入会作用于原文件。请直接编辑 `ohos/flutter/overrides/lib/` 中对应的维护文件。
@@ -116,9 +116,12 @@ DevEco 后续构建沿用它们，不依赖从图形界面启动的 DevEco 是�
 
 ## 原生构建接入
 
-`hvigorconfig.ts` 从独立 Flutter 包的 `.flutter-plugins-dependencies` 注入 OH 模块。
+`hvigorconfig.ts` 先通过不依赖已生成工作目录的 `flutter_bootstrap.ts` 完成自举，
+再从独立 Flutter 包的 `.flutter-plugins-dependencies` 注入 OH 模块。
 `hvigorfile.ts` 使用本地的 SDK Hvigor 适配层，分别传入 Flutter 工作目录和原生工程目录。
 插件注册类从解析到的插件 `pubspec.yaml` 读取，不硬编码插件名单或类名。
+动态注入模块的 `srcPath` 相对根 `ohos/` 生成并统一使用 `/`；Hvigor 要求它以 `./`、`../`
+或 `/` 开头，因此 `.pub-cache/` 这类点开头目录也必须写成 `./.pub-cache/`。
 
 [Hvigor 补丁](../flutter/patches/hvigor/README.md) 校验锁定 SDK 的原文件哈希，仅生成本地适配副本。
 它保留 SDK 的任务依赖和资源/AOT 复制流程，增加显式原生路径以及 Python 参数数组执行器，
@@ -139,14 +142,16 @@ python ohos/tool/build_ohos.py --prepare-only
 ```
 
 `--update-lockfile` 只回写 `ohos/flutter/pubspec.lock`，不修改根锁。
-它不构建 HAP，也不完成完整 DevEco 准备；成功后会撤销旧运行配置，必须再执行 `--prepare-only`。
+它不构建 HAP，也不完成完整 DevEco 准备；旧运行配置只保留本机工具路径，
+依赖指纹会立即失效，下次 Sync 自动重建完整环境。
 普通准备使用 `flutter pub get --no-example --enforce-lockfile`，不自动升级锁文件。
 
 构建脚本不自动执行格式检查、静态分析或测试，相关入口见 [测试说明](../tests/README.md)。
 双 SDK 持续检查仍在 [阶段六计划](../docs/sync-plan.md#阶段六建立持续同步检查) 中。
 
 Release 仅表示编译模式。脚本没有签名或发布参数，最后报告 unsigned HAP。
-原生 Hvigor 使用本机 `ohos/build-profile.json5`；不存在时从 `.example` 创建，已有配置原样保留。
+原生 Hvigor 使用仓库中的 `ohos/build-profile.json5`，DevEco 依靠它在 Sync 之前识别工程。
+本机签名设置可修改该文件，但签名路径、证书、密码及对应差异不得提交。
 若本机已配置签名，原生工具可能同时生成 signed HAP；脚本不将它作为 unsigned 构建结果。
 未签名包不能直接分发安装，正式签名、描述文件和覆盖升级应按渠道要求另行验收。
 
@@ -154,10 +159,12 @@ Release 仅表示编译模式。脚本没有签名或发布参数，最后报告
 
 | 现象 | 处理 |
 | --- | --- |
-| 缺少 `.flutter-workspace/tooling/flutter-hvigor-plugin` 或运行配置 | 在仓库根执行 `--prepare-only` 后重新 Sync |
-| 依赖配置或解析结果变化 | 重新执行 `--prepare-only`，不要在仓库根运行 OH Pub get |
+| 缺少 `.flutter-workspace/tooling/flutter-hvigor-plugin` 或运行配置 | 重新 Sync；若自动准备失败，查看 Sync 日志中的首个错误 |
+| 依赖配置或解析结果变化 | 重新 Sync，不要在仓库根运行 OH Pub get |
 | 上游源码基线不匹配 | 合并对应覆盖文件的上游变化，再更新清单哈希 |
 | Windows 无权创建链接 | 启用系统开发者模式，或在管理员 PowerShell 中运行准备命令 |
 | 插件 `Cannot find module` | 确认准备成功，DevEco 打开的是仓库 `ohos/`，随后执行 Sync |
-| SDK/Python 移动后无法构建 | 在配置好新路径的 PowerShell 重新执行准备命令 |
+| SDK/Python 移动后无法构建 | 更新系统 PATH/环境变量后重新 Sync，或手动执行准备命令 |
+| 修改 `hvigorconfig.ts` 或其导入的 `tool/*.ts` 后仍重复旧错误 | Hvigor daemon 可能缓存了已导入模块；在 `ohos/` 执行 `hvigorw --stop-daemon`，或完全退出并重开 DevEco Studio，然后重新 Sync |
+| 终端只有 `Schema validate failed`，没有字段详情 | 查看 `.hvigor/outputs/logs/details/details.json` 或最新的 `.hvigor/report/report-*.json`，先处理其中第一个 `instancePath`；这些文件是本地缓存，不提交 |
 | HAP 已安装但启动异常 | 保留本次完整日志与构建模式，按真机日志定位；构建完成不代表启动验收通过 |

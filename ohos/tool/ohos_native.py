@@ -23,6 +23,10 @@ ENV_KEYS = (
 )
 
 
+class PreparationRequiredError(ValueError):
+    """The local Flutter package must be prepared again before Hvigor can continue."""
+
+
 def write_local(path, content):
     """Atomic ordinary files only; never overwrite a maintained file through a link."""
     if path.resolve() != path or (path.is_file() and path.stat().st_nlink != 1):
@@ -100,8 +104,8 @@ def prepare_native_runtime(root, workspace, sdk, env):
     from ohos_embedding import prepare_embedding_runtime
     prepare_embedding_runtime(workspace, native)
     profile = native / "build-profile.json5"
-    if not profile.exists():
-        write_local(profile, (native / "build-profile.json5.example").read_bytes())
+    if not profile.is_file():
+        raise ValueError("缺少 DevEco 工程配置：ohos/build-profile.json5")
     write_json(native / RUNTIME_FILE, {
         "schemaVersion": 1,
         "workspace": str(workspace.resolve()),
@@ -126,16 +130,66 @@ def load_runtime(root):
     native = root / "ohos"
     path = native / RUNTIME_FILE
     if not path.is_file():
-        raise ValueError("请先运行 python ohos/tool/build_ohos.py --prepare-only，再用 DevEco 打开根 ohos/。")
+        raise PreparationRequiredError("鸿蒙 Flutter 环境尚未初始化，请执行 DevEco Sync。")
     runtime = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(runtime, dict):
+        raise PreparationRequiredError("鸿蒙运行配置格式无效，请重新执行 DevEco Sync。")
     workspace = workspace_path(root)
     if (runtime.get("schemaVersion") != 1 or runtime.get("workspace") != str(workspace) or
             runtime.get("nativeProject") != str(native)):
-        raise ValueError("鸿蒙运行配置路径已变化，请重新执行 --prepare-only。")
+        raise PreparationRequiredError("鸿蒙运行配置路径已变化，请重新执行 DevEco Sync。")
     if (runtime.get("dependencyFingerprint") != dependency_fingerprint(root) or
             runtime.get("packageFingerprint") != resolved_fingerprint(workspace)):
-        raise ValueError("鸿蒙依赖配置或解析结果已变化，请重新执行 --prepare-only。")
+        raise PreparationRequiredError("鸿蒙依赖配置或解析结果已变化，请重新执行 DevEco Sync。")
     return runtime
+
+
+def _bootstrap_arguments(root):
+    """Reuse paths from an older runtime when DevEco did not inherit the shell PATH."""
+    path = root / "ohos" / RUNTIME_FILE
+    try:
+        runtime = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ["--prepare-only"]
+    if not isinstance(runtime, dict):
+        return ["--prepare-only"]
+    arguments = ["--prepare-only"]
+    flutter_sdk = runtime.get("flutterSdk")
+    if isinstance(flutter_sdk, str) and Path(flutter_sdk).is_dir():
+        arguments.extend(("--flutter-sdk", flutter_sdk))
+    environment = runtime.get("environment")
+    harmony_sdk = environment.get("DEVECO_SDK_HOME") if isinstance(environment, dict) else None
+    if isinstance(harmony_sdk, str) and Path(harmony_sdk).is_dir():
+        arguments.extend(("--ohos-sdk", harmony_sdk))
+    return arguments
+
+
+def bootstrap_native(root):
+    """Prepare a fresh/stale checkout, otherwise perform the normal incremental refresh."""
+    workspace = workspace_path(root)
+    required = (
+        workspace / "tooling/flutter-hvigor-plugin/index.ts",
+        root / "ohos/.flutter-embedding-runtime.json",
+    )
+    needs_preparation = False
+    try:
+        load_runtime(root)
+        if not all(path.is_file() for path in required):
+            raise PreparationRequiredError("鸿蒙 Flutter 本地构建适配不完整。")
+    except (OSError, PreparationRequiredError, KeyError, json.JSONDecodeError):
+        needs_preparation = True
+    if not needs_preparation:
+        try:
+            refresh_native(root)
+            return
+        except PreparationRequiredError:
+            needs_preparation = True
+    if needs_preparation:
+        from build_ohos import main as build_main
+        print("DevEco Sync 正在准备 Flutter OH 环境…", flush=True)
+        result = build_main(_bootstrap_arguments(root))
+        if result != 0:
+            raise ValueError(f"Flutter OH 初始化失败，退出码：{result}")
 
 
 def runtime_environment(root, runtime):
@@ -227,7 +281,7 @@ def refresh_native(root):
         workspace = prepare_workspace(root)
         # Link/ARB refresh is allowed; dependency resolution belongs to --prepare-only.
         if runtime["packageFingerprint"] != resolved_fingerprint(workspace):
-            raise ValueError("组装后的鸿蒙依赖声明变化，请重新执行 --prepare-only。")
+            raise PreparationRequiredError("组装后的鸿蒙依赖声明变化，请重新执行 DevEco Sync。")
         sdk = Path(runtime["flutterSdk"])
         flutter, dart = sdk_commands(sdk)
         env = runtime_environment(root, runtime)
@@ -276,11 +330,14 @@ def assemble(root, arguments):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument("--bootstrap", action="store_true")
     actions.add_argument("--refresh", action="store_true")
     actions.add_argument("--assemble", help="JSON argument array from the local Hvigor adapter")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
-    if args.refresh:
+    if args.bootstrap:
+        bootstrap_native(root)
+    elif args.refresh:
         refresh_native(root)
     else:
         assemble(root, json.loads(args.assemble))

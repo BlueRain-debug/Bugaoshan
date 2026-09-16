@@ -71,10 +71,47 @@ class OhosNativeTest(unittest.TestCase):
             patch.object(ohos_native, "dependency_fingerprint", return_value="prepared"),
             patch.object(ohos_native, "resolved_fingerprint", return_value="different resolution"),
             patch.object(build_ohos, "prepare_workspace") as prepare,
-            self.assertRaisesRegex(ValueError, "重新执行 --prepare-only"),
+            self.assertRaisesRegex(ValueError, "重新执行 DevEco Sync"),
         ):
             ohos_native.refresh_native(self.root)
         prepare.assert_not_called()
+
+    def test_bootstrap_prepares_missing_runtime_and_reuses_recorded_sdk_paths(self):
+        flutter_sdk = self.root / "Flutter OH"
+        harmony_sdk = self.root / "DevEco/sdk"
+        flutter_sdk.mkdir(parents=True)
+        harmony_sdk.mkdir(parents=True)
+        self.write("ohos/.flutter-runtime.json", json.dumps({
+            "flutterSdk": str(flutter_sdk),
+            "environment": {"DEVECO_SDK_HOME": str(harmony_sdk)},
+        }))
+        with (
+            patch.object(
+                ohos_native,
+                "load_runtime",
+                side_effect=ohos_native.PreparationRequiredError("stale"),
+            ),
+            patch.object(build_ohos, "main", return_value=0) as prepare,
+            patch.object(ohos_native, "refresh_native") as refresh,
+        ):
+            ohos_native.bootstrap_native(self.root)
+        prepare.assert_called_once_with([
+            "--prepare-only", "--flutter-sdk", str(flutter_sdk),
+            "--ohos-sdk", str(harmony_sdk),
+        ])
+        refresh.assert_not_called()
+
+    def test_bootstrap_refreshes_complete_runtime_without_full_preparation(self):
+        self.write("ohos/.flutter-embedding-runtime.json", "{}")
+        self.write("ohos/.flutter-workspace/tooling/flutter-hvigor-plugin/index.ts", "export {}\n")
+        with (
+            patch.object(ohos_native, "load_runtime", return_value={}),
+            patch.object(build_ohos, "main") as prepare,
+            patch.object(ohos_native, "refresh_native") as refresh,
+        ):
+            ohos_native.bootstrap_native(self.root)
+        prepare.assert_not_called()
+        refresh.assert_called_once_with(self.root)
 
     def test_codegen_detects_shared_file_changes_and_missing_generated_output(self):
         source = self.write("lib/example.dart", "shared source\n")

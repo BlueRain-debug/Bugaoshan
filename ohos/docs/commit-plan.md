@@ -40,7 +40,7 @@ git diff --cached --name-status
 所有 `git add` 均使用明确的文件列表，不添加构建副本、Pub 缓存、生成插件注册文件、
 本机签名配置或 `local.properties`。其中：
 
-- 提交 `ohos/build-profile.json5.example`，本机 `ohos/build-profile.json5` 继续忽略。
+- 提交 `ohos/build-profile.json5` 的无签名基线，使 DevEco 能在首次 Sync 前识别工程；不提交本机签名差异。
 - 提交 `ohos/entry/build-profile.json5`，这是模块构建配置，与上一项本机应用签名配置不同。
 - 不添加 `ohos/build/`、`oh_modules/`、`node_modules/` 和编译产物。
 
@@ -418,7 +418,7 @@ git commit -m 'feat(ohos): 补齐环境信息并调整开发者页面'
 ```powershell
 $ohosBatchFiles = @(
   'ohos/flutter/patches/source/0024-ohos-icon-api-gate.patch'
-  'ohos/build-profile.json5.example'
+  'ohos/build-profile.json5'
   'ohos/docs/compatibility/api20.md'
 )
 git add -- $ohosBatchFiles

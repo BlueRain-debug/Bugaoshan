@@ -7,6 +7,8 @@
 - Python 测试位于 `ohos/tests/python/`；OH Dart 测试维护为 `ohos/tests/flutter/*.dart.template`，
   只由构建脚本链接为鸿蒙工程的 `test/ohos/*.dart`，避免上游分析解析 OH 专用依赖。
 - 原生工程只使用仓库 `ohos/`，DevEco 直接打开这里；不得复制第二个原生工程。
+- `build-profile.json5` 的无签名基线必须受版本控制，以便 DevEco 在首次 Sync 前识别工程；
+  本机签名路径、证书和密码不得提交。
 - Flutter 工作目录固定在 `ohos/.flutter-workspace/`，其内不得创建或链接 `ohos/`；
   专用 Pub 缓存放在 `ohos/.pub-cache/`，生成物不提交。
 - 编译工程的手写 Dart 文件通过符号链接引用根 `lib/` 或鸿蒙覆盖文件；`assets/` 链接根资源目录。

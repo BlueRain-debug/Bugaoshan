@@ -1,3 +1,3 @@
-import { injectFlutterModules } from './tool/flutter_project';
+import { bootstrapFlutterModules } from './tool/flutter_bootstrap';
 
-injectFlutterModules(__dirname);
+bootstrapFlutterModules(__dirname);
