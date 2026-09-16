@@ -1,0 +1,293 @@
+diff --git a/lib/pages/dev/environment_info_page.dart b/lib/pages/dev/environment_info_page.dart
+--- a/lib/pages/dev/environment_info_page.dart
++++ b/lib/pages/dev/environment_info_page.dart
+@@ -1,12 +1,10 @@
+-import 'dart:io';
+-
+-import 'package:device_info_plus/device_info_plus.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter/services.dart';
+ 
+ import 'package:bugaoshan/injection/injector.dart';
+ import 'package:bugaoshan/models/version_info.dart';
+ import 'package:bugaoshan/providers/app_info_provider.dart';
++import 'package:bugaoshan/utils/mobile_device_info.dart';
+ import 'package:bugaoshan/widgets/common/styled_card.dart';
+ 
+ class EnvironmentInfoPage extends StatefulWidget {
+@@ -29,33 +27,7 @@
+     _deviceInfoFuture = _getDeviceInfo();
+   }
+ 
+-  Future<Map<String, dynamic>> _getDeviceInfo() async {
+-    final deviceInfo = DeviceInfoPlugin();
+-    if (Platform.isAndroid) {
+-      final androidInfo = await deviceInfo.androidInfo;
+-      return {
+-        'brand': androidInfo.brand,
+-        'model': androidInfo.model,
+-        'device': androidInfo.device,
+-        'manufacturer': androidInfo.manufacturer,
+-        'supported32BitAbis': androidInfo.supported32BitAbis.join(', '),
+-        'supported64BitAbis': androidInfo.supported64BitAbis.join(', '),
+-        'supportedAbis': androidInfo.supportedAbis.join(', '),
+-        'isPhysicalDevice': androidInfo.isPhysicalDevice.toString(),
+-      };
+-    } else if (Platform.isIOS) {
+-      final iosInfo = await deviceInfo.iosInfo;
+-      return {
+-        'name': iosInfo.name,
+-        'model': iosInfo.model,
+-        'localizedModel': iosInfo.localizedModel,
+-        'systemName': iosInfo.systemName,
+-        'systemVersion': iosInfo.systemVersion,
+-        'isPhysicalDevice': iosInfo.isPhysicalDevice.toString(),
+-      };
+-    }
+-    return {};
+-  }
++  Future<Map<String, dynamic>> _getDeviceInfo() => getMobileDeviceInfo();
+ 
+   void _copyAll() {
+     final info = _info;
+diff --git a/lib/services/update_asset_selector.dart b/lib/services/update_asset_selector.dart
+--- a/lib/services/update_asset_selector.dart
++++ b/lib/services/update_asset_selector.dart
+@@ -1,6 +1,6 @@
+ import 'dart:io';
+ 
+-import 'package:device_info_plus/device_info_plus.dart';
++import 'package:bugaoshan/utils/mobile_device_info.dart';
+ 
+ enum UpdateAssetPlatform { android, windows, linux }
+ 
+@@ -28,19 +28,7 @@
+     if (!Platform.isAndroid) return null;
+ 
+     try {
+-      final deviceInfo = DeviceInfoPlugin();
+-      final androidInfo = await deviceInfo.androidInfo;
+-      // 优先选择 64 位架构
+-      final supported64BitAbis = androidInfo.supported64BitAbis;
+-      for (final abi in supported64BitAbis) {
+-        if (_androidArchMap.containsKey(abi)) {
+-          _cachedArch = abi;
+-          return _cachedArch;
+-        }
+-      }
+-      // 回退到 32 位架构
+-      final supported32BitAbis = androidInfo.supported32BitAbis;
+-      for (final abi in supported32BitAbis) {
++      for (final abi in await getAndroidSupportedAbis()) {
+         if (_androidArchMap.containsKey(abi)) {
+           _cachedArch = abi;
+           return _cachedArch;
+diff --git a/lib/services/exit_service.dart b/lib/services/exit_service.dart
+--- a/lib/services/exit_service.dart
++++ b/lib/services/exit_service.dart
+@@ -1,20 +1,9 @@
+ import 'dart:io';
+ 
+-import 'package:flutter/foundation.dart';
+-import 'package:window_manager/window_manager.dart';
+-
+ class ExitService {
+-  /// 统一退出应用
+-  /// 桌面端使用 windowManager.destroy() 正确关闭窗口
+-  /// 移动端使用 exit(0) 直接退出
++  /// 保留移动端退出前的保存等待，不依赖桌面窗口插件。
+   Future<void> exitApp() async {
+-    //make sure changes is saved
+-    await Future.delayed(Duration(milliseconds: 300));
+-    if (!kIsWeb &&
+-        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+-      await windowManager.destroy();
+-    } else {
+-      exit(0);
+-    }
++    await Future<void>.delayed(const Duration(milliseconds: 300));
++    exit(0);
+   }
+ }
+diff --git a/lib/services/window_state_service.dart b/lib/services/window_state_service.dart
+--- a/lib/services/window_state_service.dart
++++ b/lib/services/window_state_service.dart
+@@ -1,163 +1,11 @@
+-import 'dart:async';
+-import 'dart:ui';
++import 'package:shared_preferences/shared_preferences.dart';
+ 
+-import 'package:screen_retriever/screen_retriever.dart';
+-import 'package:shared_preferences/shared_preferences.dart';
+-import 'package:window_manager/window_manager.dart';
++/// 鸿蒙不恢复桌面窗口位置和大小，也不注册桌面窗口监听器。
++class WindowStateService {
++  WindowStateService(SharedPreferences prefs);
+ 
+-class WindowStateService with WindowListener {
+-  static const String _keyX = 'window_x';
+-  static const String _keyY = 'window_y';
+-  static const String _keyW = 'window_w';
+-  static const String _keyH = 'window_h';
++  static Future<WindowStateService> create(SharedPreferences prefs) async =>
++      WindowStateService(prefs);
+ 
+-  final SharedPreferences _prefs;
+-  Timer? _debounce;
+-
+-  WindowStateService(this._prefs);
+-
+-  static Future<WindowStateService> create(SharedPreferences prefs) async {
+-    final service = WindowStateService(prefs);
+-
+-    await windowManager.ensureInitialized();
+-
+-    final x = prefs.getDouble(_keyX);
+-    final y = prefs.getDouble(_keyY);
+-    final w = prefs.getDouble(_keyW);
+-    final h = prefs.getDouble(_keyH);
+-    final size = w != null && h != null ? Size(w, h) : null;
+-    final position = x != null && y != null ? Offset(x, y) : null;
+-
+-    // Validate saved position against current screen layout.
+-    // If the display configuration changed (resolution lowered, monitor
+-    // unplugged), the window could appear off-screen.
+-    Offset? clampedPosition;
+-    if (position != null && size != null) {
+-      clampedPosition = await _clampToScreen(position, size);
+-    }
+-
+-    await windowManager.waitUntilReadyToShow(
+-      WindowOptions(
+-        size: size,
+-        center: clampedPosition == null,
+-        minimumSize: const Size(300, 300),
+-      ),
+-    );
+-
+-    if (clampedPosition != null) {
+-      await windowManager.setPosition(clampedPosition);
+-    }
+-
+-    windowManager.addListener(service);
+-    await windowManager.show();
+-    return service;
+-  }
+-
+-  /// Returns the original [pos] if the window is already on-screen, or a
+-  /// clamped position that keeps the window inside the nearest display.
+-  /// Returns `null` if screen info is unavailable (caller should center).
+-  static Future<Offset?> _clampToScreen(Offset pos, Size size) async {
+-    try {
+-      final displays = await screenRetriever.getAllDisplays();
+-      if (displays.isEmpty) return pos;
+-
+-      final windowRect = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
+-
+-      // Already mostly visible on any display — keep as-is.
+-      for (final display in displays) {
+-        final screenRect = _displayRect(display);
+-        final intersection = screenRect.intersect(windowRect);
+-        if (intersection.width > 100 && intersection.height > 50) {
+-          return pos;
+-        }
+-      }
+-
+-      // Off-screen or barely visible: pick the best target display.
+-      // Prefer the display with the largest overlap (handles the case where
+-      // the window slid slightly off the edge of its original display).
+-      // Fall back to the display whose center is closest.
+-      final windowCenter = windowRect.center;
+-      Display? best;
+-      double bestArea = 0;
+-      Display? fallback;
+-      double fallbackDist = double.infinity;
+-      for (final display in displays) {
+-        final screenRect = _displayRect(display);
+-        final intersection = screenRect.intersect(windowRect);
+-        final area = intersection.isEmpty
+-            ? 0.0
+-            : intersection.width * intersection.height;
+-        if (area > bestArea) {
+-          bestArea = area;
+-          best = display;
+-        }
+-        final dist = (screenRect.center - windowCenter).distance;
+-        if (dist < fallbackDist) {
+-          fallbackDist = dist;
+-          fallback = display;
+-        }
+-      }
+-      final target = best ?? fallback;
+-      if (target == null) return pos;
+-
+-      final screen = _displayRect(target);
+-      // If the window is larger than the screen, pin to screen origin.
+-      final maxX = screen.right - size.width;
+-      final maxY = screen.bottom - size.height;
+-      final clampedX = maxX >= screen.left
+-          ? pos.dx.clamp(screen.left, maxX)
+-          : screen.left;
+-      final clampedY = maxY >= screen.top
+-          ? pos.dy.clamp(screen.top, maxY)
+-          : screen.top;
+-      return Offset(clampedX, clampedY);
+-    } catch (_) {
+-      // If screen_retriever fails, accept the saved position.
+-      return pos;
+-    }
+-  }
+-
+-  static Rect _displayRect(Display display) {
+-    return Rect.fromLTWH(
+-      display.visiblePosition?.dx ?? 0,
+-      display.visiblePosition?.dy ?? 0,
+-      display.visibleSize?.width ?? display.size.width,
+-      display.visibleSize?.height ?? display.size.height,
+-    );
+-  }
+-
+-  void _save() {
+-    _debounce?.cancel();
+-    _debounce = Timer(const Duration(milliseconds: 300), _saveNow);
+-  }
+-
+-  Future<void> _saveNow() async {
+-    try {
+-      final pos = await windowManager.getPosition();
+-      final size = await windowManager.getSize();
+-      await _prefs.setDouble(_keyX, pos.dx);
+-      await _prefs.setDouble(_keyY, pos.dy);
+-      await _prefs.setDouble(_keyW, size.width);
+-      await _prefs.setDouble(_keyH, size.height);
+-    } catch (_) {
+-      // Best-effort save.
+-    }
+-  }
+-
+-  @override
+-  void onWindowClose() {
+-    _debounce?.cancel();
+-    _saveNow();
+-  }
+-
+-  void dispose() {
+-    _debounce?.cancel();
+-    _debounce = null;
+-  }
+-
+-  @override
+-  void onWindowMoved() => _save();
+-
+-  @override
+-  void onWindowResized() => _save();
++  void dispose() {}
+ }
+diff --git a/lib/utils/mobile_device_info.dart b/lib/utils/mobile_device_info.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/utils/mobile_device_info.dart
+@@ -0,0 +1,3 @@
++Future<List<String>> getAndroidSupportedAbis() async => const [];
++
++Future<Map<String, dynamic>> getMobileDeviceInfo() async => const {};

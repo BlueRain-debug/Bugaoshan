@@ -1,0 +1,35 @@
+diff --git a/lib/pages/settings/set_dock_page.dart b/lib/pages/settings/set_dock_page.dart
+--- a/lib/pages/settings/set_dock_page.dart
++++ b/lib/pages/settings/set_dock_page.dart
+@@ -46,6 +46,10 @@
+     updated.insert(newIndex, item);
+     setState(() => _visibleIds = updated);
+     _appConfig.visibleDockIds.value = updated;
++  }
++
++  void _onLegacyReorder(int oldIndex, int newIndex) {
++    _onReorderItem(oldIndex, newIndex > oldIndex ? newIndex - 1 : newIndex);
+   }
+ 
+   void _resetToDefault() async {
+@@ -121,7 +125,9 @@
+       physics: const NeverScrollableScrollPhysics(),
+       buildDefaultDragHandles: false,
+       itemCount: _visibleIds.length,
+-      onReorderItem: _onReorderItem,
++      // Flutter OH 3.41 does not expose onReorderItem yet.
++      // ignore: deprecated_member_use
++      onReorder: _onLegacyReorder,
+       proxyDecorator: (child, index, animation) {
+         return AnimatedBuilder(
+           animation: animation,
+diff --git a/lib/theme.dart b/lib/theme.dart
+--- a/lib/theme.dart
++++ b/lib/theme.dart
+@@ -1,3 +1,6 @@
++// Flutter OH 3.41 re-exports these symbols through material.dart, while the
++// upstream SDK still requires this direct import.
++// ignore: unnecessary_import
+ import 'package:flutter/cupertino.dart';
+ import 'package:flutter/material.dart';
+ import 'package:google_fonts/google_fonts.dart';
