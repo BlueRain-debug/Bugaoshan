@@ -1,0 +1,63 @@
+diff --git a/lib/services/api/service_api_service.dart b/lib/services/api/service_api_service.dart
+--- a/lib/services/api/service_api_service.dart
++++ b/lib/services/api/service_api_service.dart
+@@ -369,7 +369,11 @@
+       final uri = Uri.parse(
+         '$_base${paths['attachUpload']}?category=all&inst_id=0',
+       );
++      if (await file.length() == 0) {
++        throw const ServiceException('上传文件为空，请重新选择');
++      }
+       final request = http.MultipartRequest('POST', uri)
++        ..followRedirects = false
+         ..headers.addAll({
+           'Accept': 'application/json, text/plain, */*',
+           'Origin': _base,
+@@ -385,9 +389,13 @@
+           ),
+         );
+ 
+-      final streamed = await client.send(request);
+-      final body = await streamed.stream.bytesToString();
++      const uploadTimeout = Duration(seconds: 30);
++      final streamed = await client.send(request).timeout(uploadTimeout);
++      final body = await streamed.stream.bytesToString().timeout(uploadTimeout);
+       _checkSessionExpiry(body, streamed.statusCode);
++      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
++        throw ServiceException('上传失败', statusCode: streamed.statusCode);
++      }
+       // 上传接口响应是 `{url, size, title, original, state, type, id}` 结构，
+       // **没有 `e` 字段**！不能用 _decodeResponse（会误判业务错误），也不能用
+       // `json['e'] != 0` 判断（null 恒为 true）。这里直接用 url/state/id 判断。
+diff --git a/lib/services/api/zhhq_api_service.dart b/lib/services/api/zhhq_api_service.dart
+--- a/lib/services/api/zhhq_api_service.dart
++++ b/lib/services/api/zhhq_api_service.dart
+@@ -522,8 +522,12 @@
+     String tokenKey,
+     File file,
+   ) async {
++    if (await file.length() == 0) {
++      throw const ServiceException('上传图片为空，请重新选择');
++    }
+     final request =
+         http.MultipartRequest('POST', Uri.parse('$_base/file/upload'))
++          ..followRedirects = false
+           ..headers.addAll(_headers(client, tokenKey))
+           ..fields['system'] = 'manager'
+           ..files.add(await http.MultipartFile.fromPath('file', file.path));
+@@ -531,11 +535,14 @@
+     //（普通 JSON 请求仍用 kHttpTimeout=15s）。
+     const uploadTimeout = Duration(seconds: 30);
+     final streamed = await client.send(request).timeout(uploadTimeout);
+-    final resp = await http.Response.fromStream(streamed);
++    final resp = await http.Response.fromStream(streamed).timeout(uploadTimeout);
+     if (resp.statusCode == 302 ||
+         resp.statusCode == 401 ||
+         resp.statusCode == 403) {
+       throw const UnauthenticatedException();
++    }
++    if (resp.statusCode < 200 || resp.statusCode >= 300) {
++      throw ServiceException('图片上传失败', statusCode: resp.statusCode);
+     }
+     // 明文 JSON（非 AES 加密）
+     final Map<String, dynamic> json;
