@@ -1,0 +1,422 @@
+diff --git a/lib/services/auth/sso_relay_auth.dart b/lib/services/auth/sso_relay_auth.dart
+--- a/lib/services/auth/sso_relay_auth.dart
++++ b/lib/services/auth/sso_relay_auth.dart
+@@ -28,6 +28,8 @@
+   Future<CookieClient>? _loginFuture;
+ 
+   bool _isReady = false;
++  int _generation = 0;
++  int get sessionEpoch => _scuAuth.sessionEpoch;
+ 
+   /// 子系统 session 是否已就绪（SSO 中继已完成）。
+   /// 页面应在 [isReady] 为 true 后才发起 API 请求，
+@@ -46,7 +48,7 @@
+ 
+   void _onScuAuthChanged() {
+     if (!_scuAuth.isReady) {
+-      _isReady = false;
++      invalidate();
+     }
+     notifyListeners();
+   }
+@@ -62,12 +64,15 @@
+ 
+   /// 获取已认证的子站 CookieClient。
+   Future<CookieClient> getClient() async {
++    final epoch = sessionEpoch;
+     await ensureAuthDependencies(_dependencies);
+-
++    if (epoch != sessionEpoch) throw const UnauthenticatedException();
+     final scuClient = await _scuAuth.getClient();
++    if (epoch != sessionEpoch) throw const UnauthenticatedException();
+ 
+     if (!identical(scuClient, _lastScuClient)) {
+       _log.d(_tag, 'scu client changed, clearing cache');
++      _generation++;
+       _lastScuClient = scuClient;
+       _cachedClient = null;
+       _loginFuture = null;
+@@ -83,9 +88,14 @@
+     }
+ 
+     _log.i(_tag, 'getClient: starting SSO relay');
+-    _loginFuture = _login(scuClient);
++    final generation = _generation;
++    final future = _login(scuClient);
++    _loginFuture = future;
+     try {
+-      final client = await _loginFuture!;
++      final client = await future;
++      if (epoch != sessionEpoch || generation != _generation) {
++        throw const UnauthenticatedException('登录状态已改变');
++      }
+       if (!_isReady) {
+         _isReady = true;
+         _log.i(_tag, 'ready');
+@@ -93,11 +103,13 @@
+       }
+       return client;
+     } finally {
+-      _loginFuture = null;
++      if (identical(_loginFuture, future)) _loginFuture = null;
+     }
+   }
+ 
+   Future<CookieClient> _login(CookieClient scuClient) async {
++    final epoch = sessionEpoch;
++    final generation = _generation;
+     final auth = _scuAuth.accessToken;
+     if (auth == null) throw const UnauthenticatedException();
+ 
+@@ -120,6 +132,10 @@
+       );
+     }
+ 
++    if (epoch != sessionEpoch || generation != _generation ||
++        auth != _scuAuth.accessToken) {
++      throw const UnauthenticatedException('登录状态已改变');
++    }
+     _cachedClient = scuClient;
+     _log.i(_tag, 'SSO relay: ok');
+     return scuClient;
+@@ -127,6 +143,7 @@
+ 
+   @override
+   void invalidate() {
++    _generation++;
+     _log.d(_tag, 'invalidate');
+     _cachedClient = null;
+     _loginFuture = null;
+@@ -136,6 +153,7 @@
+ 
+   @override
+   void dispose() {
++    _generation++;
+     _scuAuth.removeListener(_onScuAuthChanged);
+     super.dispose();
+   }
+diff --git a/lib/services/api/api_request.dart b/lib/services/api/api_request.dart
+--- a/lib/services/api/api_request.dart
++++ b/lib/services/api/api_request.dart
+@@ -104,13 +104,28 @@
+   Future<C> Function() getClient,
+   Future<T> Function(C client) fn, {
+   void Function()? invalidate,
++  bool Function()? isSessionCurrent,
+ }) async {
++  void checkSession() {
++    if (isSessionCurrent != null && !isSessionCurrent()) {
++      throw const UnauthenticatedException('登录状态已改变');
++    }
++  }
++
++  Future<T> execute() async {
++    checkSession();
++    final client = await getClient();
++    checkSession();
++    final result = await fn(client);
++    checkSession();
++    return result;
++  }
++
+   try {
+-    final client = await getClient();
+-    return await fn(client);
++    return await execute();
+   } on UnauthenticatedException {
++    checkSession();
+     invalidate?.call();
+-    final client = await getClient();
+-    return await fn(client);
++    return await execute();
+   }
+ }
+diff --git a/lib/services/api/service_api_service.dart b/lib/services/api/service_api_service.dart
+--- a/lib/services/api/service_api_service.dart
++++ b/lib/services/api/service_api_service.dart
+@@ -73,10 +73,12 @@
+   static const String tutorDataSourceId = '8';
+ 
+   Future<T> _request<T>(Future<T> Function(CookieClient client) fn) {
++    final epoch = _auth.sessionEpoch;
+     return retryOnUnauthenticated(
+       _auth.getClient,
+       fn,
+       invalidate: _auth.invalidate,
++      isSessionCurrent: () => epoch == _auth.sessionEpoch,
+     );
+   }
+ 
+diff --git a/lib/services/api/new_service_api_service.dart b/lib/services/api/new_service_api_service.dart
+--- a/lib/services/api/new_service_api_service.dart
++++ b/lib/services/api/new_service_api_service.dart
+@@ -40,10 +40,12 @@
+   static const String _basePath = '/newservice';
+ 
+   Future<T> _request<T>(Future<T> Function(CookieClient client) fn) {
++    final epoch = _auth.sessionEpoch;
+     return retryOnUnauthenticated(
+       _auth.getClient,
+       fn,
+       invalidate: _auth.invalidate,
++      isSessionCurrent: () => epoch == _auth.sessionEpoch,
+     );
+   }
+ 
+diff --git a/lib/services/auth/zhhq_auth.dart b/lib/services/auth/zhhq_auth.dart
+--- a/lib/services/auth/zhhq_auth.dart
++++ b/lib/services/auth/zhhq_auth.dart
+@@ -1,3 +1,5 @@
++import 'dart:convert';
++
+ import 'package:bugaoshan/injection/injector.dart';
+ import 'package:bugaoshan/services/auth/auth_state.dart';
+ import 'package:bugaoshan/services/auth/cookie_client.dart';
+@@ -46,49 +48,68 @@
+   bool _authFailed = false;
+   String? _tokenKey;
+   Future<void>? _warmUpFuture;
++  int _generation = 0;
++  Future<void> _storageTail = Future<void>.value();
++  static const _sessionKey = 'ohos_zhhq_session_v1';
++  int get sessionEpoch => _scuAuth.sessionEpoch;
++
++  Future<void> _store(Future<void> Function() action) {
++    final operation = _storageTail.then((_) => action());
++    _storageTail = operation.then<void>((_) {}, onError: (Object error) {});
++    return operation;
++  }
++
++  void _discardStoredSession() {
++    _store(() async {
++      final storage = SecureStorageProvider.instance;
++      await storage.delete(key: _sessionKey);
++      await storage.delete(key: kZhhqTokenKey);
++    }).catchError((Object error) {
++      _log.w(_tag, 'Stored repair session removal failed: $error');
++    });
++  }
+ 
+   ZhhqAuth(this._scuAuth, {AuthLogger? logger})
+     : _log = logger ?? getIt<AuthLogger>() {
+     _scuAuth.addListener(_onScuAuthChanged);
+   }
+ 
+-  /// 从安全存储恢复 tokenKey。
+-  ///
+-  /// 无条件恢复（不等待 SCU 就绪）：tokenKey 是 zhhq 域的会话标识，
+-  /// 业务请求只依赖它，与 SCU 会话独立。冷启动时 SCU 可能还在自动登录，
+-  /// 但 tokenKey 已恢复即可走快速路径秒发业务请求；SCU 登出时
+-  /// [_onScuAuthChanged] 会同步清除持久化的 tokenKey，不会残留脏数据。
+-  ///
+-  /// 已知边界：冷启动时 SCU 会话已过期（storage 尚未被登出回调清理）且
+-  /// 本方法恢复了 tokenKey，`isReady=true` 会走一次快速路径请求，由 API
+-  /// 层 4010-4017 自愈（invalidate → 完整认证），不会永久卡在脏状态。
+-  ///
+-  /// 若 SCU 已登录且本地存有 tokenKey，直接复用（跳过慢速 SSO ——
+-  /// id.scu.edu.cn 响应可能需 5-8s），加速冷启动进入报修页。
++  /// Restore only an atomically stored token + SCU owner pair.
++  /// Legacy unbound tokenKey is preserved until reauthentication or logout.
+   Future<void> init() async {
++    final epoch = sessionEpoch;
++    final generation = _generation;
++    final principal = _scuAuth.principal;
++    if (principal == null) return;
+     try {
+-      final saved = await SecureStorageProvider.instance
+-          .read(key: kZhhqTokenKey)
+-          .catchError((_) => null);
+-      if (saved == null || saved.isEmpty) return;
+-      _tokenKey = saved;
++      final raw = await SecureStorageProvider.instance.read(key: _sessionKey);
++      if (raw == null) return;
++      final decoded = jsonDecode(raw);
++      if (decoded is! Map<String, dynamic> ||
++          decoded['principal'] != principal ||
++          decoded['tokenKey'] is! String) return;
++      final token = decoded['tokenKey'] as String;
++      if (epoch != sessionEpoch || generation != _generation ||
++          principal != _scuAuth.principal || token.isEmpty) return;
++      _tokenKey = token;
+       _ready = true;
+-      _log.i(_tag, 'init: restored tokenKey, ready');
++      _log.i(_tag, 'init: restored repair session for current principal');
+       notifyListeners();
+-    } catch (e) {
+-      _log.w(_tag, 'init: failed to restore session: $e');
++    } catch (error) {
++      _log.w(_tag, 'Repair session restore failed; data retained: $error');
+     }
+   }
+ 
+   void _onScuAuthChanged() {
+     if (_scuAuth.state == AuthState.unknown) {
+       if (_ready) _log.d(_tag, 'scu logged out, marking not ready');
++      _generation++;
+       _ready = false;
+       _tokenKey = null;
+       _warmUpFuture = null;
+       _authFailed = false;
+       // 登出时清除持久化的 tokenKey
+-      SecureStorageProvider.instance.delete(key: kZhhqTokenKey);
++      _discardStoredSession();
+     }
+     notifyListeners();
+   }
+@@ -153,6 +174,7 @@
+     }
+ 
+     _authFailed = false;
++    final generation = _generation;
+     final future = _acquireTokenKey(client);
+     _warmUpFuture = future;
+     try {
+@@ -160,9 +182,11 @@
+     } catch (e) {
+       // 认证失败（超时/SSO 失败等）：标记失败并通知页面显示错误重试，
+       // 避免页面因 isReady 恒为 false 而无限转圈。
+-      _authFailed = true;
+-      _log.w(_tag, 'authenticate failed: $e');
+-      notifyListeners();
++      if (generation == _generation) {
++        _authFailed = true;
++        _log.w(_tag, 'authenticate failed: $e');
++        notifyListeners();
++      }
+       rethrow;
+     } finally {
+       if (identical(_warmUpFuture, future)) {
+@@ -173,8 +197,13 @@
+ 
+   /// 走 SSO 链拿 `userinfo`，再调 `login/auto` 换 tokenKey。
+   Future<void> _acquireTokenKey(CookieClient client) async {
++    final epoch = sessionEpoch;
++    final generation = _generation;
++    final principal = _scuAuth.principal;
+     final auth = _scuAuth.accessToken;
+-    if (auth == null) throw const UnauthenticatedException();
++    if (auth == null || principal == null) {
++      throw const UnauthenticatedException();
++    }
+ 
+     _log.i(_tag, 'acquireTokenKey: starting SSO');
+     final response = await client.followRedirects(
+@@ -207,7 +236,24 @@
+       throw const UnauthenticatedException('zhhq 认证回跳缺少 userinfo');
+     }
+ 
++    if (epoch != sessionEpoch || generation != _generation) {
++      throw const UnauthenticatedException('登录状态已改变');
++    }
+     final tokenKey = await _exchangeTokenKey(client, userinfo);
++    if (epoch != sessionEpoch || generation != _generation ||
++        principal != _scuAuth.principal) {
++      throw const UnauthenticatedException('登录状态已改变');
++    }
++    await _store(() async {
++      if (epoch != sessionEpoch || generation != _generation) return;
++      await SecureStorageProvider.instance.write(
++        key: _sessionKey,
++        value: jsonEncode({'principal': principal, 'tokenKey': tokenKey}),
++      );
++    });
++    if (epoch != sessionEpoch || generation != _generation) {
++      throw const UnauthenticatedException('登录状态已改变');
++    }
+     _applyTokenKey(client, tokenKey);
+   }
+ 
+@@ -271,8 +317,6 @@
+ 
+   void _applyTokenKey(CookieClient client, String tokenKey) {
+     _tokenKey = tokenKey;
+-    // 持久化，避免下次进入/冷启动重复走慢速 SSO
+-    SecureStorageProvider.instance.write(key: kZhhqTokenKey, value: tokenKey);
+     // 认证成功：清除失败标记，通知页面可恢复加载
+     if (_authFailed) {
+       _authFailed = false;
+@@ -287,17 +331,19 @@
+ 
+   @override
+   void invalidate() {
++    _generation++;
+     if (_ready) _log.d(_tag, 'invalidate');
+     _ready = false;
+     _tokenKey = null;
+     _warmUpFuture = null;
+     _authFailed = false;
+     // 会话失效：清除持久化 tokenKey，下次重新走 SSO
+-    SecureStorageProvider.instance.delete(key: kZhhqTokenKey);
++    _discardStoredSession();
+   }
+ 
+   @override
+   void dispose() {
++    _generation++;
+     _scuAuth.removeListener(_onScuAuthChanged);
+     super.dispose();
+   }
+diff --git a/lib/services/api/zhhq_api_service.dart b/lib/services/api/zhhq_api_service.dart
+--- a/lib/services/api/zhhq_api_service.dart
++++ b/lib/services/api/zhhq_api_service.dart
+@@ -85,28 +85,43 @@
+   Future<T> _executeWithRetry<T>(
+     Future<T> Function(CookieClient client, String tokenKey) fn,
+   ) async {
++    final epoch = _auth.sessionEpoch;
++    void checkSession() {
++      if (epoch != _auth.sessionEpoch) {
++        throw const UnauthenticatedException('登录状态已改变');
++      }
++    }
++    Future<T> invoke(CookieClient client, String token) async {
++      checkSession();
++      final result = await fn(client, token);
++      checkSession();
++      return result;
++    }
++
+     final fastClient = _auth.getClientFast();
+     final fastTokenKey = _auth.tokenKey;
+     if (fastClient != null && fastTokenKey != null) {
+       try {
+-        return await fn(fastClient, fastTokenKey);
++        return await invoke(fastClient, fastTokenKey);
+       } on UnauthenticatedException {
+         // tokenKey 失效（4010-4017）：走完整认证重建
+         _log.w('ZHhq', 'fast path token invalid, re-authenticating');
+       }
+     }
++    checkSession();
+     // 完整路径：确保 SCU 会话 + zhhq tokenKey（必要时走 SSO）
+     try {
+       final client = await _auth.getClient();
+       final tokenKey = _auth.tokenKey;
+       if (tokenKey == null) throw const UnauthenticatedException();
+-      return await fn(client, tokenKey);
++      return await invoke(client, tokenKey);
+     } on UnauthenticatedException {
++      checkSession();
+       _auth.invalidate();
+       final client = await _auth.getClient();
+       final tokenKey = _auth.tokenKey;
+       if (tokenKey == null) throw const UnauthenticatedException();
+-      return await fn(client, tokenKey);
++      return await invoke(client, tokenKey);
+     }
+   }
+ 
+diff --git a/lib/services/auth/ccyl_auth.dart b/lib/services/auth/ccyl_auth.dart
+--- a/lib/services/auth/ccyl_auth.dart
++++ b/lib/services/auth/ccyl_auth.dart
+@@ -102,8 +102,8 @@
+       );
+       _log.i(_tag, 'init: token restored');
+     } catch (e) {
+-      _log.w(_tag, 'init: error restoring saved session, discarding: $e');
+-      await _clearPersistedSession();
++      _clearMemorySession();
++      _log.w(_tag, 'init: failed to read session; reauthentication required: $e');
+     }
+   }
+ 
