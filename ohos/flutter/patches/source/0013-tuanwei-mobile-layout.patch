@@ -1,0 +1,677 @@
+diff --git a/lib/widgets/webview/webview_notice_page.dart b/lib/widgets/webview/webview_notice_page.dart
+--- a/lib/widgets/webview/webview_notice_page.dart
++++ b/lib/widgets/webview/webview_notice_page.dart
+@@ -11,6 +11,7 @@
+ import 'package:url_launcher/url_launcher.dart';
+ 
+ import 'download_options.dart';
++import 'tuanwei_notice_loader.dart';
+ import 'webview_notice_handlers.dart';
+ import 'webview_unsupported_page.dart';
+ 
+@@ -47,10 +48,12 @@
+   InAppWebViewController? _controller;
+   String _beautifyScript = '';
+   String _domReadyScript = '';
++  TuanweiNoticeLoader? _tuanweiLoader;
+   bool _realLoading = false;
+   //disable loading if beautify script is empty
+   bool get _loading =>
+-      _beautifyScript.isNotEmpty && _realLoading && widget.enableLoadingMask;
++      _tuanweiLoader?.isLoading ??
++      (_beautifyScript.isNotEmpty && _realLoading && widget.enableLoadingMask);
+   set _loading(bool value) {
+     if (_beautifyScript.isNotEmpty) _realLoading = value;
+   }
+@@ -78,6 +81,13 @@
+   @override
+   void initState() {
+     super.initState();
++    if (widget.beautifyAsset == 'assets/js/tuanwei_notice_beautify.js' &&
++        Uri.tryParse(widget.url)?.host == 'tuanwei.scu.edu.cn') {
++      _tuanweiLoader = TuanweiNoticeLoader(
++        loadScript: () => rootBundle.loadString(widget.beautifyAsset!),
++      )..addListener(_onTuanweiLoadingChanged);
++      return;
++    }
+     rootBundle.loadString('assets/webview_error.html').then((s) {
+       _errorHtmlTemplate = s;
+     });
+@@ -98,7 +108,7 @@
+     );
+     controller.addJavaScriptHandler(
+       handlerName: 'DOMReady',
+-      callback: (_) => _onDomReady(),
++      callback: _onDomReady,
+     );
+     if (widget.downloadOptions != null) {
+       controller.addJavaScriptHandler(
+@@ -116,22 +126,41 @@
+     );
+   }
+ 
+-  Future<void> _onLoadStart(InAppWebViewController controller, Uri? url) async {
++  void _onTuanweiLoadingChanged() {
+     if (!mounted) return;
+     setState(() {
+-      _loading = true;
+-      _pageAttachments = [];
++      if (_tuanweiLoader!.isLoading) _pageAttachments = [];
+     });
+   }
+ 
+-  Future<void> _finishLoading() async {
++  void _startNoticeNavigation() {
+     if (!mounted) return;
++    final loader = _tuanweiLoader;
++    if (loader != null) {
++      loader.start();
++    } else {
++      setState(() {
++        _loading = true;
++        _pageAttachments = [];
++      });
++    }
++  }
++
++  Future<void> _onLoadStart(InAppWebViewController controller, Uri? url) async {
++    _startNoticeNavigation();
++  }
++
++  Future<void> _finishLoading({int? tuanweiLoadId}) async {
++    bool isCurrent() =>
++        mounted &&
++        (tuanweiLoadId == null || tuanweiLoadId == _tuanweiLoader?.generation);
++    if (!isCurrent()) return;
+     await Future.delayed(const Duration(milliseconds: 50));
+     final ctrl = _controller;
+-    if (ctrl == null) return;
++    if (ctrl == null || !isCurrent()) return;
+     final back = await ctrl.canGoBack();
+     final forward = await ctrl.canGoForward();
+-    if (!mounted) return;
++    if (!isCurrent()) return;
+     setState(() {
+       _loading = false;
+       _canGoBack = back;
+@@ -140,6 +169,20 @@
+   }
+ 
+   Future<void> _onLoadStop(InAppWebViewController controller, Uri? url) async {
++    final loader = _tuanweiLoader;
++    if (loader != null) {
++      final loadId = loader.generation;
++      if (await loader.prepare(controller, url)) {
++        try {
++          await _finishLoading(
++            tuanweiLoadId: loadId,
++          ).timeout(const Duration(seconds: 2));
++        } catch (error) {
++          AppLog.w('WebViewNoticePage', 'Tuanwei navigation state failed: $error');
++        }
++      }
++      return;
++    }
+     if (_beautifyScript.isNotEmpty) {
+       try {
+         await controller.evaluateJavascript(source: _beautifyScript);
+@@ -165,7 +208,12 @@
+     await _finishLoading();
+   }
+ 
+-  Future<void> _onDomReady() async {
++  Future<void> _onDomReady(List<dynamic> arguments) async {
++    final loader = _tuanweiLoader;
++    if (loader != null) {
++      loader.onDomReady(arguments);
++      return;
++    }
+     await _finishLoading();
+   }
+ 
+@@ -183,7 +231,7 @@
+     final ctrl = _controller;
+     if (ctrl == null) return;
+     if (await ctrl.canGoBack()) {
+-      setState(() => _loading = true);
++      _startNoticeNavigation();
+       await ctrl.goBack();
+     }
+   }
+@@ -192,13 +240,15 @@
+     final ctrl = _controller;
+     if (ctrl == null) return;
+     if (await ctrl.canGoForward()) {
+-      setState(() => _loading = true);
++      _startNoticeNavigation();
+       await ctrl.goForward();
+     }
+   }
+ 
+   @override
+   void dispose() {
++    _tuanweiLoader?.removeListener(_onTuanweiLoadingChanged);
++    _tuanweiLoader?.dispose();
+     _controller?.dispose();
+     super.dispose();
+   }
+@@ -219,7 +269,7 @@
+         if (didPop) return;
+         final ctrl = _controller;
+         if (ctrl != null && await ctrl.canGoBack()) {
+-          setState(() => _loading = true);
++          _startNoticeNavigation();
+           await ctrl.goBack();
+         } else if (mounted) {
+           if (logicRootContext.mounted) Navigator.of(logicRootContext).pop();
+@@ -291,6 +341,9 @@
+                 initialSettings: InAppWebViewSettings(
+                   javaScriptEnabled: true,
+                   useWideViewPort: false,
++                  supportZoom: _tuanweiLoader == null,
++                  builtInZoomControls: _tuanweiLoader == null,
++                  loadWithOverviewMode: _tuanweiLoader == null,
+                 ),
+                 onDownload: widget.downloadOptions == null
+                     ? null
+@@ -298,11 +351,18 @@
+                           handleDownloadStartRequest(request),
+                 onLoadStart: _onLoadStart,
+                 onLoadStop: _onLoadStop,
+-                onReceivedError: (controller, request, error) {
++                onReceivedError: (controller, request, error) async {
+                   AppLog.e(
+                     'WebViewNoticePage',
+                     '${widget.debugLabel} WebView error: $error',
+                   );
++                  final loader = _tuanweiLoader;
++                  if (loader != null) {
++                    if (request.isForMainFrame ?? false) {
++                      await loader.onMainFrameError(controller, request.url);
++                    }
++                    return;
++                  }
+                   if ((request.isForMainFrame ?? false) &&
+                       _errorHtmlTemplate.isNotEmpty) {
+                     final html = _errorHtmlTemplate.replaceAll(
+@@ -313,21 +373,34 @@
+                   }
+                 },
+               ),
+-              IgnorePointer(
+-                ignoring: !_loading,
+-                child: AnimatedOpacity(
+-                  opacity: _loading ? 0.99 : 0,
+-                  duration: _loading
+-                      ? Duration.zero
+-                      : appConfigService.cardSizeAnimationDuration.value,
+-                  curve: appCurve,
+-                  child: Container(
+-                    color: Theme.of(context).scaffoldBackgroundColor,
+-                    child: const Center(child: CircularProgressIndicator()),
++              if (_tuanweiLoader != null &&
++                  (_tuanweiLoader!.isLoading || _tuanweiLoader!.hasFailed))
++                Positioned.fill(
++                  child: TuanweiNoticeCover(
++                    failed: _tuanweiLoader!.hasFailed,
++                    onRetry: () => _tuanweiLoader!.retry(_controller),
++                    onOpenBrowser: _openInBrowser,
+                   ),
+                 ),
+-              ),
+-              if (_pageAttachments.isNotEmpty && widget.downloadOptions != null)
++              if (_tuanweiLoader == null)
++                IgnorePointer(
++                  ignoring: !_loading,
++                  child: AnimatedOpacity(
++                    opacity: _loading ? 0.99 : 0,
++                    duration: _loading
++                        ? Duration.zero
++                        : appConfigService.cardSizeAnimationDuration.value,
++                    curve: appCurve,
++                    child: Container(
++                      color: Theme.of(context).scaffoldBackgroundColor,
++                      child: const Center(child: CircularProgressIndicator()),
++                    ),
++                  ),
++                ),
++              if (_pageAttachments.isNotEmpty &&
++                  widget.downloadOptions != null &&
++                  !(_tuanweiLoader?.isLoading ?? false) &&
++                  !(_tuanweiLoader?.hasFailed ?? false))
+                 NoticeAttachmentFab(
+                   items: _pageAttachments,
+                   dirName: widget.downloadOptions!.attachmentDir,
+diff --git a/lib/widgets/webview/tuanwei_mobile_layout.dart b/lib/widgets/webview/tuanwei_mobile_layout.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/widgets/webview/tuanwei_mobile_layout.dart
+@@ -0,0 +1,178 @@
++import 'dart:convert';
++
++/// Adds OH layout rules around the current upstream script, in one document.
++/// Unknown pages are not restyled; the loader keeps them covered.
++String tuanweiMobileScript({
++  required String beautifyScript,
++  required Uri url,
++  required int loadId,
++}) => '''
++(function () {
++  if (window.top !== window || location.hostname !== 'tuanwei.scu.edu.cn') {
++    return false;
++  }
++  var expected = new URL(${jsonEncode(url.toString())});
++  if (location.origin !== expected.origin ||
++      location.pathname !== expected.pathname || location.search !== expected.search) {
++    return false;
++  }
++  if (document.readyState === 'loading') return false;
++  var root = document.querySelector('.innerbox');
++  if (!root || !document.head || !document.body ||
++      !root.querySelector(':scope > ul > li a[href], article[id^="vsb_content"], .v_news_content')) {
++    return false;
++  }
++  window.__bugaoshanTuanweiReady = null;
++  $_tuanweiViewport
++  $beautifyScript
++  $_tuanweiLayout
++  requestAnimationFrame(function () {
++    requestAnimationFrame(function () {
++      window.__bugaoshanTuanweiReady = $loadId;
++      window.flutter_inappwebview.callHandler('DOMReady', $loadId);
++    });
++  });
++  return true;
++})();
++''';
++
++/// A missed bridge callback may only reveal a document with this load's proof.
++String tuanweiMobileReadyProbe({required Uri url, required int loadId}) => '''
++(function () {
++  var expected = new URL(${jsonEncode(url.toString())});
++  return location.origin === expected.origin &&
++      location.pathname === expected.pathname && location.search === expected.search &&
++      window.__bugaoshanTuanweiReady === $loadId &&
++      document.getElementById('bugaoshan-tuanwei-mobile-layout') !== null &&
++      document.querySelector('.innerbox[data-ohos-tuanwei-mobile]') !== null;
++})();
++''';
++
++const _tuanweiViewport = r'''
++  var viewports = Array.from(document.head.querySelectorAll('meta')).filter(function (meta) {
++    return (meta.getAttribute('name') || '').toLowerCase() === 'viewport';
++  });
++  if (viewports.length === 0) {
++    var viewport = document.createElement('meta');
++    viewport.id = 'bugaoshan-tuanwei-viewport';
++    viewport.name = 'viewport';
++    document.head.appendChild(viewport);
++    viewports.push(viewport);
++  }
++  viewports.forEach(function (meta) {
++    meta.content = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no';
++  });
++''';
++
++const _tuanweiLayout = r'''
++  function setLayout(element, properties) {
++    Object.keys(properties).forEach(function (key) {
++      element.style.setProperty(key, properties[key], 'important');
++    });
++  }
++  // The upstream script sets inline !important widths: override only the known
++  // layout containers, not every positioned element in the article.
++  setLayout(document.documentElement, {
++    'min-width': '0', width: '100%', 'max-width': 'none',
++    margin: '0', padding: '0', 'box-sizing': 'border-box',
++    'overflow-x': 'visible', 'touch-action': 'pan-x pan-y'
++  });
++  setLayout(document.body, {
++    'min-width': '0', width: '100%', 'max-width': '640px',
++    height: 'auto', margin: '0 auto', padding: '0',
++    float: 'none', position: 'static', inset: 'auto', transform: 'none',
++    'box-sizing': 'border-box', 'overflow-x': 'visible'
++  });
++  document.querySelectorAll('#bg, #bg2, .web, .innerbox').forEach(function (element) {
++    if (element !== root && !element.contains(root)) return;
++    setLayout(element, {
++      'min-width': '0', width: '100%', 'max-width': '100%', height: 'auto',
++      margin: '0', padding: '0', float: 'none', position: 'static',
++      inset: 'auto', transform: 'none', 'box-sizing': 'border-box'
++    });
++  });
++  root.setAttribute('data-ohos-tuanwei-mobile', '');
++  root.querySelectorAll(':scope > ul, form, form h3, article[id^="vsb_content"], .v_news_content').forEach(function (element) {
++    setLayout(element, {
++      width: 'auto', 'min-width': '0', 'max-width': 'none', height: 'auto',
++      float: 'none', position: 'static', inset: 'auto', transform: 'none',
++      'box-sizing': 'border-box'
++    });
++  });
++  root.querySelectorAll(':scope > ul > li, :scope > ul > li > a').forEach(function (element) {
++    setLayout(element, {
++      width: 'auto', 'min-width': '0', 'max-width': 'none', height: 'auto',
++      'max-height': 'none', margin: '0', float: 'none', position: 'static',
++      inset: 'auto', 'white-space': 'normal', 'text-indent': '0',
++      'box-sizing': 'border-box'
++    });
++  });
++  root.querySelectorAll('article[id^="vsb_content"] img, .v_news_content img').forEach(function (image) {
++    setLayout(image, {
++      width: 'auto', 'max-width': '100%', height: 'auto', 'min-width': '0'
++    });
++  });
++  root.querySelectorAll('article[id^="vsb_content"] table, .v_news_content table').forEach(function (table) {
++    // Wrap the original table so image/link event listeners remain attached.
++    if (!table.parentElement || table.parentElement.closest('table')) return;
++    if (!table.parentElement.hasAttribute('data-ohos-tuanwei-table')) {
++      var scroll = document.createElement('div');
++      scroll.setAttribute('data-ohos-tuanwei-table', '');
++      table.parentNode.insertBefore(scroll, table);
++      scroll.appendChild(table);
++    }
++    setLayout(table, {
++      width: 'auto', 'min-width': '100%', 'max-width': 'none',
++      'table-layout': 'auto', margin: '0', float: 'none'
++    });
++  });
++  var style = document.getElementById('bugaoshan-tuanwei-mobile-layout');
++  if (!style) {
++    style = document.createElement('style');
++    style.id = 'bugaoshan-tuanwei-mobile-layout';
++    document.head.appendChild(style);
++  }
++  style.textContent = `
++    [data-ohos-tuanwei-mobile] > ul > li {
++      display: flex !important; overflow: visible !important;
++    }
++    [data-ohos-tuanwei-mobile] > ul > li > a {
++      display: flex !important; flex: 1 1 0% !important;
++      align-items: flex-start !important; line-height: 1.6 !important;
++    }
++    [data-ohos-tuanwei-mobile] .date-box {
++      flex: 0 0 auto !important; width: auto !important;
++    }
++    [data-ohos-tuanwei-mobile] .notice-title {
++      flex: 1 1 0% !important; min-width: 0 !important;
++      white-space: normal !important; overflow: visible !important;
++      max-height: none !important; -webkit-line-clamp: unset !important;
++      overflow-wrap: anywhere !important;
++    }
++    [data-ohos-tuanwei-mobile] .pb_sys_common,
++    [data-ohos-tuanwei-mobile] .p_pages {
++      width: auto !important; min-width: 0 !important; max-width: 100% !important;
++      height: auto !important; float: none !important; position: static !important;
++      box-sizing: border-box !important; display: flex !important;
++      flex-wrap: wrap !important; white-space: normal !important;
++    }
++    [data-ohos-tuanwei-mobile] .p_t { white-space: normal !important; }
++    [data-ohos-tuanwei-mobile] .v_news_content > p,
++    [data-ohos-tuanwei-mobile] .v_news_content > div {
++      width: auto !important; min-width: 0 !important; max-width: 100% !important;
++      margin-left: 0 !important; margin-right: 0 !important;
++      box-sizing: border-box !important;
++    }
++    [data-ohos-tuanwei-mobile] article[id^="vsb_content"],
++    [data-ohos-tuanwei-mobile] .v_news_content,
++    [data-ohos-tuanwei-mobile] .fjxz a {
++      overflow-wrap: anywhere !important;
++    }
++    [data-ohos-tuanwei-mobile] [data-ohos-tuanwei-table] {
++      display: block !important; width: 100% !important;
++      min-width: 0 !important; max-width: 100% !important;
++      overflow-x: auto !important; box-sizing: border-box !important;
++      -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y;
++    }
++  `;
++''';
+diff --git a/lib/widgets/webview/tuanwei_notice_loader.dart b/lib/widgets/webview/tuanwei_notice_loader.dart
+new file mode 100644
+--- /dev/null
++++ b/lib/widgets/webview/tuanwei_notice_loader.dart
+@@ -0,0 +1,245 @@
++import 'dart:async';
++
++import 'package:bugaoshan/l10n/app_localizations.dart';
++import 'package:bugaoshan/utils/app_log.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_inappwebview/flutter_inappwebview.dart';
++
++import 'tuanwei_mobile_layout.dart';
++
++/// A page is revealed only after the current document confirms its layout.
++class TuanweiNoticeLoader extends ChangeNotifier {
++  TuanweiNoticeLoader({required Future<String> Function() loadScript})
++    : _loadScript = loadScript {
++    start();
++  }
++
++  final Future<String> Function() _loadScript;
++  Future<String>? _script;
++  Timer? _watchdog;
++  Completer<bool>? _ready;
++  int _generation = 0;
++  bool _disposed = false;
++  bool _preparing = false;
++  bool _isLoading = true;
++  bool _hasFailed = false;
++
++  int get generation => _generation;
++  bool get isLoading => _isLoading;
++  bool get hasFailed => _hasFailed;
++
++  bool _isCurrent(int loadId) =>
++      !_disposed && !_hasFailed && loadId == _generation;
++
++  void _cancelPending() {
++    _watchdog?.cancel();
++    _watchdog = null;
++    final ready = _ready;
++    _ready = null;
++    if (ready != null && !ready.isCompleted) ready.complete(false);
++  }
++
++  void start() {
++    if (_disposed) return;
++    _cancelPending();
++    final loadId = ++_generation;
++    _isLoading = true;
++    _hasFailed = false;
++    _preparing = false;
++    _watchdog = Timer(
++      const Duration(seconds: 30),
++      () => _fail(loadId, 'Page loading timed out'),
++    );
++    notifyListeners();
++  }
++
++  void _fail(int loadId, String reason) {
++    if (!_isCurrent(loadId)) return;
++    _cancelPending();
++    _isLoading = false;
++    _hasFailed = true;
++    AppLog.w('TuanweiNotice', reason);
++    notifyListeners();
++  }
++
++  void onDomReady(List<dynamic> arguments) {
++    if (_disposed ||
++        _hasFailed ||
++        arguments.length != 1 ||
++        arguments.first != _generation) {
++      return;
++    }
++    final ready = _ready;
++    if (ready != null && !ready.isCompleted) ready.complete(true);
++  }
++
++  Future<bool> prepare(InAppWebViewController controller, Uri? url) async {
++    if (_disposed || _hasFailed || !_isLoading || _preparing) return false;
++    final loadId = _generation;
++    _preparing = true;
++    try {
++      final currentUrl = await controller.getUrl().timeout(
++        const Duration(seconds: 2),
++      );
++      if (!_isCurrent(loadId)) return false;
++      if (url != null &&
++          currentUrl != null &&
++          url.removeFragment() != currentUrl.removeFragment()) {
++        return false;
++      }
++      final documentUrl = currentUrl ?? url;
++      if (documentUrl == null) throw StateError('Document URL unavailable');
++      final script = await (_script ??= _loadScript()).timeout(
++        const Duration(seconds: 5),
++      );
++      if (!_isCurrent(loadId)) return false;
++      if (script.isEmpty) throw StateError('Notice script unavailable');
++      final ready = Completer<bool>();
++      _ready = ready;
++      final source = tuanweiMobileScript(
++        beautifyScript: script,
++        url: documentUrl,
++        loadId: loadId,
++      );
++      final waiting = Stopwatch()..start();
++      // OH can emit onLoadStop at first paint, before the notice DOM exists.
++      // A false result has not run the upstream script, so retrying is safe.
++      while (_isCurrent(loadId) &&
++          waiting.elapsed < const Duration(seconds: 12)) {
++        final applied = await controller
++            .evaluateJavascript(source: source)
++            .timeout(const Duration(seconds: 3));
++        if (!_isCurrent(loadId)) return false;
++        if (applied == true) {
++          var confirmed = await ready.future.timeout(
++            const Duration(seconds: 2),
++            onTimeout: () => false,
++          );
++          if (!_isCurrent(loadId)) return false;
++          if (!confirmed) {
++            final proof = await controller
++                .evaluateJavascript(
++                  source: tuanweiMobileReadyProbe(
++                    url: documentUrl,
++                    loadId: loadId,
++                  ),
++                )
++                .timeout(const Duration(seconds: 2));
++            confirmed = proof == true;
++          }
++          if (!_isCurrent(loadId)) return false;
++          if (!confirmed) {
++            _fail(loadId, 'Document did not confirm mobile layout');
++            return false;
++          }
++          _watchdog?.cancel();
++          _watchdog = null;
++          _isLoading = false;
++          notifyListeners();
++          return true;
++        }
++        await Future<void>.delayed(const Duration(milliseconds: 250));
++      }
++      _fail(loadId, 'Notice content was not ready for mobile layout');
++    } catch (error) {
++      if (_isCurrent(loadId)) {
++        _fail(loadId, 'Mobile layout failed: $error');
++      }
++    } finally {
++      if (loadId == _generation) {
++        _preparing = false;
++        _ready = null;
++      }
++    }
++    return false;
++  }
++
++  Future<void> onMainFrameError(
++    InAppWebViewController controller,
++    Uri failedUrl,
++  ) async {
++    final loadId = _generation;
++    try {
++      final current = await controller.getUrl().timeout(
++        const Duration(seconds: 2),
++      );
++      if (!_isCurrent(loadId)) return;
++      if (current != null &&
++          current.removeFragment() != failedUrl.removeFragment()) {
++        return;
++      }
++      _fail(loadId, 'Notice page failed to load');
++    } catch (error) {
++      _fail(loadId, 'Cannot confirm failed document: $error');
++    }
++  }
++
++  Future<void> retry(InAppWebViewController? controller) async {
++    if (_disposed) return;
++    _script = null;
++    start();
++    final loadId = _generation;
++    if (controller == null) {
++      _fail(loadId, 'WebView unavailable');
++      return;
++    }
++    try {
++      await controller.reload().timeout(const Duration(seconds: 5));
++    } catch (error) {
++      _fail(loadId, 'Reload failed: $error');
++    }
++  }
++
++  @override
++  void dispose() {
++    _disposed = true;
++    _generation++;
++    _cancelPending();
++    super.dispose();
++  }
++}
++
++/// Fully opaque from the first frame, including translucent app themes.
++class TuanweiNoticeCover extends StatelessWidget {
++  const TuanweiNoticeCover({
++    super.key,
++    required this.failed,
++    required this.onRetry,
++    required this.onOpenBrowser,
++  });
++
++  final bool failed;
++  final VoidCallback onRetry;
++  final VoidCallback onOpenBrowser;
++
++  @override
++  Widget build(BuildContext context) {
++    final l10n = AppLocalizations.of(context)!;
++    return BlockSemantics(
++      child: ColoredBox(
++        color: Theme.of(context).scaffoldBackgroundColor.withAlpha(255),
++        child: Center(
++          child: failed
++              ? Column(
++                  mainAxisSize: MainAxisSize.min,
++                  children: [
++                    Text(l10n.loadFailed),
++                    const SizedBox(height: 16),
++                    FilledButton.icon(
++                      onPressed: onRetry,
++                      icon: const Icon(Icons.refresh),
++                      label: Text(l10n.retry),
++                    ),
++                    TextButton.icon(
++                      onPressed: onOpenBrowser,
++                      icon: const Icon(Icons.open_in_browser),
++                      label: Text(l10n.openInBrowser),
++                    ),
++                  ],
++                )
++              : const CircularProgressIndicator(),
++        ),
++      ),
++    );
++  }
++}
