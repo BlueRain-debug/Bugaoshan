@@ -126,15 +126,19 @@
 - 生成的插件注册器整体使用 `try/catch`，注册列表只有 `sqflite_ohos`，没有
   `sqflite_common_ffi`。旧 HAP 和 `entry/libs` 中的 glibc SQLite 库是确定的打包违规项，
   但当前入口没有显式加载它的路径，静态证据不能证明它在启动时实际进入动态链接过程。
-- Flutter embedding 在 `onCreate()` 注册全局未处理异常监听器；收到 ArkTS 未处理异常后会
-  调用 `appRecovery.saveAppState()` 和 `appRecovery.restartApp()`。这能让一次启动异常表现为
-  退出或反复重启，但监听器在 Debug 与 Release 都存在，只能解释表现，不能证明最初异常来源。
+- 锁定的 Flutter embedding 在 `onCreate()` 注册全局未处理异常监听器；收到 ArkTS 未处理
+  异常后原本会调用 `appRecovery.saveAppState()` 和 `appRecovery.restartApp()`，使一次启动
+  异常表现为退出或反复重启。当前 embedding 补丁保留 `errorManager` 观测器与错误日志，
+  只移除状态保存和主动重启；官方 API 说明观测器捕获异常时进程不会退出，因此后续构建
+  不会再由该回调触发重启循环。监听器在 Debug 与 Release 都存在，这项修复仍不能证明
+  最初异常来源。
 - HAP 同时声明 x86_64 Flutter/AOT 库，但 WebView 原生库只构建 ARM64；这会阻断
   x86_64 环境，不能解释同一 ARM64 API 26 真机上的 Debug/Release 差异。
 
 静态审计没有找到能解释 API 26 上“Debug 正常、Release 启动即退出”的确定代码路径。
 已经排除最低 API 20、签名、ArkGuard、AOT 入口缺失以及 Debug/Release HAR 混用；确定需要
-修复的是 glibc SQLite 打包违规，目前已从后续 OH 依赖图排除，但不能据此宣称闪退根因已
-定位。要区分 Flutter AOT 装载、Native 崩溃、ArkTS 未处理异常和 Dart 启动失败，必须使用
+修复的是 glibc SQLite 打包违规，目前已从后续 OH 依赖图排除；embedding 的自动恢复回调
+也已改为仅记录未处理异常，不再保存状态并主动重启。两项修复都不能据此宣称最初异常来源
+已定位。要区分 Flutter AOT 装载、Native 崩溃、ArkTS 未处理异常和 Dart 启动失败，必须使用
 发生闪退的那一份 Release HAP 对应的 HiLog、`JsError` 或 `CppCrash` 记录；构建成功日志不
 包含设备运行阶段证据。

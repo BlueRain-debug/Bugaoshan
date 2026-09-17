@@ -1,4 +1,6 @@
-# Flutter OH 嵌入层主题补丁
+# Flutter OH 嵌入层补丁
+
+## 主题切换
 
 系统切换深浅色时，锁定的 Flutter OH 嵌入层在
 `FlutterAbilityAndEntryDelegate.changeColorMode()` 对平台节点调用 `rebuild()`。
@@ -15,6 +17,21 @@ WebView 内部另持有一个 BuilderNode，因此还需
 外层组件的 `onWillApplyTheme()` 将配置更新传给已有的 WebBuilderNode。
 三个通知页的 `WebDarkMode.Auto` 和上游深浅媒体查询继续负责网页配色，
 不新增 JS 配色、reload 或加载遮罩处理。
+
+## 未处理的 ArkTS 异常
+
+锁定的 Flutter OH `FlutterAbility.onCreate()` 注册了进程级 `errorManager` 观测器，
+但回调在记录异常后会调用 `appRecovery.saveAppState()` 和 `restartApp()`。
+启动期间只要出现一次未处理的 ArkTS 异常，应用就会被主动重启，并可能重复进入同一路径。
+
+[HarmonyOS `errorManager.on('error')` API 参考](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-app-ability-errormanager)
+说明，观测器捕获异常时应用进程不会退出。补丁保留进程级观测器、错误日志以及
+`onDestroy()` 中的注销，只移除应用状态保存和主动重启。这样异常仍可通过 HiLog 和系统
+`JsError` 信息定位，同时不会被 embedding 转换成自动重启循环。
+
+该改动修复的是异常后的恢复行为，不代表已经定位或修复触发异常的业务代码。若 Release
+启动仍出现页面未完成初始化，应以同一构建产物的 `onUnhandledException` 日志和 `JsError`
+调用栈继续定位首个异常。
 
 ## 构建接入
 
@@ -39,7 +56,7 @@ DevEco 和命令行构建均使用同一接入。
 
 ## 维护和验收
 
-[manifest.json](manifest.json) 固定目标包、引擎提交和源文件哈希。
+[manifest.json](manifest.json) 固定目标包、引擎提交以及主题和异常处理源文件的哈希。
 升级 SDK 时，应核对所用架构及 debug/profile/release 模式的 HAR，重新审查源码、补丁和哈希，
 保持版本匹配检查有效。
 
