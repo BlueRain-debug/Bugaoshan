@@ -142,3 +142,35 @@
 已定位。要区分 Flutter AOT 装载、Native 崩溃、ArkTS 未处理异常和 Dart 启动失败，必须使用
 发生闪退的那一份 Release HAP 对应的 HiLog、`JsError` 或 `CppCrash` 记录；构建成功日志不
 包含设备运行阶段证据。
+
+## Release NativeCrash 后续定位
+
+2026-09-17 的 MatePad Mini Release 故障日志记录了启动 3 秒后的
+`SIGSEGV(SEGV_MAPERR)`。故障线程是进程主线程，`#01` 至 `#31` 位于 AOT
+`libapp.so`，之后进入 `libflutter.so`，因此 embedding 的 ArkTS 未处理异常监听器无法捕获
+这次 NativeCrash。本地 11:29 构建产物的 Build ID
+`e0344fe19d5aef890e4f83395954792c` 与故障报告一致，确认分析对象就是发生崩溃的
+`libapp.so`。进程映射只包含系统 `libsqlite.z.so`，先前错误打包的 glibc
+`libsqlite3.so` 已消失，说明依赖排除生效但不是这次崩溃的完整修复。
+
+崩溃前的时序使 `sqflite_ohos` 自建 worker 成为当前最强候选：
+
+- 插件注册后立即创建 `SqfliteWorker`，运行记录指向 `entry/ets/modules.abc`；
+- Ark VM 报告 EAWorker 已达到上限，worker 随后执行到 Flutter embedding 的
+  `DynamicView/dynamicView.ts`，因 worker 环境没有 ArkUI 全局符号而报
+  `Observed is not defined`；
+- 同一 worker 还无法加载 `@ohos:app.ability.Want`；
+- RDB 后台线程随后连续完成 schema `0 -> 1 -> 2 -> 3`，紧接着 Dart AOT 主线程发生
+  非法地址跳转。
+
+`sqflite_ohos 2.4.2` 的 worker 实现是该依赖在 2026-07-27 新增的路径，其后提交历史中
+已有一次明确的 worker SIGSEGV 修复。当前设备日志不能仅凭相邻时序证明因果，但跨 worker
+传递 message、Context 与 reply 是故障前唯一明确失败的应用专属执行路径。为切断这条路径，
+[插件补丁](../../flutter/patches/plugins/sqflite-main-thread-channel.patch)恢复 worker 引入前
+同一 2.4.2 代码线的 `MethodChannel` 调度，并移除 worker 入口声明；`Database` 与
+`DatabaseHelper` 保持锁定 revision 的当前实现，不回退事务和错误处理修复。
+
+该变更会让超大 batch 的消息解码与数据库调用回到平台主线程，可能重新暴露插件上游针对
+极端数据量记录的 `THREAD_BLOCK_6S` 风险。Bugaoshan 启动阶段只执行少量建表和缓存查询，
+当前优先级是消除可复现的冷启动 NativeCrash。新 Release 包仍需在同一设备验证，并确认
+日志中不再出现 `SqfliteWorker`、`Observed is not defined` 和对应 SIGSEGV。
