@@ -360,6 +360,8 @@
     "exportScheduleSelectCalendar": "Choose Calendar",
     "exportScheduleCalendarDefault": "Default calendar",
     "copySuffix": " (Copy)",
+    "copyCourseTitle": "New Copy",
+    "copyCourseSave": "Save Copy",
     "notThisWeek": "[Not]",
     "actualCurrentWeek": "Week {week}",
     "totalWeeksSubtitle": "{count} weeks",

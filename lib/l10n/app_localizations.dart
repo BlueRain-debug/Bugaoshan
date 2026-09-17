@@ -1747,6 +1747,18 @@ abstract class AppLocalizations {
   /// **' (Copy)'**
   String get copySuffix;
 
+  /// No description provided for @copyCourseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Copy'**
+  String get copyCourseTitle;
+
+  /// No description provided for @copyCourseSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Copy'**
+  String get copyCourseSave;
+
   /// No description provided for @notThisWeek.
   ///
   /// In en, this message translates to:
