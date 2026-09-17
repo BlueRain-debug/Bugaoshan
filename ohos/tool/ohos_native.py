@@ -14,12 +14,13 @@ import sys
 import tempfile
 
 from ohos_links import generated_dart, validate_codegen_isolation, workspace_lock, workspace_path
+from ohos_toolchain import validate_flutter_artifacts
 
 
 RUNTIME_FILE = ".flutter-runtime.json"
 ENV_KEYS = (
     "OHOS_SDK_HOME", "HOS_SDK_HOME", "DEVECO_SDK_HOME",
-    "PUB_HOSTED_URL", "FLUTTER_STORAGE_BASE_URL",
+    "PUB_HOSTED_URL", "FLUTTER_STORAGE_BASE_URL", "FLUTTER_OHOS_STORAGE_BASE_URL",
 )
 
 
@@ -272,17 +273,23 @@ def write_properties(native, sdk, version):
 
 def refresh_native(root):
     from build_ohos import (
-        command_output, prepare_workspace, sdk_commands, source_git_metadata,
+        command_output, load_toolchain, package_root, prepare_workspace, sdk_commands, source_git_metadata,
         sync_workspace_version, validate_ohos_plugins,
     )
     root = root.resolve()
     with workspace_lock(root):
         runtime = load_runtime(root)
+        sdk = Path(runtime["flutterSdk"])
+        # DevEco may reuse its task graph after the shared SDK cache changes.
+        validate_flutter_artifacts(sdk, load_toolchain(root)["flutter"])
+        if package_root(workspace_path(root), "flutter") != (sdk / "packages/flutter").resolve():
+            raise PreparationRequiredError(
+                "鸿蒙工作区仍使用其他 Flutter framework（可能是旧诊断副本），请重新执行 DevEco Sync。"
+            )
         workspace = prepare_workspace(root)
         # Link/ARB refresh is allowed; dependency resolution belongs to --prepare-only.
         if runtime["packageFingerprint"] != resolved_fingerprint(workspace):
             raise PreparationRequiredError("组装后的鸿蒙依赖声明变化，请重新执行 DevEco Sync。")
-        sdk = Path(runtime["flutterSdk"])
         flutter, dart = sdk_commands(sdk)
         env = runtime_environment(root, runtime)
         generate_code(root, workspace, flutter, dart, env)
@@ -295,6 +302,24 @@ def refresh_native(root):
         write_properties(native, sdk, sync_workspace_version(root, workspace))
         runtime["dartDefines"] = source_git_metadata(root, runtime["git"])
         write_json(native / RUNTIME_FILE, runtime)
+
+
+def _with_default_split_debug_info(arguments, workspace):
+    """Keep AOT symbols for profile/release unless Hvigor supplied a path."""
+    result = list(arguments)
+    if any(argument.startswith("-dSplitDebugInfo=") for argument in result):
+        return result
+    mode = next((
+        argument.split("=", 1)[1]
+        for argument in result
+        if argument.startswith("-dBuildMode=")
+    ), None)
+    if mode not in ("profile", "release"):
+        return result
+    index = result.index("assemble") + 1
+    symbol_dir = workspace / "build" / "symbols" / mode
+    result.insert(index, f"-dSplitDebugInfo={symbol_dir}")
+    return result
 
 
 def assemble(root, arguments):
@@ -320,6 +345,7 @@ def assemble(root, arguments):
                     defines[key] = value
             else:
                 rest.append(argument)
+        rest = _with_default_split_debug_info(rest, workspace)
         encoded = ",".join(base64.b64encode(f"{key}={value}".encode()).decode() for key, value in defines.items())
         # Insert the option before the target names; subprocess preserves spaces in each argument.
         index = rest.index("assemble") + 1

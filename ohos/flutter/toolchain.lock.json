@@ -6,7 +6,16 @@
     "repositoryUrl": "https://gitcode.com/CPF-Flutter/flutter_flutter.git",
     "frameworkRevision": "adaf911c35c9136a7d18fc424d714c9ec7724e60",
     "engineRevision": "42d3d75a56efe1a2e9902f52dc8006099c45d937",
-    "dartSdkVersion": "3.11.5"
+    "dartSdkVersion": "3.11.5",
+    "ohosArtifacts": {
+      "engineRevision": "3fb08d34b6f96a15fbb219b903c9d0ab37b6c2e0",
+      "harRevision": "3fb08d34b6f96a15fbb219b903c9d0ab37b6c2e0",
+      "dartSdkRevision": "ee3baaa7621306ad8eaa2c4961abec5cbf8672a6",
+      "platformSha256": {
+        "flutter_patched_sdk": "6bb2231472fc399bd1bc75e6344d4380cfb94b1db21705a7b1a36f1ea1c914b8",
+        "flutter_patched_sdk_product": "0945faf70f121e17288d4e30b9ffcf77d9f3b2a842ccbf628ba9087f796127b3"
+      }
+    }
   },
   "harmonyOs": {
     "apiVersion": "26",

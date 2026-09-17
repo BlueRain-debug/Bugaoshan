@@ -19,7 +19,7 @@ SPEC.loader.exec_module(build_ohos)
 
 
 class OhosBuildTest(unittest.TestCase):
-    def test_only_supported_stable_sdk_line_is_accepted(self):
+    def test_only_locked_stable_sdk_is_accepted(self):
         self.assertEqual(
             build_ohos.validate_sdk_version({"flutterVersion": "3.41.10-ohos-1.0.1"}),
             "3.41.10-ohos-1.0.1",
@@ -69,6 +69,17 @@ class OhosBuildTest(unittest.TestCase):
         wrong_info = dict(info, engineRevision="other-engine")
         with self.assertRaises(ValueError):
             build_ohos.validate_flutter_sdk(Path("sdk"), wrong_info, expected, {})
+
+    def test_supported_sdk_version_is_read_from_lock_instead_of_a_fixed_release(self):
+        version = "4.0.0-ohos-2.1.0"
+        with patch.object(build_ohos, "load_toolchain", return_value={
+            "flutter": {"flutterVersion": version},
+        }):
+            self.assertEqual(
+                build_ohos.validate_sdk_version({"flutterVersion": version}), version,
+            )
+            with self.assertRaisesRegex(ValueError, "版本不匹配"):
+                build_ohos.validate_sdk_version({"flutterVersion": "3.41.10-ohos-1.0.1"})
 
     def test_flutter_config_provides_harmony_sdk_without_a_repo_path(self):
         path = build_ohos.parse_flutter_config(

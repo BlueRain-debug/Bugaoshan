@@ -147,7 +147,8 @@ class OhosNativeTest(unittest.TestCase):
         }
         explicit = base64.b64encode(b"GIT_TAG=override").decode()
         arguments = [str(flutter), "assemble", f"--DartDefines={explicit}",
-                     "-dOhosArchs=ohos-arm64 ohos-x64", "debug_ohos_application"]
+                     "-dBuildMode=release", "-dOhosArchs=ohos-arm64 ohos-x64",
+                     "release_ohos_application"]
         with (
             patch.object(ohos_native, "load_runtime", return_value=runtime),
             patch.object(ohos_native, "refresh_native"),
@@ -159,6 +160,10 @@ class OhosNativeTest(unittest.TestCase):
         self.assertEqual(cwd, self.workspace)
         self.assertEqual(command[0], str(flutter))
         self.assertIn("-dOhosArchs=ohos-arm64 ohos-x64", command)
+        self.assertIn(
+            f"-dSplitDebugInfo={self.workspace / 'build/symbols/release'}",
+            command,
+        )
         self.assertEqual(env["PUB_CACHE"], str(self.native / ".pub-cache"))
         encoded = next(a.split("=", 1)[1] for a in command if a.startswith("--DartDefines="))
         values = dict(base64.b64decode(value).decode().split("=", 1) for value in encoded.split(","))
@@ -167,6 +172,31 @@ class OhosNativeTest(unittest.TestCase):
         self.assertIn("BUILD_TIME", values)
         self.assertEqual(upstream_pub.read_text(), "upstream lock\n")
         self.assertFalse((self.workspace / "ohos").exists())
+
+    def test_default_split_debug_info_preserves_explicit_path_and_debug_mode(self):
+        profile = ["flutter", "assemble", "-dBuildMode=profile", "profile_ohos_application"]
+        command = ohos_native._with_default_split_debug_info(profile, self.workspace)
+        self.assertIn(
+            f"-dSplitDebugInfo={self.workspace / 'build/symbols/profile'}",
+            command,
+        )
+        self.assertEqual(profile, [
+            "flutter", "assemble", "-dBuildMode=profile", "profile_ohos_application",
+        ])
+
+        explicit = f"-dSplitDebugInfo={self.root / 'symbols with spaces'}"
+        release = ["flutter", "assemble", "-dBuildMode=release", explicit,
+                   "release_ohos_application"]
+        self.assertEqual(
+            ohos_native._with_default_split_debug_info(release, self.workspace),
+            release,
+        )
+
+        debug = ["flutter", "assemble", "-dBuildMode=debug", "debug_ohos_application"]
+        self.assertEqual(
+            ohos_native._with_default_split_debug_info(debug, self.workspace),
+            debug,
+        )
 
     def test_registrant_uses_resolved_packages_and_handles_duplicate_class_names(self):
         result = ohos_native.render_registrant([

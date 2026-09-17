@@ -15,7 +15,12 @@
 冷启动时加载整个 `modules.abc`，在 worker 环境解析 Flutter ArkUI 模块；设备日志同时出现
 `Observed is not defined`、`@ohos:app.ability.Want` 加载失败，随后发生 Native SIGSEGV。
 此补丁保留当前版本的数据库实现，仅改变平台通道的调度位置；代价是超大 batch 的解码
-和数据库调用重新占用平台主线程。
+和数据库调用重新占用平台主线程。后续 Release 仍发生 Native SIGSEGV，已排除 worker 是
+该崩溃的直接原因。
+
+`url-launcher-ability-kit.patch` 将 `url_launcher_ohos 6.3.2` 对 `Want` 和
+`wantConstant` 的静态导入迁移到 API 26 的 `@kit.AbilityKit`。插件由生成的注册器静态导入，
+因此注册器内部的 `try/catch` 无法兜住旧模块在文件加载阶段产生的错误。
 
 共享 Dart 覆盖文件见 [overrides/](../../overrides/README.md)，翻译条目见 [l10n/](../../l10n/README.md)；Flutter OH HAR 补丁见
 [embedding/](../embedding/README.md)。完整行为与历史依据见

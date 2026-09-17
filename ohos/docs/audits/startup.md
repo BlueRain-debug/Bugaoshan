@@ -107,6 +107,9 @@
   同版本符号匹配。SIGABRT 还应按
   [官方说明](https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-stability-cppcrash-sigabrt-fault-mode)
   优先检查 `LastFatalMessage`。
+- [应用调试 FAQ：SO 错误](https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs/faqs-app-debugging-17)
+  中的 `00403003 / So Error in Line X` 表示 DevEco 没有使用匹配且包含调试信息的 SO 完成
+  地址解析；它是符号化失败提示，不是独立于 `SIGSEGV` 的新崩溃类型。
 
 ### 现有产物与源码证据
 
@@ -170,20 +173,64 @@ worker 是 NativeCrash 原因的假设。保留主线程调度补丁仍可避免
 `_findBinaryMessenger()` 读取 `ServicesBinding.rootIsolateToken`；应用及解析后的依赖没有
 其他显式读取，唯一 `compute()` 也不在后台 isolate 使用平台通道。
 
-[framework 补丁](../../flutter/patches/framework/root-isolate-token.patch)让鸿蒙构建直接使用
+此前的 [framework 诊断补丁](../../flutter/patches/framework/README.md)让鸿蒙构建直接使用
 根 `ServicesBinding.defaultBinaryMessenger`，从而不再调用损坏的 native getter。构建脚本
 把锁定 SDK 的 Flutter package 复制到忽略的工作目录，校验 framework 提交和源文件哈希后
 应用补丁，再改写工作区 `package_config.json`；本机 SDK 保持只读。代价是该鸿蒙构建不支持
 后台 isolate 平台通道，当前应用没有这种用法。
 
+最新 `00403003` 报告列出的 `libapp.so` Build ID 为
+`e0344fe1e4ef657c0e4f83392bb27a23`，与本地补丁后 Release AOT 产物一致；该产物已不包含
+`RootIsolateToken` / `GetRootIsolateToken` 字符串，却仍从 `libapp.so+0x4ca5c8` 的通用
+`blr x9` native 调用桩崩溃。这证明补丁只绕过了第一个已知触发点，没有修复 Release AOT
+的 native resolver。该报告只包含从 `#01` 开始的有限栈，没有 `#00`、故障地址、寄存器和
+进程映射，无法据此确认这一次被错误解析的具体 native 函数；继续增加 framework native
+绕过缺少证据。
+
 同一轮日志还确认了两个独立启动缺陷：
 
 - `EntryAbility.ets` 的旧 `@ohos.app.ability.Want` 导入在 API 26 上无法加载；入口和卡片
-  Ability 已统一迁移到 `@kit.AbilityKit`；
+  Ability 已迁移到 `@kit.AbilityKit`，但 `url_launcher_ohos 6.3.2` 仍静态导入旧的
+  `Want` / `wantConstant` 模块。插件补丁现一并迁移这两个导入；
 - 默认引擎已由 `createAndRunEngineByOptions()` 执行 Dart 入口，随后
   `onWindowStageCreate()` 又重复执行，产生 `Attempted to run a DartExecutor that is already
   running`。embedding 补丁现先检查 DartExecutor 的实际状态，仅在尚未运行时执行入口。
 
-修复后的 Release 包仍需在同一设备冷启动验证。验收重点是主线程不再访问
-`libflutter.so+0xc64728` 对应的截断地址、首屏平台通道正常工作，并确认没有旧 Want 模块
-加载错误和 DartExecutor 重复执行日志。
+后续 Profile/Release 构建会在 `.flutter-workspace/build/symbols/<mode>/` 保存各 ABI 的 Dart
+AOT symbols，并在模块构建配置中关闭可控的原生符号剥离。下一份故障材料应保留完整原始日志
+中的 `#00`、fault address、寄存器（尤其 native 调用寄存器）、进程 maps、HAP 内实际 SO 的
+Build ID 和同次构建 symbols。`libflutter.so` 帧还需要 engine revision
+对应的未剥离引擎符号，并核对实际 SO 的 Build ID；工具链锁中的上游 revision
+`42d3d75a56efe1a2e9902f52dc8006099c45d937` 不能单独标识 OH 引擎产物。验收同时确认旧 Want
+模块加载错误和 DartExecutor 重复执行日志是否消失。
+
+## 14:48 故障的后续结论：平台缓存 ABI 错位
+
+同次 `app.ohos-arm64.symbols` 与 `libapp.so` 将新故障定位到
+`WidgetsFlutterBinding.ensureInitialized → RestorationManager.initChannels →
+ChannelBuffers.setListener → _scheduleMicrotask`。Build ID 为
+`e0344fe1f58f7591de22cf26f4588bb1`。实际截断发生在
+`Native._ffi_resolver.#ffiClosure0` 的返回值处理：`sxtw x1, w0` 将原生函数地址按 32 位
+符号扩展，最终从通用 native 调用桩跳到 `0xffffffffb4e65370`。
+
+本机 product 和非 product 两份 `platform_strong.dill` 内嵌源码均把 `ohosArm64`
+排在 ABI 序号 6，序号 23 则对应 `windowsIA32`；当前 OH Dart 编译器使用序号 23
+表示 `ohosArm64`。内嵌源码检查没有完整反序列化 kernel 元数据，但这一差异与实际生成的
+32 位截断指令吻合。官方 OH artifact revision
+`3fb08d34b6f96a15fbb219b903c9d0ab37b6c2e0` 的两个平台 ZIP 已核验，排序与当前编译器一致，
+文件哈希与本机旧缓存不同。
+
+因此首选修复收敛为：刷新同版本 SDK 缓存并核验哈希，再清理并重新生成 Release AOT/HAP。
+此前 framework 补丁仅用于绕过第一个触发点，当前已撤销构建接入；缓存修复后需重新准备并验收原始路径。
+不能据旧故障直接断言官方同版本引擎必然存在该缺陷，也不能仅凭刷新命令成功就宣称已修复。
+完整命令、校验值、补丁退出和失败分支见
+[Release 启动 SIGSEGV 修复步骤](release-aot-cache-repair.md)。定位阶段未执行 SDK 更新、构建或真机验证。
+
+仓库的后续修复增加了 OH engine/HAR/Dart 提交和两份平台缓存 SHA-256 的锁定，
+首次准备与 DevEco 增量构建都会执行只读校验，防止错误缓存再次进入 AOT 编译。
+诊断补丁副本不再重写 Flutter package 路径；旧工作区会触发重新准备。
+新增回归测试尚待开发者执行，源码改动不等于新 Release 包已经通过真机验收。
+
+用户随后授权刷新共享 SDK 缓存。本机已执行强制 precache 并核对两份平台文件哈希与
+OH engine/HAR/Dart 提交，全部符合锁定值；旧产物和日志已备份。
+应用缓存清理、依赖解析、构建、测试与真机调试仍由用户执行。

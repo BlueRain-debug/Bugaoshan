@@ -13,7 +13,7 @@
 | [source-manifest.json](source-manifest.json) | 覆盖清单、逐文件及翻译条目的上游基线 |
 | [l10n/](l10n/README.md) | 按键合并的鸿蒙 ARB 条目 |
 | [patches/plugins/](patches/plugins/README.md) | 第三方插件补丁、版本约束及旧缓存迁移 |
-| [patches/framework/](patches/framework/README.md) | Flutter framework Release AOT 兼容补丁及源码哈希 |
+| [patches/framework/](patches/framework/README.md) | 已移除的 Flutter framework 诊断补丁记录 |
 | [patches/embedding/](patches/embedding/README.md) | Flutter OH HAR 补丁、包版本与源码哈希 |
 | [patches/hvigor/](patches/hvigor/README.md) | SDK Hvigor 路径适配及锁定源码哈希 |
 

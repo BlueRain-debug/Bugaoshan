@@ -33,6 +33,19 @@ python ohos/tool/build_ohos.py --help
 普通构建先完成与 `--prepare-only` 相同的准备，再在根 `ohos/` 调用 Hvigor Sync 和
 `assembleHap`。它和 DevEco 使用同一个原生工程及 Flutter 适配入口。
 
+Profile 和 Release 的 Flutter assemble 默认写出 Dart AOT 符号文件：
+
+```text
+ohos/.flutter-workspace/build/symbols/<profile|release>/app.ohos-<abi>.symbols
+```
+
+Hvigor 已显式传入 `-dSplitDebugInfo` 时保留其路径，不重复注入；Debug 构建不生成这组 AOT
+符号。`entry/build-profile.json5` 同时要求原生打包流程不剥离可保留的符号，但它不能恢复
+Flutter 预编译产物中已经删除的符号。解析 `libflutter.so` 帧仍需取得与实际 SO 的 Build ID
+匹配的未剥离 OH 引擎符号；工具链锁中的上游 engine revision
+`42d3d75a56efe1a2e9902f52dc8006099c45d937` 不能单独标识 OH 产物。
+本次 SDK 平台缓存不一致的处理见 [Release 启动修复步骤](../docs/audits/release-aot-cache-repair.md)。
+
 最终检查并输出的文件固定为：
 
 ```text
@@ -55,6 +68,9 @@ Windows 创建符号链接需要启用开发者模式或使用管理员 PowerShe
 当前基线是 Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`、HarmonyOS API 26，
 精确版本、来源及提交以 [工具链锁](../flutter/toolchain.lock.json) 为准。
 脚本核对 SDK 正式标签、framework/engine 提交、Dart、DevEco、Hvigor、OHPM 和 Node。
+同时校验锁文件中 OH engine/HAR/Dart 提交，以及普通和 product 平台 `.dill` 的 SHA-256。
+首次准备和 DevEco 增量构建均执行只读检查；发现不配套缓存会在生成代码/AOT 前停止，
+不会静默更新共享 SDK。版本字符串相同不能代替平台文件校验。
 应用最低安装 API 20 与编译 SDK 版本不同，见 [API 20 兼容性](../docs/compatibility/api20.md)。
 
 | 参数 | 默认值 | 含义 |
@@ -132,9 +148,10 @@ Sync 会自动重新执行完整准备。`--prepare-only` 保留为手动排查�
 SDK 本体保持原样。普通命令行构建不再使用 `flutter build hap`，
 因为该命令假定原生项目位于当前 Flutter 包内部的 `ohos/`。
 
-[Flutter framework 补丁](../flutter/patches/framework/README.md) 在 Pub 解析后复制锁定 SDK 的
-`packages/flutter` 到 `.flutter-workspace/tooling/flutter-framework/`，随后把工作区的
-`package_config.json` 指向补丁副本。该流程不改 SDK，且通过提交与源文件哈希拒绝版本漂移。
+[Flutter framework 诊断补丁](../flutter/patches/framework/README.md) 已停用。
+Pub 解析后直接使用锁定 SDK 的 `packages/flutter`，恢复原始 RootIsolateToken 路径。
+旧工作区会因工具链锁变化而重新准备；仍指向诊断副本的 package_config 也会被增量入口拒绝。
+平台缓存修复与构建验收见 [修复步骤](../docs/audits/release-aot-cache-repair.md)。
 
 ## 依赖更新、检查与签名
 

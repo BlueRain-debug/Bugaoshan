@@ -21,6 +21,10 @@
 [toolchain.lock.json](flutter/toolchain.lock.json)。构建脚本会校验这些信息，
 仅支持锁定的正式工具链。
 
+准备和 DevEco 增量构建还会核对 OH 产物提交与两份平台 `.dill` 的 SHA-256，
+防止 SDK 版本相同但平台缓存不配套造成 Release 原生函数地址截断。
+检查失败时按 [缓存修复步骤](docs/audits/release-aot-cache-repair.md)刷新 SDK，再重新准备和构建。
+
 应用最低安装版本配置为 HarmonyOS API 20，编译和目标 SDK 使用 API 26。
 API 20 的能力差异及验证范围见 [兼容性说明](docs/compatibility/api20.md)；
 动态图标切换采用 API 26 接口，低版本点击入口时显示不支持提示。
@@ -39,6 +43,17 @@ Windows 需要启用系统开发者模式，或由管理员 PowerShell 创建符
 ## 构建
 
 完整参数、执行阶段、产物与签名说明及常见问题见 [构建脚本使用说明](tool/README.md)。
+
+全新克隆不需要复制旧目录中的 `.flutter-workspace/`、`.pub-cache/`、`local.properties`
+或任何构建产物。按上述环境要求安装工具，在仓库根目录显式指定本机 SDK 完成首次准备：
+
+```powershell
+python ohos/tool/build_ohos.py --prepare-only --flutter-sdk '<Flutter OH SDK 根目录>' --ohos-sdk '<DevEco SDK 根目录>'
+```
+
+路径只记录到被忽略的本地运行配置，不写入版本库。若提示平台缓存不匹配，先使用所选的
+同一套 Flutter OH SDK 执行 `flutter precache --ohos --universal --force`，再重新准备。
+新克隆中的原生工程使用无签名基线，真机签名由 DevEco 在本机配置。
 
 DevEco Studio 可以直接打开仓库中的 `ohos/` 并执行 Sync。首次 Sync 会自动完成 Flutter OH
 环境准备；运行配置缺失、仓库或 SDK 路径变化、依赖声明或锁文件变化时也会自动重新准备。
@@ -201,5 +216,6 @@ python ohos/tool/generate_ohos_dependency_inventory.py
 - [依赖替代矩阵](docs/dependencies/replacements.md)与[完整依赖对照](docs/dependencies/lock-inventory.md)。
 - [API 20 兼容性说明](docs/compatibility/api20.md)。
 - [通知页与 WebView 排查记录](docs/audits/notice-webview.md)。
+- [Release 启动 SIGSEGV 修复步骤](docs/audits/release-aot-cache-repair.md)：平台缓存 ABI 错位、哈希校验、重建与真机验收。
 - [课表卡片、动态图标和设备信息](docs/phases/phase5.md)。
 - [同步计划](docs/sync-plan.md)：阶段进度、验证记录和发布安排。

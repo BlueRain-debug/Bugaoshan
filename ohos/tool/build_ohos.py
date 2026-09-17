@@ -15,7 +15,7 @@ from urllib.request import url2pathname
 import zipfile
 
 from ohos_patches import apply_dependency_patches
-from ohos_framework import stage_flutter_framework
+from ohos_toolchain import validate_flutter_artifacts
 from ohos_sources import SOURCE_MANIFEST, plan_source_overrides
 from ohos_links import (
     LinkedSource, assemble_linked_workspace, generated_dart,
@@ -24,7 +24,7 @@ from ohos_links import (
 
 
 ROOT = Path(__file__).resolve().parents[2]
-STABLE_SDK_VERSION = re.compile(r"3\.41\.10-ohos-1\.\d+\.\d+")
+STABLE_SDK_VERSION = re.compile(r"\d+\.\d+\.\d+-ohos-\d+\.\d+\.\d+")
 TOOLCHAIN_LOCK = "toolchain.lock.json"
 PUBSPEC_DEPENDENCIES = "pubspec_dependencies.json"
 REQUIRED_OHOS_PLUGINS = (
@@ -54,13 +54,15 @@ SOURCE_FILES = (
 
 
 def validate_sdk_version(info, expected=None):
+    if expected is None:
+        expected = load_toolchain(ROOT)["flutter"]["flutterVersion"]
     version = info.get("flutterVersion", "")
-    if not STABLE_SDK_VERSION.fullmatch(version):
+    if not isinstance(version, str) or not STABLE_SDK_VERSION.fullmatch(version):
         raise ValueError(
-            f"需要 Flutter OH 3.41.10-ohos-1.x.x 稳定版，当前为 {version!r}。"
+            f"需要锁定的 Flutter OH 正式版 {expected}，当前为 {version!r}。"
             "不支持 canary、beta 或 dev 版本。"
         )
-    if expected is not None and version != expected:
+    if version != expected:
         raise ValueError(f"Flutter OH 版本不匹配：需要 {expected}，当前为 {version}。")
     return version
 
@@ -568,6 +570,7 @@ def main(argv=None):
     env = build_environment(sdk)
     toolchain = load_toolchain(ROOT)
     version = validate_flutter_sdk(sdk, info, toolchain["flutter"], env)
+    validate_flutter_artifacts(sdk, toolchain["flutter"])
     harmony_sdk = resolve_harmony_sdk(flutter, env, args.ohos_sdk)
     validate_harmony_toolchain(harmony_sdk, toolchain["harmonyOs"])
     for name in ("OHOS_SDK_HOME", "HOS_SDK_HOME", "DEVECO_SDK_HOME"):
@@ -596,7 +599,6 @@ def build_workspace(args, flutter, dart, env):
         sdk = Path(flutter).parent.parent.resolve()
         if package_root(workspace, "flutter") != (sdk / "packages/flutter").resolve():
             raise ValueError("Dart package_config 中的 flutter package 不属于锁定 SDK。")
-        stage_flutter_framework(workspace, sdk, native)
         patch_flutter_secure_storage(workspace)
         apply_dependency_patches(workspace, native / "flutter", package_root)
         validate_ohos_plugins(workspace)
