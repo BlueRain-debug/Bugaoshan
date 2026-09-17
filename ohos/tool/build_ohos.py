@@ -15,6 +15,7 @@ from urllib.request import url2pathname
 import zipfile
 
 from ohos_patches import apply_dependency_patches
+from ohos_framework import stage_flutter_framework
 from ohos_sources import SOURCE_MANIFEST, plan_source_overrides
 from ohos_links import (
     LinkedSource, assemble_linked_workspace, generated_dart,
@@ -592,6 +593,10 @@ def build_workspace(args, flutter, dart, env):
         version_name, version_code = sync_workspace_version(ROOT, workspace)
         print(f"鸿蒙应用版本：{version_name}+{version_code}", flush=True)
         resolve_dependencies(flutter, workspace, env, args.update_lockfile)
+        sdk = Path(flutter).parent.parent.resolve()
+        if package_root(workspace, "flutter") != (sdk / "packages/flutter").resolve():
+            raise ValueError("Dart package_config 中的 flutter package 不属于锁定 SDK。")
+        stage_flutter_framework(workspace, sdk, native)
         patch_flutter_secure_storage(workspace)
         apply_dependency_patches(workspace, native / "flutter", package_root)
         validate_ohos_plugins(workspace)

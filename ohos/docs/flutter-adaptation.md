@@ -14,12 +14,14 @@
 | `ohos/tool/ohos_sources.py` | 只读基线检查、完整文件复制和翻译合并 |
 | `ohos/tool/ohos_links.py` | 建立共用源码链接、维护链接清单、检查代码生成隔离 |
 | `ohos/tool/ohos_native.py` | 连接根原生工程，刷新生成代码、插件注册及版本属性 |
+| `ohos/tool/ohos_framework.py` | 校验并暂存鸿蒙专用 Flutter framework 补丁副本 |
 | `ohos/tool/flutter_bootstrap.ts` | DevEco Sync 首次自举、失效环境重建及 OH 插件模块注入 |
 | `ohos/flutter/patches/hvigor/` | SDK Hvigor 路径适配与源码哈希 |
 | `ohos/flutter/pubspec_dependencies.json` | 仅在副本增加 OH 依赖、排除不使用的根依赖 |
 | `ohos/flutter/pubspec_overrides.yaml` | 固定 CPF 主包及平台接口/实现的 Git 提交 |
 | `ohos/flutter/pubspec.lock` | 鸿蒙稳定 SDK 对应的独立依赖锁 |
 | `ohos/flutter/patches/plugins/` | 插件补丁、版本清单和安全存储兼容处理 |
+| `ohos/flutter/patches/framework/` | Flutter framework Release AOT 兼容补丁及源码哈希 |
 | `ohos/flutter/patches/embedding/` | Flutter OH HAR 主题配置补丁、包版本与源码哈希 |
 | `ohos/tests/` | 源码组装与插件脚本测试、OH Flutter 测试模板 |
 

@@ -94,7 +94,7 @@ DevEco 后续构建沿用它们，不依赖从图形界面启动的 DevEco 是�
 | `ohos/.flutter-workspace/assets/` | 指向根 `assets/` 的目录链接 |
 | `ohos/.flutter-workspace/test/` | 共用测试及 OH 测试模板的文件链接 |
 | `ohos/.flutter-workspace/pubspec*.yaml`、`pubspec.lock`、`.dart_tool/` | 鸿蒙独立的 Pub 配置、解析与生成缓存 |
-| `ohos/.flutter-workspace/tooling/` | 本地 SDK Hvigor 适配副本和插件声明读取器 |
+| `ohos/.flutter-workspace/tooling/` | 本地 Flutter framework 补丁副本、SDK Hvigor 适配和插件声明读取器 |
 | `ohos/.flutter-workspace/build/` | Flutter 编译输出、补丁处理后的嵌入层 HAR |
 | `ohos/.pub-cache/` | 鸿蒙 Pub 缓存及插件补丁应用位置 |
 | `ohos/entry/` | 唯一原生模块，DevEco 直接使用 |
@@ -131,6 +131,10 @@ Sync 会自动重新执行完整准备。`--prepare-only` 保留为手动排查�
 放在 `.flutter-workspace/build/flutter-embedding/`，由全部原生模块引用。
 SDK 本体保持原样。普通命令行构建不再使用 `flutter build hap`，
 因为该命令假定原生项目位于当前 Flutter 包内部的 `ohos/`。
+
+[Flutter framework 补丁](../flutter/patches/framework/README.md) 在 Pub 解析后复制锁定 SDK 的
+`packages/flutter` 到 `.flutter-workspace/tooling/flutter-framework/`，随后把工作区的
+`package_config.json` 指向补丁副本。该流程不改 SDK，且通过提交与源文件哈希拒绝版本漂移。
 
 ## 依赖更新、检查与签名
 

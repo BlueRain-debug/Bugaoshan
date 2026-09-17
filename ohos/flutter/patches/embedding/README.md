@@ -1,5 +1,12 @@
 # Flutter OH 嵌入层补丁
 
+## Dart 入口执行
+
+锁定 embedding 通过 `FlutterEngineGroup.createAndRunEngineByOptions()` 创建默认引擎时已经执行
+Dart 入口，但 `onWindowStageCreate()` 随后又无条件调用 `doInitialFlutterViewRun()`，设备日志因此
+出现 `Attempted to run a DartExecutor that is already running`。补丁先读取 DartExecutor 的实际
+运行状态，仅在入口尚未执行时启动；默认、缓存或宿主引擎已经运行时都不会重复执行。
+
 ## 主题切换
 
 系统切换深浅色时，锁定的 Flutter OH 嵌入层在

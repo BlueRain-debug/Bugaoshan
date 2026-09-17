@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "frameworkRevision": "adaf911c35c9136a7d18fc424d714c9ec7724e60",
+  "patch": "root-isolate-token.patch",
+  "sources": [
+    {
+      "path": "lib/src/services/platform_channel.dart",
+      "sha256": "9fd611e3284a338c1b50f273cce306609d329baf596fca0d5ada59e3872aa055"
+    }
+  ]
+}

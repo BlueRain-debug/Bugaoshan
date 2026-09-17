@@ -135,42 +135,55 @@
 - HAP 同时声明 x86_64 Flutter/AOT 库，但 WebView 原生库只构建 ARM64；这会阻断
   x86_64 环境，不能解释同一 ARM64 API 26 真机上的 Debug/Release 差异。
 
-静态审计没有找到能解释 API 26 上“Debug 正常、Release 启动即退出”的确定代码路径。
-已经排除最低 API 20、签名、ArkGuard、AOT 入口缺失以及 Debug/Release HAR 混用；确定需要
-修复的是 glibc SQLite 打包违规，目前已从后续 OH 依赖图排除；embedding 的自动恢复回调
-也已改为仅记录未处理异常，不再保存状态并主动重启。两项修复都不能据此宣称最初异常来源
-已定位。要区分 Flutter AOT 装载、Native 崩溃、ArkTS 未处理异常和 Dart 启动失败，必须使用
-发生闪退的那一份 Release HAP 对应的 HiLog、`JsError` 或 `CppCrash` 记录；构建成功日志不
-包含设备运行阶段证据。
+后续两份同设备 Release NativeCrash 已提供运行阶段证据。最低 API、签名、ArkGuard、AOT
+入口、Debug/Release HAR 混用、glibc SQLite 打包和 embedding 自动恢复都不是这次主线程
+非法跳转的直接原因。glibc SQLite 排除与异常重启处理仍是有效的独立修复。
 
-## Release NativeCrash 后续定位
+## Release NativeCrash 定位
 
-2026-09-17 的 MatePad Mini Release 故障日志记录了启动 3 秒后的
+2026-09-17 11:29 的 MatePad Mini Release 故障在启动 3 秒后触发
 `SIGSEGV(SEGV_MAPERR)`。故障线程是进程主线程，`#01` 至 `#31` 位于 AOT
-`libapp.so`，之后进入 `libflutter.so`，因此 embedding 的 ArkTS 未处理异常监听器无法捕获
-这次 NativeCrash。本地 11:29 构建产物的 Build ID
-`e0344fe19d5aef890e4f83395954792c` 与故障报告一致，确认分析对象就是发生崩溃的
-`libapp.so`。进程映射只包含系统 `libsqlite.z.so`，先前错误打包的 glibc
-`libsqlite3.so` 已消失，说明依赖排除生效但不是这次崩溃的完整修复。
+`libapp.so`，之后进入 `libflutter.so`。进程映射只包含系统 `libsqlite.z.so`，没有加载此前
+误打包的 `libsqlite3.so`。
 
-崩溃前的时序使 `sqflite_ohos` 自建 worker 成为当前最强候选：
+移除 `sqflite_ohos` worker 后，12:48 的新包不再出现 `SqfliteWorker`、
+`Observed is not defined` 或 RDB schema 迁移日志，但仍在相同 AOT 偏移崩溃。新包的
+`libapp.so` Build ID 为 `e0344fe19d5aef890e4f83396f3e5676`；这次结果证伪了 SQLite
+worker 是 NativeCrash 原因的假设。保留主线程调度补丁仍可避免已观察到的 ArkTS worker
+错误，但不能作为本次 SIGSEGV 的修复依据。
 
-- 插件注册后立即创建 `SqfliteWorker`，运行记录指向 `entry/ets/modules.abc`；
-- Ark VM 报告 EAWorker 已达到上限，worker 随后执行到 Flutter embedding 的
-  `DynamicView/dynamicView.ts`，因 worker 环境没有 ArkUI 全局符号而报
-  `Observed is not defined`；
-- 同一 worker 还无法加载 `@ohos:app.ability.Want`；
-- RDB 后台线程随后连续完成 schema `0 -> 1 -> 2 -> 3`，紧接着 Dart AOT 主线程发生
-  非法地址跳转。
+两份故障报告都指向同一个被截断的 Flutter 原生函数地址：
 
-`sqflite_ohos 2.4.2` 的 worker 实现是该依赖在 2026-07-27 新增的路径，其后提交历史中
-已有一次明确的 worker SIGSEGV 修复。当前设备日志不能仅凭相邻时序证明因果，但跨 worker
-传递 message、Context 与 reply 是故障前唯一明确失败的应用专属执行路径。为切断这条路径，
-[插件补丁](../../flutter/patches/plugins/sqflite-main-thread-channel.patch)恢复 worker 引入前
-同一 2.4.2 代码线的 `MethodChannel` 调度，并移除 worker 入口声明；`Database` 与
-`DatabaseHelper` 保持锁定 revision 的当前实现，不回退事务和错误处理修复。
+- `libapp.so+0x4ca5c8` 的指令是 `blr x9`；崩溃时 `x9` 与故障地址相同；
+- 12:48 的故障地址为 `0xffffffffb4f64728`。恢复被丢失的高 32 位后是
+  `0x5bb4f64728`；减去该进程中 `libflutter.so` 基址 `0x5bb4300000`，固定偏移为
+  `0xc64728`；
+- 11:29 的故障地址为 `0xffffffffb5264728`，对应当次 `libflutter.so` 基址
+  `0x5bb4600000`，恢复后仍是 `libflutter.so+0xc64728`；
+- `libflutter.so+0xc64728` 是有效函数入口，反汇编行为与
+  `PlatformConfigurationNativeApi::GetRootIsolateToken` 一致；寄存器还保留了
+  `RootIsolateToken` 的分段 ASCII 内容。
 
-该变更会让超大 batch 的消息解码与数据库调用回到平台主线程，可能重新暴露插件上游针对
-极端数据量记录的 `THREAD_BLOCK_6S` 风险。Bugaoshan 启动阶段只执行少量建表和缓存查询，
-当前优先级是消除可复现的冷启动 NativeCrash。新 Release 包仍需在同一设备验证，并确认
-日志中不再出现 `SqfliteWorker`、`Observed is not defined` 和对应 SIGSEGV。
+因此，锁定工具链的 Release AOT native resolver 返回了有效的 64 位函数指针，但调用前只
+保留低 32 位并进行了符号扩展，最终跳转到未映射地址。Debug 使用不同执行路径，所以没有
+复现。Flutter framework 的首个触发点是 `platform_channel.dart` 中
+`_findBinaryMessenger()` 读取 `ServicesBinding.rootIsolateToken`；应用及解析后的依赖没有
+其他显式读取，唯一 `compute()` 也不在后台 isolate 使用平台通道。
+
+[framework 补丁](../../flutter/patches/framework/root-isolate-token.patch)让鸿蒙构建直接使用
+根 `ServicesBinding.defaultBinaryMessenger`，从而不再调用损坏的 native getter。构建脚本
+把锁定 SDK 的 Flutter package 复制到忽略的工作目录，校验 framework 提交和源文件哈希后
+应用补丁，再改写工作区 `package_config.json`；本机 SDK 保持只读。代价是该鸿蒙构建不支持
+后台 isolate 平台通道，当前应用没有这种用法。
+
+同一轮日志还确认了两个独立启动缺陷：
+
+- `EntryAbility.ets` 的旧 `@ohos.app.ability.Want` 导入在 API 26 上无法加载；入口和卡片
+  Ability 已统一迁移到 `@kit.AbilityKit`；
+- 默认引擎已由 `createAndRunEngineByOptions()` 执行 Dart 入口，随后
+  `onWindowStageCreate()` 又重复执行，产生 `Attempted to run a DartExecutor that is already
+  running`。embedding 补丁现先检查 DartExecutor 的实际状态，仅在尚未运行时执行入口。
+
+修复后的 Release 包仍需在同一设备冷启动验证。验收重点是主线程不再访问
+`libflutter.so+0xc64728` 对应的截断地址、首屏平台通道正常工作，并确认没有旧 Want 模块
+加载错误和 DartExecutor 重复执行日志。

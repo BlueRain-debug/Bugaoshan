@@ -1,7 +1,7 @@
 import FormExtensionAbility from '@ohos.app.form.FormExtensionAbility';
 import formBindingData from '@ohos.app.form.formBindingData';
 import formInfo from '@ohos.app.form.formInfo';
-import Want from '@ohos.app.ability.Want';
+import { Want } from '@kit.AbilityKit';
 import hilog from '@ohos.hilog';
 import i18n from '@ohos.i18n';
 import { CardBinding, CourseSnapshot, makeCardView } from './CourseCardModel';

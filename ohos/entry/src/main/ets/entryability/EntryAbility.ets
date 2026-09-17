@@ -5,8 +5,7 @@ import {
   MethodChannel,
   MethodResult
 } from '@ohos/flutter_ohos';
-import Want from '@ohos.app.ability.Want';
-import wantConstant from '@ohos.app.ability.wantConstant';
+import { Want, wantConstant } from '@kit.AbilityKit';
 import fileuri from '@ohos.file.fileuri';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
 import { DynamicIconChannel } from '../platform/DynamicIconChannel';

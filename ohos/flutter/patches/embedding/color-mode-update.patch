@@ -1,6 +1,16 @@
 diff --git a/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets b/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
 --- a/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
 +++ b/src/main/ets/embedding/ohos/FlutterAbilityAndEntryDelegate.ets
+@@ -355,5 +355,8 @@
+    */
+   onWindowStageCreate() {
+     this.ensureAlive();
+-    this.doInitialFlutterViewRun();
++    if (this.flutterEngine != null &&
++      !this.flutterEngine.getDartExecutor().isExecutingDart()) {
++      this.doInitialFlutterViewRun();
++    }
+   }
 @@ -625,9 +625,9 @@
          const dvModel = this.flutterView?.getDVModel()?.children[index];
          const params = dvModel?.getLayoutParams() as Record<string, ESObject>;
