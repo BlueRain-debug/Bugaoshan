@@ -340,6 +340,7 @@
     "exportScheduleSelectCalendar": "选择目标日历",
     "exportScheduleCalendarDefault": "默认日历",
     "copySuffix": " (副本)",
+    "copyCourseSuccess": "已复制",
     "notThisWeek": "[非本周]",
     "actualCurrentWeek": "本周第 {week} 周",
     "totalWeeksSubtitle": "共 {count} 周",

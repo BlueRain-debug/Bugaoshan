@@ -1747,6 +1747,12 @@ abstract class AppLocalizations {
   /// **' (Copy)'**
   String get copySuffix;
 
+  /// No description provided for @copyCourseSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copyCourseSuccess;
+
   /// No description provided for @notThisWeek.
   ///
   /// In en, this message translates to:

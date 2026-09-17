@@ -894,6 +894,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copySuffix => ' (Copy)';
 
   @override
+  String get copyCourseSuccess => 'Copied';
+
+  @override
   String get notThisWeek => '[Not]';
 
   @override

@@ -864,6 +864,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get copySuffix => ' (副本)';
 
   @override
+  String get copyCourseSuccess => '已复制';
+
+  @override
   String get notThisWeek => '[非本周]';
 
   @override

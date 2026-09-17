@@ -430,6 +430,8 @@ class _CourseEditPageState extends State<CourseEditPage> {
       name: _nameController.text.trim(),
       teacher: _teacherController.text.trim(),
       location: _locationController.text.trim(),
+      // 编辑页不提供校区输入，保留原值避免教务导入的校区被清空。
+      campus: widget.course?.campus ?? '',
       startWeek: _startWeek,
       endWeek: _endWeek,
       dayOfWeek: _dayOfWeek,
