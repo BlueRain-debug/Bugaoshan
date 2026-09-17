@@ -94,22 +94,23 @@ class CourseDetailSheet extends StatelessWidget {
                       style: IconButton.styleFrom(
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      onPressed: () async {
-                        final provider = courseProvider;
-                        if (provider == null) return;
-                        // 复制 = 生成一门全新课程（新 id）并直接落库，不进入编辑页，
-                        // 否则会被 CourseEditPage 当作「编辑」而以原 id 覆盖原课程。
-                        final copied = course.duplicate(
-                          nameSuffix: l10n.copySuffix,
-                        );
-                        final messenger = ScaffoldMessenger.of(context);
+                      onPressed: () {
+                        final rootCtx = logicRootContext;
                         Navigator.pop(context);
-                        await provider.addCourse(copied);
-                        messenger
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(
-                            SnackBar(content: Text(l10n.copyCourseSuccess)),
+                        final cfg = courseProvider?.scheduleConfig.value;
+                        if (cfg == null) return;
+                        if (rootCtx.mounted) {
+                          // 以「新建副本」模式打开编辑页：副本自带全新 id，
+                          // 用户改好时段保存后按新增落库，取消则不产生副本。
+                          popupOrNavigate(
+                            rootCtx,
+                            CourseEditPage.createCopy(
+                              scheduleConfig: cfg,
+                              source: course,
+                              nameSuffix: l10n.copySuffix,
+                            ),
                           );
+                        }
                       },
                     ),
                     IconButton(
