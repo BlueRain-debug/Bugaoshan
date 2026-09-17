@@ -64,7 +64,7 @@
 | `async` | 2.13.1 | 无需替换 | 纯 Dart，保留上游 |
 | `http` | 1.6.0 | 无需替换 | 纯 Dart，保留上游 |
 | `sqflite` | 2.4.3 | 可替换，已解析注册 | OH 已固定 CPF 2.4.2 主包和 `sqflite_ohos` |
-| `sqflite_common_ffi` | 2.4.2 | 不采用 OH 实现 | 仅 Windows/Linux/macOS 初始化；OH 数据库由 `sqflite_ohos` 提供 |
+| `sqflite_common_ffi` | 2.4.2 | 不采用 OH 实现 | 已从 OH 副本排除；数据库由 `sqflite_ohos` 提供 |
 | `path_provider` | 2.1.6 | 可替换，已接入 | OH 固定 CPF 2.1.5 和 `path_provider_ohos` 2.2.17 |
 | `path` | 1.9.1 | 无需替换 | 纯 Dart，保留上游 |
 | `dart_sm` | 0.1.5 | 无需替换 | 纯 Dart 国密实现，保留上游 |

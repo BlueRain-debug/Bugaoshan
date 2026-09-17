@@ -33,7 +33,7 @@
 | `checked_yaml` | `2.0.4` / hosted / transitive | `2.0.4` / hosted / transitive | same |
 | `cli_util` | `0.4.2` / hosted / transitive | `0.4.2` / hosted / transitive | same |
 | `clock` | `1.1.2` / hosted / transitive | `1.1.2` / hosted / transitive | same |
-| `code_assets` | `1.2.1` / hosted / transitive | `1.2.1` / hosted / transitive | same |
+| `code_assets` | `1.2.1` / hosted / transitive | - | root only |
 | `code_builder` | `4.11.1` / hosted / transitive | `4.11.1` / hosted / transitive | same |
 | `collection` | `1.19.1` / hosted / transitive | `1.19.1` / hosted / transitive | same |
 | `convert` | `3.1.2` / hosted / transitive | `3.1.2` / hosted / transitive | same |
@@ -98,7 +98,7 @@
 | `glob` | `2.1.3` / hosted / transitive | `2.1.3` / hosted / transitive | same |
 | `google_fonts` | `8.2.1` / hosted / direct main | `8.2.1` / hosted / direct main | same |
 | `graphs` | `2.3.2` / hosted / transitive | `2.3.2` / hosted / transitive | same |
-| `hooks` | `2.0.2` / hosted / transitive | `2.0.2` / hosted / transitive | same |
+| `hooks` | `2.0.2` / hosted / transitive | - | root only |
 | `hotreloader` | `4.4.0` / hosted / transitive | `4.4.0` / hosted / transitive | same |
 | `http` | `1.6.0` / hosted / direct main | `1.6.0` / hosted / direct main | same |
 | `http_multi_server` | `3.2.2` / hosted / transitive | `3.2.2` / hosted / transitive | same |
@@ -135,7 +135,7 @@
 | `material_color_utilities` | `0.13.0` / hosted / transitive | `0.13.0` / hosted / transitive | same |
 | `meta` | `1.18.0` / hosted / transitive | `1.17.0` / hosted / transitive | different |
 | `mime` | `2.0.0` / hosted / transitive | `2.0.0` / hosted / transitive | same |
-| `native_toolchain_c` | `0.19.2` / hosted / transitive | `0.19.2` / hosted / transitive | same |
+| `native_toolchain_c` | `0.19.2` / hosted / transitive | - | root only |
 | `objective_c` | `9.5.0` / hosted / transitive | - | root only |
 | `open_filex` | `4.7.0` / hosted / direct main | `4.7.0` / git @ `850a9abd0220316dc2bb45924315cb2304ff4ab6` / direct main | different |
 | `os_type` | `0.2.2` / hosted / direct main | `0.2.2` / hosted / direct main | same |
@@ -161,7 +161,7 @@
 | `pub_semver` | `2.2.0` / hosted / transitive | `2.2.0` / hosted / transitive | same |
 | `pubspec_parse` | `1.5.0` / hosted / transitive | `1.5.0` / hosted / transitive | same |
 | `recase` | `4.1.0` / hosted / transitive | `4.1.0` / hosted / transitive | same |
-| `record_use` | `0.6.0` / hosted / transitive | `0.6.0` / hosted / transitive | same |
+| `record_use` | `0.6.0` / hosted / transitive | - | root only |
 | `screen_retriever` | `0.2.2` / hosted / direct main | - | root only |
 | `screen_retriever_linux` | `0.2.2` / hosted / transitive | - | root only |
 | `screen_retriever_macos` | `0.2.2` / hosted / transitive | - | root only |
@@ -187,11 +187,11 @@
 | `sqflite` | `2.4.3` / hosted / direct main | `2.4.2` / git @ `5ef0761001378455e872e46d1c0620d39dcc1002` / direct main | different |
 | `sqflite_android` | `2.4.3` / hosted / transitive | `2.4.2+3` / hosted / transitive | different |
 | `sqflite_common` | `2.5.11` / hosted / transitive | `2.5.8` / hosted / transitive | different |
-| `sqflite_common_ffi` | `2.4.2` / hosted / direct main | `2.4.0+3` / hosted / direct main | different |
+| `sqflite_common_ffi` | `2.4.2` / hosted / direct main | - | root only |
 | `sqflite_darwin` | `2.4.3+1` / hosted / transitive | `2.4.2` / hosted / transitive | different |
 | `sqflite_ohos` | - | `2.4.2` / git @ `5ef0761001378455e872e46d1c0620d39dcc1002` / direct overridden | OH only |
 | `sqflite_platform_interface` | `2.4.1` / hosted / transitive | `2.4.0` / hosted / transitive | different |
-| `sqlite3` | `3.5.1` / hosted / transitive | `3.5.1` / hosted / transitive | same |
+| `sqlite3` | `3.5.1` / hosted / transitive | - | root only |
 | `stack_trace` | `1.12.1` / hosted / transitive | `1.12.1` / hosted / transitive | same |
 | `stream_channel` | `2.1.4` / hosted / transitive | `2.1.4` / hosted / transitive | same |
 | `stream_transform` | `2.1.1` / hosted / transitive | `2.1.1` / hosted / transitive | same |

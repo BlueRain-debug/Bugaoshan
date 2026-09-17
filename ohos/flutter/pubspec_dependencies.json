@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "excludedDependencies": [
     "device_info_plus",
+    "sqflite_common_ffi",
     "window_manager",
     "screen_retriever",
     "file_picker",

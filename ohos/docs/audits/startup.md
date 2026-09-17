@@ -51,9 +51,10 @@
   系统深浅模式仍由 `ThemeMode.system` 处理。依赖锁文件保持现状，包存在不代表执行插件调用。
 - 主页移除自更新检查，以及仅更新 Android/iOS/macOS 小组件的生命周期监听。
   OH 卡片继续由 `OhosCourseCardSync` 接管启动、前台及课表设置变化。
-- 删除根 `ohos/entry/libs/arm64-v8a/libsqlite3.so` 的 Linux/glibc 本地残留。
-  该文件未被 Git 跟踪，现有脚本也排除复制 `libs`；OH 数据库使用系统 `relationalStore`。
-  已有构建副本及 HAP 未清理，不能将此项视为已修复 Release 启动故障。
+- 从 OH 隔离依赖图排除 `sqflite_common_ffi`，并从 OH 锁文件移除其独占的
+  `sqlite3` native-asset 构建链。OH 数据库使用 `sqflite_ohos` 和系统 `relationalStore`。
+  已有构建副本、`entry/libs` 和 HAP 属于旧生成物，不能用来验证排除结果，也不能仅凭
+  此项认定已经修复 Release 启动故障。
 
 本次保留依赖就绪等待、认证恢复、课表数据库、卡片快照、字体及背景处理。
 不以延后业务初始化或改变存储规则换取首屏提前。仍未执行构建、格式化或测试，
@@ -71,3 +72,69 @@
 
 自动化回归入口见 [测试说明](../../tests/README.md)。本次变更发生在首次 19 批提交完成后，
 不修改此前提交清单和验证记录。
+
+## Debug / Release 启动差异审计
+
+2026-09-17 用户确认 Release 在 API 26 设备上同样闪退，因此最低 API 20 兼容路径不是
+该现象的必要条件。用户已经确认签名无关，本节不再把签名状态列为故障原因或诊断依据。
+本轮仅检查已有构建日志、源码和产物，没有运行构建、测试或真机操作。
+
+### 官方开发规范
+
+- [UIAbility 生命周期](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/uiability-lifecycle)
+  规定前台启动依次触发 `onCreate()`、`onWindowStageCreate()`、`onForeground()`；生命周期
+  回调运行在主线程，只应执行必要的轻量操作。当前 `EntryAbility` 没有在这些回调中增加
+  Release 专属耗时任务，Flutter 基类负责窗口和引擎初始化。
+- [NDK 开发导读](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ndk-development-overview)
+  说明 HarmonyOS 标准 C 库基于 musl；
+  [NDK 工程构建概述](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/build-with-ndk-overview)
+  要求通过 `hmos.toolchain.cmake` 生成符合 HarmonyOS ABI 的目标文件；
+  [三方动态链接库集成](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/integrate-third-party-dlls)
+  要求按目标架构放入 `entry/libs/<ABI>` 并链接对应产物。旧 `libsqlite3.so` 依赖
+  Linux/glibc 的 `libc.so.6` 和 `ld-linux-aarch64.so.1`，不符合这组要求，已经从 OH
+  隔离依赖图排除。
+- [ArkGuard 混淆开启指南](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/source-obfuscation-guide)
+  说明 DevEco Studio 5.0.3.600 及以后新建工程默认关闭源码混淆；混淆只对 Release 生效，
+  是否由混淆引发差异应通过开关判断。当前工程没有启用 `arkOptions.obfuscation`，Flutter
+  embedding 和引擎 HAR 元数据均为 `obfuscated: false`，Release 缓存也没有名称映射产物，
+  因此没有证据把本次闪退归因于 ArkGuard。
+- [崩溃事件介绍](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/hiappevent-watcher-crash-events)
+  将未处理 Native 信号归为 `NativeCrash`，将未处理 ArkTS/JS 异常归为 `JsError`。
+  [JS Crash 分析方法](https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-stability-app-crash-js-way)
+  要求结合异常信息、`StackTrace` 和 Source Map 定位；
+  [CppCrash 分析方法](https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-stability-app-crash-cpp-way)
+  指明 DevEco FaultLog 从 `/data/log/faultlog/faultlogger/` 收集故障日志，Release 栈需要与
+  同版本符号匹配。SIGABRT 还应按
+  [官方说明](https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-stability-cppcrash-sigabrt-fault-mode)
+  优先检查 `LastFatalMessage`。
+
+### 现有产物与源码证据
+
+- 02:03 至 02:05 的历史日志明确以 `buildMode=release` 构建。对应补丁 embedding HAR 的
+  `BUILD_MODE_NAME` 为 `release`、`DEBUG=false`，Release ArkTS 编译缓存也保留了相同值。
+  Flutter loader 因而走 AOT 分支，将 `libapp.so` 作为 `aot-shared-library-name`；同一轮
+  日志记录了 Release `libflutter.so` 和 ARM64/x86_64 `libapp.so` 进入打包目录，最后
+  `BUILD SUCCESSFUL`。没有证据表明当时混入 Debug embedding 或 Debug 引擎。
+- Release ARM64 `app.so` 是 AArch64 共享对象，包含 VM 与 isolate 的 data/instructions
+  四项 AOT snapshot 导出，动态段没有 `NEEDED` 依赖。未发现缺少 AOT 入口或依赖 glibc。
+- 当前 `entry-default-unsigned.hap`、`entry/oh-package-lock.json5` 和 `oh_modules` 已被 10:23
+  的后续 Debug 构建覆盖：当前 HAP 含 `kernel_blob.bin` 和 snapshot 数据，不含 `libapp.so`。
+  它不能代表 02:05 安装测试的 Release HAP，也不能用于反推该 Release 包的运行内容。
+- 应用没有 `kReleaseMode` 分支。`kDebugMode` 只改变日志输出和首次 EULA/向导默认值；
+  Release 首次启动会显示 EULA，源码中唯一相关的 `exit(0)` 需要用户点击“不同意”，
+  没有自动退出路径。
+- 生成的插件注册器整体使用 `try/catch`，注册列表只有 `sqflite_ohos`，没有
+  `sqflite_common_ffi`。旧 HAP 和 `entry/libs` 中的 glibc SQLite 库是确定的打包违规项，
+  但当前入口没有显式加载它的路径，静态证据不能证明它在启动时实际进入动态链接过程。
+- Flutter embedding 在 `onCreate()` 注册全局未处理异常监听器；收到 ArkTS 未处理异常后会
+  调用 `appRecovery.saveAppState()` 和 `appRecovery.restartApp()`。这能让一次启动异常表现为
+  退出或反复重启，但监听器在 Debug 与 Release 都存在，只能解释表现，不能证明最初异常来源。
+- HAP 同时声明 x86_64 Flutter/AOT 库，但 WebView 原生库只构建 ARM64；这会阻断
+  x86_64 环境，不能解释同一 ARM64 API 26 真机上的 Debug/Release 差异。
+
+静态审计没有找到能解释 API 26 上“Debug 正常、Release 启动即退出”的确定代码路径。
+已经排除最低 API 20、签名、ArkGuard、AOT 入口缺失以及 Debug/Release HAR 混用；确定需要
+修复的是 glibc SQLite 打包违规，目前已从后续 OH 依赖图排除，但不能据此宣称闪退根因已
+定位。要区分 Flutter AOT 装载、Native 崩溃、ArkTS 未处理异常和 Dart 启动失败，必须使用
+发生闪退的那一份 Release HAP 对应的 HiLog、`JsError` 或 `CppCrash` 记录；构建成功日志不
+包含设备运行阶段证据。

@@ -1,10 +1,10 @@
 # 上游与鸿蒙依赖清单
 
-更新日期：2026-09-15。本文区分共享 Dart 依赖、只在鸿蒙构建中使用的覆盖、
+更新日期：2026-09-17。本文区分共享 Dart 依赖、只在鸿蒙构建中使用的覆盖、
 需要 OH 原生实现的 Flutter 插件，以及 OHPM 依赖。
 
 根 `pubspec.yaml` 当前声明 39 个运行依赖和 8 个开发依赖。根 `pubspec.lock` 共解析
-205 个包；当前鸿蒙锁共 194 个包。全部直接和传递包的逐项版本对照见
+205 个包；当前鸿蒙锁共 188 个包。全部直接和传递包的逐项版本对照见
 [Dart 依赖完整锁表](lock-inventory.md)，全部直接依赖的 CPF 替代结论见
 [鸿蒙依赖替代矩阵](replacements.md)。
 
@@ -30,7 +30,7 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 | `async` | `any` | 2.13.1 | 2.13.1 | 纯 Dart |
 | `http` | `^1.2.0` | 1.6.0 | 1.6.0 | 纯 Dart |
 | `sqflite` | `^2.4.2` | 2.4.3 | 2.4.2 Git | CPF `sqflite_ohos` 已解析和注册 |
-| `sqflite_common_ffi` | `^2.3.4` | 2.4.2 | 2.4.0+3 | 仅桌面端，OH 使用 `sqflite_ohos` |
+| `sqflite_common_ffi` | `^2.3.4` | 2.4.2 | - | 已从 OH 副本排除；OH 使用 `sqflite_ohos` |
 | `path_provider` | `^2.1.5` | 2.1.6 | 2.1.5 Git | 数据库初始化必需，CPF OH 实现已解析和注册 |
 | `path` | `^1.9.0` | 1.9.1 | 1.9.1 | 纯 Dart |
 | `dart_sm` | `^0.1.4` | 0.1.5 | 0.1.5 | 纯 Dart，国密算法 |
@@ -108,7 +108,8 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 | `system_theme` | 系统强调色 | OH 补丁直接使用原有蓝色回退，不调用插件；深浅模式独立跟随系统 |
 
 `flutter_app_group_directory` 的调用由 iOS 平台判断隔离，`0026` 已移除鸿蒙入口中的
-`sqflite_common_ffi` import 和初始化分支。两者仍参与 OH 依赖解析，OH 不注册其原生实现。
+`sqflite_common_ffi` import 和初始化分支；该桌面依赖也已从 OH 依赖解析中排除，避免
+`sqlite3` native-asset hook 将 Linux/glibc 动态库打入 HAP。
 `device_info_plus`、`window_manager` 和 `screen_retriever` 已通过构建副本依赖排除和窄接口
 源码覆盖实现移出 OH 依赖图；`screen_retriever` 的四个平台/接口传递包也已移除。
 
@@ -117,7 +118,8 @@ Flutter OH `3.41.10-ohos-1.0.1` / Dart `3.11.5`。
 `ohos/flutter/pubspec_dependencies.json` 对隔离副本执行：
 
 - `flutter_secure_storage_ohos` -> Git `ecc4257040163da3c4dd64d4fced5d4d24676a53` / path `flutter_secure_storage_ohos`。
-- 排除根直接依赖 `device_info_plus`、`window_manager`、`screen_retriever`、`file_picker` 和 `gal`。
+- 排除根直接依赖 `device_info_plus`、`sqflite_common_ffi`、`window_manager`、
+  `screen_retriever`、`file_picker` 和 `gal`。
 - 加入正式 `file_picker_ohos 10.3.8` 和 `image_gallery_saver_plus 3.0.5`；固定提交见覆盖配置和锁表。
 
 [平台隔离覆盖文件](../../flutter/overrides/lib/services/window_state_service.dart) 让副本中的
