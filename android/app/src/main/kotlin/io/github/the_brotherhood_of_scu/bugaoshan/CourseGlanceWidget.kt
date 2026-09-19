@@ -429,15 +429,37 @@ object WidgetDataLoader {
         return true
     }
 
+    /**
+     * 教学周块的首日，即第 1 周的周日 = 学期起点所在周的周日。
+     *
+     * 校历的教学周按「周日~周六」成行，第 1 周是包含学期起点的那一行：起点为周日时
+     * 块首日即起点；为周一时是起点前一天（2026-08-31 → 8/30，故 9/20(日) 属第 4 周）。
+     * 与 App 侧 `lib/utils/semester_week.dart` 的 `courseWeekAnchor` 逐字对应，
+     * 两边不得各自演化。
+     */
+    private fun weekAnchor(startCal: Calendar): Calendar = Calendar.getInstance().apply {
+        timeInMillis = startCal.timeInMillis
+        // Calendar 里 SUNDAY=1 … SATURDAY=7，先换算成 ISO/Dart 口径 1=Mon … 7=Sun，
+        // 再回退 `weekday % 7` 天（周日回退 0、周一回退 1、周六回退 6）。
+        val isoWeekday = (startCal.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+        add(Calendar.DAY_OF_MONTH, -(isoWeekday % 7))
+    }
+
+    /**
+     * 目标日相对教学周块首日的周次（1-based），clamp 到 [1, totalWeeks]。
+     * 调用方已保证 target 不早于学期起点，而块首日不晚于起点，故 days >= 0。
+     */
+    private fun weekOf(anchor: Calendar, target: Calendar, totalWeeks: Int): Int {
+        val days =
+            ((target.timeInMillis - anchor.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+        val week = days / 7 + 1
+        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
+        return week.coerceIn(1, maxWeek)
+    }
+
     private fun computeCurrentWeek(semesterStartDate: String, totalWeeks: Int): Int {
-        if (semesterStartDate.isEmpty()) return 1
+        val startCal = parseCalendarDate(semesterStartDate) ?: return 1
         if (totalWeeks <= 0) return 1
-        val parts = semesterStartDate.split("-")
-        if (parts.size != 3) return 1
-        val startCal = Calendar.getInstance().apply {
-            set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
         val now = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -445,21 +467,12 @@ object WidgetDataLoader {
             set(Calendar.MILLISECOND, 0)
         }
         if (now.before(startCal)) return 1
-        val days = ((now.timeInMillis - startCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-        val week = days / 7 + 1
-        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
-        return week.coerceIn(1, maxWeek)
+        return weekOf(weekAnchor(startCal), now, totalWeeks)
     }
 
     private fun computeWeekForDate(semesterStartDate: String, totalWeeks: Int, cal: Calendar): Int {
-        if (semesterStartDate.isEmpty()) return 1
+        val startCal = parseCalendarDate(semesterStartDate) ?: return 1
         if (totalWeeks <= 0) return 1
-        val parts = semesterStartDate.split("-")
-        if (parts.size != 3) return 1
-        val startCal = Calendar.getInstance().apply {
-            set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
         val target = Calendar.getInstance().apply {
             timeInMillis = cal.timeInMillis
             set(Calendar.HOUR_OF_DAY, 0)
@@ -468,18 +481,20 @@ object WidgetDataLoader {
             set(Calendar.MILLISECOND, 0)
         }
         if (target.before(startCal)) return 1
-        val days = ((target.timeInMillis - startCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-        val week = days / 7 + 1
-        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
-        return week.coerceIn(1, maxWeek)
+        return weekOf(weekAnchor(startCal), target, totalWeeks)
     }
 
-    /** 计算学期结束日(最后一周的周日),基于学期开始日与总周数。 */
+    /**
+     * 计算学期结束日（最后一周的周六，即放假前一天）。
+     *
+     * 与周次同一口径：教学周以周日成行，故末周最后一天 = 块首日 + totalWeeks*7 - 1。
+     * 周一起点的学期（2026-08-31 起 20 周）→ 2027-01-16(六)，校历寒假自 1/17 起。
+     */
     private fun computeSemesterEndDate(semesterStartDate: String, totalWeeks: Int): Calendar? {
         if (semesterStartDate.isEmpty() || totalWeeks <= 0) return null
         val start = parseCalendarDate(semesterStartDate) ?: return null
         return Calendar.getInstance().apply {
-            timeInMillis = start.timeInMillis
+            timeInMillis = weekAnchor(start).timeInMillis
             add(Calendar.DAY_OF_MONTH, totalWeeks * 7 - 1)
         }
     }
