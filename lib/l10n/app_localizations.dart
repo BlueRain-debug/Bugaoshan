@@ -604,13 +604,13 @@ abstract class AppLocalizations {
   /// No description provided for @enablePageTransitionAnimation.
   ///
   /// In en, this message translates to:
-  /// **'Dock Page Transition Animation'**
+  /// **'Page Transition Animation'**
   String get enablePageTransitionAnimation;
 
   /// No description provided for @enablePageTransitionAnimationHint.
   ///
   /// In en, this message translates to:
-  /// **'Enable slide and fade animation when switching Dock pages'**
+  /// **'Enable slide and fade animation when switching pages'**
   String get enablePageTransitionAnimationHint;
 
   /// No description provided for @themeColor.
@@ -697,12 +697,6 @@ abstract class AppLocalizations {
   /// **'About'**
   String get about;
 
-  /// No description provided for @userManual.
-  ///
-  /// In en, this message translates to:
-  /// **'User Manual'**
-  String get userManual;
-
   /// No description provided for @developmentTeam.
   ///
   /// In en, this message translates to:
@@ -762,12 +756,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repository'**
   String get projectRepository;
-
-  /// No description provided for @officialWebsite.
-  ///
-  /// In en, this message translates to:
-  /// **'Website'**
-  String get officialWebsite;
 
   /// No description provided for @checkForUpdates.
   ///
@@ -1441,12 +1429,6 @@ abstract class AppLocalizations {
   /// **'Show Location'**
   String get showLocation;
 
-  /// No description provided for @showCourseWeeks.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Course Weeks'**
-  String get showCourseWeeks;
-
   /// No description provided for @showWeekend.
   ///
   /// In en, this message translates to:
@@ -1747,18 +1729,6 @@ abstract class AppLocalizations {
   /// **' (Copy)'**
   String get copySuffix;
 
-  /// No description provided for @copyCourseTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'New Copy'**
-  String get copyCourseTitle;
-
-  /// No description provided for @copyCourseSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save Copy'**
-  String get copyCourseSave;
-
   /// No description provided for @notThisWeek.
   ///
   /// In en, this message translates to:
@@ -1998,132 +1968,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please load the captcha first'**
   String get captchaNotLoaded;
-
-  /// No description provided for @resetPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Reset Password'**
-  String get resetPassword;
-
-  /// No description provided for @resetPasswordStepAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Account'**
-  String get resetPasswordStepAccount;
-
-  /// No description provided for @resetPasswordStepVerify.
-  ///
-  /// In en, this message translates to:
-  /// **'Verification'**
-  String get resetPasswordStepVerify;
-
-  /// No description provided for @resetPasswordStepReset.
-  ///
-  /// In en, this message translates to:
-  /// **'New Password'**
-  String get resetPasswordStepReset;
-
-  /// No description provided for @resetPasswordNext.
-  ///
-  /// In en, this message translates to:
-  /// **'Next'**
-  String get resetPasswordNext;
-
-  /// No description provided for @resetPasswordChooseMethod.
-  ///
-  /// In en, this message translates to:
-  /// **'You are resetting your login password. Choose a verification method:'**
-  String get resetPasswordChooseMethod;
-
-  /// No description provided for @resetPasswordViaSms.
-  ///
-  /// In en, this message translates to:
-  /// **'Via SMS'**
-  String get resetPasswordViaSms;
-
-  /// No description provided for @resetPasswordSmsTip.
-  ///
-  /// In en, this message translates to:
-  /// **'A verification code will be sent via SMS to your phone {phone}'**
-  String resetPasswordSmsTip(String phone);
-
-  /// No description provided for @resetPasswordViaEmail.
-  ///
-  /// In en, this message translates to:
-  /// **'Via Email'**
-  String get resetPasswordViaEmail;
-
-  /// No description provided for @resetPasswordEmailTip.
-  ///
-  /// In en, this message translates to:
-  /// **'A verification code will be sent via email to {email}'**
-  String resetPasswordEmailTip(String email);
-
-  /// No description provided for @resetPasswordSendCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Send Code'**
-  String get resetPasswordSendCode;
-
-  /// No description provided for @resetPasswordResendAfter.
-  ///
-  /// In en, this message translates to:
-  /// **'Resend in {seconds}s'**
-  String resetPasswordResendAfter(int seconds);
-
-  /// No description provided for @resetPasswordCodeRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter the 6-digit verification code'**
-  String get resetPasswordCodeRequired;
-
-  /// No description provided for @resetPasswordNewPasswordLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'New Password'**
-  String get resetPasswordNewPasswordLabel;
-
-  /// No description provided for @resetPasswordConfirmPasswordLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Password'**
-  String get resetPasswordConfirmPasswordLabel;
-
-  /// No description provided for @resetPasswordPasswordMismatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Passwords do not match'**
-  String get resetPasswordPasswordMismatch;
-
-  /// No description provided for @resetPasswordPolicyTip.
-  ///
-  /// In en, this message translates to:
-  /// **'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters'**
-  String get resetPasswordPolicyTip;
-
-  /// No description provided for @resetPasswordPolicyInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Password does not meet the requirements'**
-  String get resetPasswordPolicyInvalid;
-
-  /// No description provided for @resetPasswordSubmit.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm'**
-  String get resetPasswordSubmit;
-
-  /// No description provided for @resetPasswordSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Password reset successfully. Please log in with your new password.'**
-  String get resetPasswordSuccess;
-
-  /// No description provided for @resetPasswordBackToLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to Login'**
-  String get resetPasswordBackToLogin;
 
   /// No description provided for @gradesStats.
   ///
@@ -4573,90 +4417,6 @@ abstract class AppLocalizations {
   /// **'Load More'**
   String get classScheduleInquiryLoadMore;
 
-  /// No description provided for @dockLabelCourseCurriculum.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Table'**
-  String get dockLabelCourseCurriculum;
-
-  /// No description provided for @courseCurriculum.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Curriculum'**
-  String get courseCurriculum;
-
-  /// No description provided for @courseCurriculumDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'View schedules for each course section'**
-  String get courseCurriculumDesc;
-
-  /// No description provided for @courseCurriculumNoData.
-  ///
-  /// In en, this message translates to:
-  /// **'No course data'**
-  String get courseCurriculumNoData;
-
-  /// No description provided for @courseCurriculumNoSchedule.
-  ///
-  /// In en, this message translates to:
-  /// **'No schedule data'**
-  String get courseCurriculumNoSchedule;
-
-  /// No description provided for @courseCurriculumFilter.
-  ///
-  /// In en, this message translates to:
-  /// **'Filter'**
-  String get courseCurriculumFilter;
-
-  /// No description provided for @courseCurriculumSemester.
-  ///
-  /// In en, this message translates to:
-  /// **'Semester'**
-  String get courseCurriculumSemester;
-
-  /// No description provided for @courseCurriculumDepartment.
-  ///
-  /// In en, this message translates to:
-  /// **'Department'**
-  String get courseCurriculumDepartment;
-
-  /// No description provided for @courseCurriculumCategory.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Category'**
-  String get courseCurriculumCategory;
-
-  /// No description provided for @courseCurriculumCourseName.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Name'**
-  String get courseCurriculumCourseName;
-
-  /// No description provided for @courseCurriculumCourseCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Code'**
-  String get courseCurriculumCourseCode;
-
-  /// No description provided for @courseCurriculumCourseSeq.
-  ///
-  /// In en, this message translates to:
-  /// **'Course Seq'**
-  String get courseCurriculumCourseSeq;
-
-  /// No description provided for @courseCurriculumSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get courseCurriculumSearch;
-
-  /// No description provided for @courseCurriculumLoadMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Load More'**
-  String get courseCurriculumLoadMore;
-
   /// Shows total holiday days, e.g. '3-day holiday'
   ///
   /// In en, this message translates to:
@@ -5904,6 +5664,666 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get leaveStatusDone;
+
+  /// No description provided for @graduateSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Graduate'**
+  String get graduateSection;
+
+  /// No description provided for @graduateGrades.
+  ///
+  /// In en, this message translates to:
+  /// **'Graduate Grades'**
+  String get graduateGrades;
+
+  /// No description provided for @graduateGradesDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View graduate course grades'**
+  String get graduateGradesDesc;
+
+  /// No description provided for @graduateGradesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No graduate grades yet'**
+  String get graduateGradesEmpty;
+
+  /// No description provided for @graduateGradesStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade Summary'**
+  String get graduateGradesStats;
+
+  /// No description provided for @graduateStatsCourseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get graduateStatsCourseCount;
+
+  /// No description provided for @graduateStatsTotalCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Credits'**
+  String get graduateStatsTotalCredit;
+
+  /// No description provided for @graduateStatsAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighted Avg'**
+  String get graduateStatsAverage;
+
+  /// No description provided for @graduateStatsPassRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pass Rate'**
+  String get graduateStatsPassRate;
+
+  /// No description provided for @graduateTrainPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Training Plan'**
+  String get graduateTrainPlan;
+
+  /// No description provided for @graduateTrainPlanDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View the graduate training plan'**
+  String get graduateTrainPlanDesc;
+
+  /// No description provided for @graduateScheduleImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Schedule'**
+  String get graduateScheduleImport;
+
+  /// No description provided for @graduateScheduleImportDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Import the graduate schedule'**
+  String get graduateScheduleImportDesc;
+
+  /// No description provided for @graduateScheduleImportName.
+  ///
+  /// In en, this message translates to:
+  /// **'Graduate Timetable'**
+  String get graduateScheduleImportName;
+
+  /// No description provided for @graduateScheduleImportFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Courses detected'**
+  String get graduateScheduleImportFound;
+
+  /// No description provided for @graduateScheduleImportWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for timetable data — sign in below and open the timetable'**
+  String get graduateScheduleImportWaiting;
+
+  /// No description provided for @graduateScheduleImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Data captured but no courses recognised — try switching weeks on the page'**
+  String get graduateScheduleImportEmpty;
+
+  /// No description provided for @graduateScheduleImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import to timetable'**
+  String get graduateScheduleImportAction;
+
+  /// No description provided for @graduateScheduleImportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Timetable imported'**
+  String get graduateScheduleImportDone;
+
+  /// No description provided for @graduateScheduleImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed, please try again'**
+  String get graduateScheduleImportFailed;
+
+  /// No description provided for @graduateScheduleImportWebUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognising the page requires script injection, which browsers block across origins. Please use this feature on Android, iOS or Windows.'**
+  String get graduateScheduleImportWebUnsupported;
+
+  /// No description provided for @graduateScheduleImportNoWebView.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct connection failed and this platform has no in-app web fallback. Check your network and retry, or import on Android, iOS or desktop.'**
+  String get graduateScheduleImportNoWebView;
+
+  /// No description provided for @graduateScheduleImportRetryDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'I have signed in, retry'**
+  String get graduateScheduleImportRetryDirect;
+
+  /// No description provided for @graduateTrainPlanEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No training plan data'**
+  String get graduateTrainPlanEmpty;
+
+  /// No description provided for @graduateTrainPlanProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get graduateTrainPlanProgress;
+
+  /// No description provided for @graduateTrainPlanCreditText.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} / {requiredCredit} credits earned'**
+  String graduateTrainPlanCreditText(String completed, String requiredCredit);
+
+  /// No description provided for @graduateTrainPlanModuleCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} / {requiredCredit} credits earned'**
+  String graduateTrainPlanModuleCredit(String completed, String requiredCredit);
+
+  /// No description provided for @graduateTrainPlanNoCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses in this module'**
+  String get graduateTrainPlanNoCourses;
+
+  /// No description provided for @labAttendance.
+  ///
+  /// In en, this message translates to:
+  /// **'Lab Attendance'**
+  String get labAttendance;
+
+  /// No description provided for @labAttendanceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Record lab attendance'**
+  String get labAttendanceDesc;
+
+  /// No description provided for @labAttendanceMonthDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get labAttendanceMonthDay;
+
+  /// No description provided for @labAttendanceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No attendance records this month'**
+  String get labAttendanceEmpty;
+
+  /// No description provided for @labAttendanceDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get labAttendanceDays;
+
+  /// No description provided for @labAttendanceHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get labAttendanceHours;
+
+  /// No description provided for @labCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check in'**
+  String get labCheckIn;
+
+  /// No description provided for @labCheckOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Check out'**
+  String get labCheckOut;
+
+  /// No description provided for @thesisProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Thesis Progress'**
+  String get thesisProgress;
+
+  /// No description provided for @thesisProgressDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Track thesis progress'**
+  String get thesisProgressDesc;
+
+  /// No description provided for @thesisProgressEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No thesis stages'**
+  String get thesisProgressEmpty;
+
+  /// No description provided for @thesisProgressOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Thesis Overview'**
+  String get thesisProgressOverview;
+
+  /// No description provided for @thesisProgressText.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} / {total} stages done'**
+  String thesisProgressText(int completed, int total);
+
+  /// No description provided for @thesisStageNotStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not started'**
+  String get thesisStageNotStarted;
+
+  /// No description provided for @thesisStageInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get thesisStageInProgress;
+
+  /// No description provided for @thesisStageCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get thesisStageCompleted;
+
+  /// No description provided for @thesisStageName.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage name'**
+  String get thesisStageName;
+
+  /// No description provided for @thesisStageNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Proposal, Mid-term, Defense'**
+  String get thesisStageNameHint;
+
+  /// No description provided for @thesisStageNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get thesisStageNote;
+
+  /// No description provided for @thesisStageNoPlanDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a plan date'**
+  String get thesisStageNoPlanDate;
+
+  /// No description provided for @thesisStagePlanDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan date: {date}'**
+  String thesisStagePlanDate(String date);
+
+  /// No description provided for @thesisStagePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get thesisStagePlan;
+
+  /// No description provided for @addThesisStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Stage'**
+  String get addThesisStage;
+
+  /// No description provided for @editThesisStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Stage'**
+  String get editThesisStage;
+
+  /// No description provided for @mentorTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Mentor Tasks'**
+  String get mentorTasks;
+
+  /// No description provided for @mentorTasksDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View tasks from your mentor'**
+  String get mentorTasksDesc;
+
+  /// No description provided for @mentorTasksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No mentor tasks'**
+  String get mentorTasksEmpty;
+
+  /// No description provided for @mentorTaskPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get mentorTaskPending;
+
+  /// No description provided for @mentorTaskOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get mentorTaskOverdue;
+
+  /// No description provided for @mentorTaskDueSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Due soon'**
+  String get mentorTaskDueSoon;
+
+  /// No description provided for @mentorTaskPriorityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get mentorTaskPriorityLow;
+
+  /// No description provided for @mentorTaskPriorityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get mentorTaskPriorityMedium;
+
+  /// No description provided for @mentorTaskPriorityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get mentorTaskPriorityHigh;
+
+  /// No description provided for @mentorTaskNoDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No due date'**
+  String get mentorTaskNoDueDate;
+
+  /// No description provided for @mentorTaskDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Due: {date}'**
+  String mentorTaskDueDate(String date);
+
+  /// No description provided for @mentorTaskDaysText.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} day(s) left'**
+  String mentorTaskDaysText(int days);
+
+  /// No description provided for @mentorTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Task title'**
+  String get mentorTaskTitle;
+
+  /// No description provided for @mentorTaskNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get mentorTaskNote;
+
+  /// No description provided for @addMentorTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Task'**
+  String get addMentorTask;
+
+  /// No description provided for @editMentorTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Task'**
+  String get editMentorTask;
+
+  /// No description provided for @mentorTaskLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to view mentor tasks'**
+  String get mentorTaskLoginRequired;
+
+  /// No description provided for @graduateLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in via the unified identity on the Profile page to use graduate features'**
+  String get graduateLoginRequired;
+
+  /// No description provided for @userManual.
+  ///
+  /// In en, this message translates to:
+  /// **'User Manual'**
+  String get userManual;
+
+  /// No description provided for @officialWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get officialWebsite;
+
+  /// No description provided for @showCourseWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Course Weeks'**
+  String get showCourseWeeks;
+
+  /// No description provided for @copyCourseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Copy'**
+  String get copyCourseTitle;
+
+  /// No description provided for @copyCourseSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Copy'**
+  String get copyCourseSave;
+
+  /// No description provided for @resetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get resetPassword;
+
+  /// No description provided for @resetPasswordStepAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get resetPasswordStepAccount;
+
+  /// No description provided for @resetPasswordStepVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get resetPasswordStepVerify;
+
+  /// No description provided for @resetPasswordStepReset.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get resetPasswordStepReset;
+
+  /// No description provided for @resetPasswordNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get resetPasswordNext;
+
+  /// No description provided for @resetPasswordChooseMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'You are resetting your login password. Choose a verification method:'**
+  String get resetPasswordChooseMethod;
+
+  /// No description provided for @resetPasswordViaSms.
+  ///
+  /// In en, this message translates to:
+  /// **'Via SMS'**
+  String get resetPasswordViaSms;
+
+  /// No description provided for @resetPasswordSmsTip.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification code will be sent via SMS to your phone {phone}'**
+  String resetPasswordSmsTip(String phone);
+
+  /// No description provided for @resetPasswordViaEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Via Email'**
+  String get resetPasswordViaEmail;
+
+  /// No description provided for @resetPasswordEmailTip.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification code will be sent via email to {email}'**
+  String resetPasswordEmailTip(String email);
+
+  /// No description provided for @resetPasswordSendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Code'**
+  String get resetPasswordSendCode;
+
+  /// No description provided for @resetPasswordResendAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String resetPasswordResendAfter(int seconds);
+
+  /// No description provided for @resetPasswordCodeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter the 6-digit verification code'**
+  String get resetPasswordCodeRequired;
+
+  /// No description provided for @resetPasswordNewPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get resetPasswordNewPasswordLabel;
+
+  /// No description provided for @resetPasswordConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get resetPasswordConfirmPasswordLabel;
+
+  /// No description provided for @resetPasswordPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get resetPasswordPasswordMismatch;
+
+  /// No description provided for @resetPasswordPolicyTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters'**
+  String get resetPasswordPolicyTip;
+
+  /// No description provided for @resetPasswordPolicyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Password does not meet the requirements'**
+  String get resetPasswordPolicyInvalid;
+
+  /// No description provided for @resetPasswordSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get resetPasswordSubmit;
+
+  /// No description provided for @resetPasswordSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset successfully. Please log in with your new password.'**
+  String get resetPasswordSuccess;
+
+  /// No description provided for @resetPasswordBackToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get resetPasswordBackToLogin;
+
+  /// No description provided for @dockLabelCourseCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Table'**
+  String get dockLabelCourseCurriculum;
+
+  /// No description provided for @courseCurriculum.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Curriculum'**
+  String get courseCurriculum;
+
+  /// No description provided for @courseCurriculumDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View schedules for each course section'**
+  String get courseCurriculumDesc;
+
+  /// No description provided for @courseCurriculumNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No course data'**
+  String get courseCurriculumNoData;
+
+  /// No description provided for @courseCurriculumNoSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule data'**
+  String get courseCurriculumNoSchedule;
+
+  /// No description provided for @courseCurriculumFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get courseCurriculumFilter;
+
+  /// No description provided for @courseCurriculumSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester'**
+  String get courseCurriculumSemester;
+
+  /// No description provided for @courseCurriculumDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get courseCurriculumDepartment;
+
+  /// No description provided for @courseCurriculumCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Category'**
+  String get courseCurriculumCategory;
+
+  /// No description provided for @courseCurriculumCourseName.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Name'**
+  String get courseCurriculumCourseName;
+
+  /// No description provided for @courseCurriculumCourseCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Code'**
+  String get courseCurriculumCourseCode;
+
+  /// No description provided for @courseCurriculumCourseSeq.
+  ///
+  /// In en, this message translates to:
+  /// **'Course Seq'**
+  String get courseCurriculumCourseSeq;
+
+  /// No description provided for @courseCurriculumSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get courseCurriculumSearch;
+
+  /// No description provided for @courseCurriculumLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load More'**
+  String get courseCurriculumLoadMore;
 }
 
 class _AppLocalizationsDelegate
