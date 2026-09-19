@@ -263,11 +263,17 @@ func computeWeekForDate(semesterStartDate: Date, totalWeeks: Int, date: Date) ->
 
 /// 计算学期结束日(最后一周的周日),基于学期开始日与总周数。
 /// totalWeeks 非法时返回 nil,与 Android 端保持一致。
+/// 学期最后一天（最后一周的周六，即放假前一天）。
+///
+/// 与周次同一口径：教学周以周日成行，故末周最后一天 = 块首日 + totalWeeks*7 - 1。
+/// 周一起点的学期（2026-08-31 起 20 周）→ 2027-01-16(六)，校历寒假自 1/17 起。
 func computeSemesterEndDate(semesterStartDate: Date, totalWeeks: Int) -> Date? {
     guard totalWeeks > 0 else { return nil }
     let calendar = Calendar.current
-    let startOfSemester = calendar.startOfDay(for: semesterStartDate)
-    return calendar.date(byAdding: .day, value: totalWeeks * 7 - 1, to: startOfSemester)
+    guard let anchor = courseWeekAnchor(semesterStartDate: semesterStartDate) else {
+        return nil
+    }
+    return calendar.date(byAdding: .day, value: totalWeeks * 7 - 1, to: anchor)
 }
 
 /// 在全部课表中查找在当前学期结束后最早开始的课表,返回其学期开始日。

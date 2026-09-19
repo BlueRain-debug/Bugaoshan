@@ -124,7 +124,8 @@ class AcademicCalendarSemester {
   bool isDateInSemester(DateTime target) {
     final today = DateTime(target.year, target.month, target.day);
     final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = start.add(Duration(days: totalWeeks * 7 - 1));
+    // 与周次同一口径：末周最后一天 = 块首日 + totalWeeks*7 - 1
+    final end = courseSemesterEnd(start, totalWeeks);
     return (today.isAtSameMomentAs(start) || today.isAfter(start)) &&
         (today.isAtSameMomentAs(end) || today.isBefore(end));
   }

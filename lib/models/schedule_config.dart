@@ -54,15 +54,14 @@ class ScheduleConfig {
   int get sectionsPerDay =>
       morningSections + afternoonSections + eveningSections;
 
-  /// The last day of this semester (end of the last teaching week).
-  DateTime get semesterEndDate {
-    final start = DateTime(
-      semesterStartDate.year,
-      semesterStartDate.month,
-      semesterStartDate.day,
-    );
-    return start.add(Duration(days: totalWeeks * 7 - 1));
-  }
+  /// 本学期最后一天（最后一周的周六，即放假前一天）。
+  ///
+  /// 与周次同一口径（见 `utils/semester_week.dart`）：教学周以周日成行，故末周
+  /// 最后一天 = 块首日 + `totalWeeks * 7 - 1`。周一起点的学期里比「起点 +
+  /// totalWeeks*7 - 1」早一天（2026-08-31 起 20 周 → 2027-01-16(六)，校历寒假
+  /// 自 1/17 起）。
+  DateTime get semesterEndDate =>
+      courseSemesterEnd(semesterStartDate, totalWeeks);
 
   ScheduleConfig({
     this.id = 'default',

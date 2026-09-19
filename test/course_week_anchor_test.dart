@@ -1,3 +1,4 @@
+import 'package:bugaoshan/models/academic_calendar.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/utils/semester_week.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +68,49 @@ void main() {
           }
         }
       }
+    });
+  });
+
+  group('学期最后一天（放假判定）', () {
+    test('周一起点：末周最后一天 = 块首日 + totalWeeks*7 - 1（周六）', () {
+      final start = DateTime(2026, 8, 31);
+
+      expect(courseSemesterEnd(start, 20), DateTime(2027, 1, 16));
+      expect(courseSemesterEnd(start, 20).weekday, DateTime.saturday);
+
+      final config = ScheduleConfig(
+        semesterStartDate: start,
+        semesterName: '2026-2027-1',
+        totalWeeks: 20,
+      );
+      // 次日 1/17 即校历寒假第一天，不再属于学期内
+      expect(config.semesterEndDate, DateTime(2027, 1, 16));
+    });
+
+    test('周日起点：与「起点 + totalWeeks*7 - 1」一致（历史学期无变化）', () {
+      final start = DateTime(2026, 3, 8);
+
+      expect(courseSemesterEnd(start, 19), DateTime(2026, 7, 18));
+      expect(
+        ScheduleConfig(
+          semesterStartDate: start,
+          semesterName: '2025-2026-2',
+          totalWeeks: 19,
+        ).semesterEndDate,
+        DateTime(2026, 7, 18),
+      );
+    });
+
+    test('校历学期区间与周次口径一致地收在末周最后一天', () {
+      final semester = AcademicCalendarSemester(
+        name: '2026-2027学年秋季学期',
+        startDate: DateTime(2026, 8, 31),
+        totalWeeks: 20,
+        events: const [],
+      );
+
+      expect(semester.isDateInSemester(DateTime(2027, 1, 16)), isTrue);
+      expect(semester.isDateInSemester(DateTime(2027, 1, 17)), isFalse);
     });
   });
 }

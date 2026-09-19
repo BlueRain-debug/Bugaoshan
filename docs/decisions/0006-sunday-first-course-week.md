@@ -36,6 +36,10 @@
 
 - 周日起点的学期：`getCurrentWeek` / 校历徽标 / 设置页「当前周」结果与旧实现完全一致。
 - 周一起点的学期：周日（以及受其推导的页面归属）周次 +1，与课表页 `dateForCourseDay` 的列日期对齐；`test/course_week_anchor_test.dart` 用「列日期反算周次 ≡ 页号」的不变量覆盖 7 种起点星期。
+- 学期最后一天（放假判定）改用同一块首日：`ScheduleConfig.semesterEndDate` 与
+  `AcademicCalendarSemester.isDateInSemester` 的右界 = 块首日 + `totalWeeks*7 - 1`。
+  周日起点的学期不变；周一起点的学期提前一天（2026-2027 秋季学期 → 2027-01-16(六)，
+  次日 1/17 即校历寒假第一天），小组件 Android/iOS 的 `computeSemesterEndDate` 同步。
 - `test/academic_calendar_test.dart` 中原先按「自起点起算」编写的两条断言按新口径更新。
 
 ## 后果

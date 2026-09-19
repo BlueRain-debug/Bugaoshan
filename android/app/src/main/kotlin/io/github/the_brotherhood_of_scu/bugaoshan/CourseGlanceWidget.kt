@@ -482,12 +482,17 @@ object WidgetDataLoader {
         return weekOf(weekAnchor(startCal), target, totalWeeks)
     }
 
-    /** 计算学期结束日(最后一周的周日),基于学期开始日与总周数。 */
+    /**
+     * 计算学期结束日（最后一周的周六，即放假前一天）。
+     *
+     * 与周次同一口径：教学周以周日成行，故末周最后一天 = 块首日 + totalWeeks*7 - 1。
+     * 周一起点的学期（2026-08-31 起 20 周）→ 2027-01-16(六)，校历寒假自 1/17 起。
+     */
     private fun computeSemesterEndDate(semesterStartDate: String, totalWeeks: Int): Calendar? {
         if (semesterStartDate.isEmpty() || totalWeeks <= 0) return null
         val start = parseCalendarDate(semesterStartDate) ?: return null
         return Calendar.getInstance().apply {
-            timeInMillis = start.timeInMillis
+            timeInMillis = weekAnchor(start).timeInMillis
             add(Calendar.DAY_OF_MONTH, totalWeeks * 7 - 1)
         }
     }
