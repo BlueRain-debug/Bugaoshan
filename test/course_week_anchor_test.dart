@@ -20,6 +20,15 @@ void main() {
       expect(courseWeekAnchor(DateTime(2026, 3, 8)), DateTime(2026, 3, 8));
       expect(courseWeekAnchor(DateTime(2026, 2, 22)), DateTime(2026, 2, 22));
     });
+
+    test('起点落在周中（周二~周六）：块首日是该周更早的周日', () {
+      // 周二 2026-09-01 → 8/30(日)；周六 2026-08-29 → 8/23(日)
+      expect(courseWeekAnchor(DateTime(2026, 9, 1)), DateTime(2026, 8, 30));
+      expect(courseWeekAnchor(DateTime(2026, 8, 29)), DateTime(2026, 8, 23));
+      // 第 1 周必须包含起点当天
+      expect(courseWeekOf(DateTime(2026, 9, 1), DateTime(2026, 9, 1)), 1);
+      expect(courseWeekOf(DateTime(2026, 8, 29), DateTime(2026, 8, 29)), 1);
+    });
   });
 
   group('courseWeekOf', () {

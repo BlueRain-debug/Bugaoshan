@@ -17,8 +17,8 @@ library;
 
 /// 教学周块首日，即第 1 周的周日 = **学期起点所在周的周日**。
 ///
-/// 教务系统以周日为每周第一天（见 [DateTimeExtension.toSunday]）。起点本身是周日时
-/// 块首日即起点；起点是周一时为起点前一天（2026-08-31 → 2026-08-30）。
+/// 教务系统以周日为每周第一天（与 `course.dart` 里 `DateTimeExtension.toSunday` 同义）。
+/// 起点本身是周日时块首日即起点；起点是周一时为起点前一天（2026-08-31 → 2026-08-30）。
 DateTime courseWeekAnchor(DateTime semesterStartDate) {
   final start = DateTime(
     semesterStartDate.year,

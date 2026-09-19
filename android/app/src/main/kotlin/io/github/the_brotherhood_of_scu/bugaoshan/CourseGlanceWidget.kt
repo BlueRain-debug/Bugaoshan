@@ -430,27 +430,29 @@ object WidgetDataLoader {
     }
 
     /**
-     * 教学周块的首日（第 1 周的周日）。
+     * 教学周块的首日，即第 1 周的周日 = 学期起点所在周的周日。
      *
-     * 校历的教学周按「周日~周六」成行：第 1 周是包含学期起点的那一行。学期起点为
-     * 周一时（如 2026-08-31），第 1 周为 8/30(日)~9/5(六)，故 9/20(日) 属第 4 周；
-     * 起点本身是周日时第 1 周即起点当周。与 App 课表页
-     * `ScheduleConfig.dateForCourseDay` 同一口径（第 W 周的周日 = anchor + (W-1)*7），
+     * 校历的教学周按「周日~周六」成行，第 1 周是包含学期起点的那一行：起点为周日时
+     * 块首日即起点；为周一时是起点前一天（2026-08-31 → 8/30，故 9/20(日) 属第 4 周）。
+     * 与 App 侧 `lib/utils/semester_week.dart` 的 `courseWeekAnchor` 逐字对应，
      * 两边不得各自演化。
      */
     private fun weekAnchor(startCal: Calendar): Calendar = Calendar.getInstance().apply {
         timeInMillis = startCal.timeInMillis
-        // Calendar 里 SUNDAY=1 … SATURDAY=7，先换算成 ISO/Dart 口径 1=Mon … 7=Sun
+        // Calendar 里 SUNDAY=1 … SATURDAY=7，先换算成 ISO/Dart 口径 1=Mon … 7=Sun，
+        // 再回退 `weekday % 7` 天（周日回退 0、周一回退 1、周六回退 6）。
         val isoWeekday = (startCal.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
-        val mondayOffset = ((1 - isoWeekday) % 7 + 7) % 7
-        add(Calendar.DAY_OF_MONTH, mondayOffset - 1)
+        add(Calendar.DAY_OF_MONTH, -(isoWeekday % 7))
     }
 
-    /** 目标日相对教学周块首日的周次（1-based），clamp 到 [1, totalWeeks]。 */
+    /**
+     * 目标日相对教学周块首日的周次（1-based），clamp 到 [1, totalWeeks]。
+     * 调用方已保证 target 不早于学期起点，而块首日不晚于起点，故 days >= 0。
+     */
     private fun weekOf(anchor: Calendar, target: Calendar, totalWeeks: Int): Int {
         val days =
             ((target.timeInMillis - anchor.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-        val week = Math.floorDiv(days, 7) + 1
+        val week = days / 7 + 1
         val maxWeek = if (totalWeeks >= 1) totalWeeks else week
         return week.coerceIn(1, maxWeek)
     }

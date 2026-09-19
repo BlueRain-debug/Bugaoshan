@@ -207,20 +207,19 @@ func parseConfigJson(_ jsonString: String) -> ScheduleConfig? {
     )
 }
 
-/// 教学周块的首日（第 1 周的周日）。
+/// 教学周块的首日，即第 1 周的周日 = **学期起点所在周的周日**。
 ///
-/// 校历的教学周按「周日~周六」成行：第 1 周是包含学期起点的那一行。学期起点为
-/// 周一时（如 2026-08-31），第 1 周为 8/30(日)~9/5(六)，故 9/20(日) 属第 4 周；
-/// 起点本身是周日时第 1 周即起点当周。与 App 课表页
-/// `ScheduleConfig.dateForCourseDay` 同一口径（第 W 周的周日 = anchor + (W-1)*7），
+/// 校历的教学周按「周日~周六」成行，第 1 周是包含学期起点的那一行：起点为周日时
+/// 块首日即起点；为周一时是起点前一天（2026-08-31 → 8/30，故 9/20(日) 属第 4 周）。
+/// 与 App 侧 `lib/utils/semester_week.dart` 的 `courseWeekAnchor` 逐字对应，
 /// 两边不得各自演化。
 func courseWeekAnchor(semesterStartDate: Date) -> Date? {
     let calendar = Calendar.current
     let start = calendar.startOfDay(for: semesterStartDate)
-    // Foundation 里 weekday 是 1=Sun … 7=Sat，先换算成 ISO/Dart 口径 1=Mon … 7=Sun
+    // Foundation 里 weekday 是 1=Sun … 7=Sat，先换算成 ISO/Dart 口径 1=Mon … 7=Sun，
+    // 再回退 `weekday % 7` 天（周日回退 0、周一回退 1、周六回退 6）。
     let isoWeekday = (calendar.component(.weekday, from: start) + 5) % 7 + 1
-    let mondayOffset = ((1 - isoWeekday) % 7 + 7) % 7
-    return calendar.date(byAdding: .day, value: mondayOffset - 1, to: start)
+    return calendar.date(byAdding: .day, value: -(isoWeekday % 7), to: start)
 }
 
 func computeCurrentWeek(semesterStartDate: Date, totalWeeks: Int) -> Int {
@@ -256,14 +255,14 @@ func computeWeekForDate(semesterStartDate: Date, totalWeeks: Int, date: Date) ->
     guard let anchor = courseWeekAnchor(semesterStartDate: startOfSemester) else {
         return 1
     }
+    // 块首日不晚于学期起点，且上面已保证 target >= 起点，故 days >= 0
     let days = calendar.dateComponents([.day], from: anchor, to: target).day ?? 0
-    let week = Int(floor(Double(days) / 7.0)) + 1
+    let week = days / 7 + 1
     return max(1, min(week, totalWeeks))
 }
 
-/// 计算学期结束日(最后一周的周日),基于学期开始日与总周数。
-/// totalWeeks 非法时返回 nil,与 Android 端保持一致。
 /// 学期最后一天（最后一周的周六，即放假前一天）。
+/// totalWeeks 非法时返回 nil，与 Android 端保持一致。
 ///
 /// 与周次同一口径：教学周以周日成行，故末周最后一天 = 块首日 + totalWeeks*7 - 1。
 /// 周一起点的学期（2026-08-31 起 20 周）→ 2027-01-16(六)，校历寒假自 1/17 起。
