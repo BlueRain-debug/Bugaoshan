@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- 修复桌面小组件周次算早一周的问题：教学周按校历从周日成行，学期起点为周一的学期（如 2026-2027 秋季学期）里周日会被算早一周，导致「当天课程结束后显示第二天课程」在周六晚显示「明天没课」，而该周日实际有课
+
 ## [2.5.2] - 2026-09-18
 
 ### Added

@@ -207,6 +207,22 @@ func parseConfigJson(_ jsonString: String) -> ScheduleConfig? {
     )
 }
 
+/// 教学周块的首日（第 1 周的周日）。
+///
+/// 校历的教学周按「周日~周六」成行：第 1 周是包含学期起点的那一行。学期起点为
+/// 周一时（如 2026-08-31），第 1 周为 8/30(日)~9/5(六)，故 9/20(日) 属第 4 周；
+/// 起点本身是周日时第 1 周即起点当周。与 App 课表页
+/// `ScheduleConfig.dateForCourseDay` 同一口径（第 W 周的周日 = anchor + (W-1)*7），
+/// 两边不得各自演化。
+func courseWeekAnchor(semesterStartDate: Date) -> Date? {
+    let calendar = Calendar.current
+    let start = calendar.startOfDay(for: semesterStartDate)
+    // Foundation 里 weekday 是 1=Sun … 7=Sat，先换算成 ISO/Dart 口径 1=Mon … 7=Sun
+    let isoWeekday = (calendar.component(.weekday, from: start) + 5) % 7 + 1
+    let mondayOffset = ((1 - isoWeekday) % 7 + 7) % 7
+    return calendar.date(byAdding: .day, value: mondayOffset - 1, to: start)
+}
+
 func computeCurrentWeek(semesterStartDate: Date, totalWeeks: Int) -> Int {
     let calendar = Calendar.current
     let today = calendar.startOfDay(for: Date())
@@ -219,16 +235,13 @@ func computeCurrentWeek(semesterStartDate: Date, totalWeeks: Int) -> Int {
         return 1
     }
 
-    let components1 = calendar.dateComponents([.day], from: startOfSemester, to: today)
-    let days = components1.day ?? 0
-//    let week = days / 7 + 1
-    // 直接请求相差的周数，消除夏令时可能导致的误差
-    let components2 = calendar.dateComponents([.weekOfYear], from: startOfSemester, to: today)
-    let week = (components2.weekOfYear ?? 0) + 1
-
-    let clampedWeek = max(1, min(week, totalWeeks))
-    print("BugaoShan Widget: computeCurrentWeek - days since start: \(days), week: \(week), clampedWeek: \(clampedWeek)")
-    return clampedWeek
+    let week = computeWeekForDate(
+        semesterStartDate: startOfSemester,
+        totalWeeks: totalWeeks,
+        date: today
+    )
+    print("BugaoShan Widget: computeCurrentWeek - week: \(week)")
+    return week
 }
 
 func computeWeekForDate(semesterStartDate: Date, totalWeeks: Int, date: Date) -> Int {
@@ -240,9 +253,11 @@ func computeWeekForDate(semesterStartDate: Date, totalWeeks: Int, date: Date) ->
         return 1
     }
 
-    let components = calendar.dateComponents([.day], from: startOfSemester, to: target)
-    let days = components.day ?? 0
-    let week = days / 7 + 1
+    guard let anchor = courseWeekAnchor(semesterStartDate: startOfSemester) else {
+        return 1
+    }
+    let days = calendar.dateComponents([.day], from: anchor, to: target).day ?? 0
+    let week = Int(floor(Double(days) / 7.0)) + 1
     return max(1, min(week, totalWeeks))
 }
 

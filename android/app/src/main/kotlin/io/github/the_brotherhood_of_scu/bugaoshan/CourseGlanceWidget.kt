@@ -429,15 +429,35 @@ object WidgetDataLoader {
         return true
     }
 
+    /**
+     * 教学周块的首日（第 1 周的周日）。
+     *
+     * 校历的教学周按「周日~周六」成行：第 1 周是包含学期起点的那一行。学期起点为
+     * 周一时（如 2026-08-31），第 1 周为 8/30(日)~9/5(六)，故 9/20(日) 属第 4 周；
+     * 起点本身是周日时第 1 周即起点当周。与 App 课表页
+     * `ScheduleConfig.dateForCourseDay` 同一口径（第 W 周的周日 = anchor + (W-1)*7），
+     * 两边不得各自演化。
+     */
+    private fun weekAnchor(startCal: Calendar): Calendar = Calendar.getInstance().apply {
+        timeInMillis = startCal.timeInMillis
+        // Calendar 里 SUNDAY=1 … SATURDAY=7，先换算成 ISO/Dart 口径 1=Mon … 7=Sun
+        val isoWeekday = (startCal.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+        val mondayOffset = ((1 - isoWeekday) % 7 + 7) % 7
+        add(Calendar.DAY_OF_MONTH, mondayOffset - 1)
+    }
+
+    /** 目标日相对教学周块首日的周次（1-based），clamp 到 [1, totalWeeks]。 */
+    private fun weekOf(anchor: Calendar, target: Calendar, totalWeeks: Int): Int {
+        val days =
+            ((target.timeInMillis - anchor.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+        val week = Math.floorDiv(days, 7) + 1
+        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
+        return week.coerceIn(1, maxWeek)
+    }
+
     private fun computeCurrentWeek(semesterStartDate: String, totalWeeks: Int): Int {
-        if (semesterStartDate.isEmpty()) return 1
+        val startCal = parseCalendarDate(semesterStartDate) ?: return 1
         if (totalWeeks <= 0) return 1
-        val parts = semesterStartDate.split("-")
-        if (parts.size != 3) return 1
-        val startCal = Calendar.getInstance().apply {
-            set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
         val now = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -445,21 +465,12 @@ object WidgetDataLoader {
             set(Calendar.MILLISECOND, 0)
         }
         if (now.before(startCal)) return 1
-        val days = ((now.timeInMillis - startCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-        val week = days / 7 + 1
-        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
-        return week.coerceIn(1, maxWeek)
+        return weekOf(weekAnchor(startCal), now, totalWeeks)
     }
 
     private fun computeWeekForDate(semesterStartDate: String, totalWeeks: Int, cal: Calendar): Int {
-        if (semesterStartDate.isEmpty()) return 1
+        val startCal = parseCalendarDate(semesterStartDate) ?: return 1
         if (totalWeeks <= 0) return 1
-        val parts = semesterStartDate.split("-")
-        if (parts.size != 3) return 1
-        val startCal = Calendar.getInstance().apply {
-            set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 0, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
         val target = Calendar.getInstance().apply {
             timeInMillis = cal.timeInMillis
             set(Calendar.HOUR_OF_DAY, 0)
@@ -468,10 +479,7 @@ object WidgetDataLoader {
             set(Calendar.MILLISECOND, 0)
         }
         if (target.before(startCal)) return 1
-        val days = ((target.timeInMillis - startCal.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-        val week = days / 7 + 1
-        val maxWeek = if (totalWeeks >= 1) totalWeeks else week
-        return week.coerceIn(1, maxWeek)
+        return weekOf(weekAnchor(startCal), target, totalWeeks)
     }
 
     /** 计算学期结束日(最后一周的周日),基于学期开始日与总周数。 */
