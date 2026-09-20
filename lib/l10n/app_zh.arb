@@ -424,6 +424,7 @@
   "sessionExpiredTitle": "会话已过期",
   "sessionExpiredMessage": "登录会话已过期，请重新登录后继续使用该功能。",
   "sessionExpired": "登录会话已过期",
+  "undergradDataOnly": "本科教务会话未建立。研究生账号请使用「校园 → 研究生」区功能；本科账号请重新登录后重试。",
   "relogin": "重新登录",
   "trainProgram": "培养方案",
   "trainProgramDesc": "查询各学院各年级的培养方案",

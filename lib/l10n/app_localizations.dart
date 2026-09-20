@@ -2191,6 +2191,12 @@ abstract class AppLocalizations {
   /// **'Session expired'**
   String get sessionExpired;
 
+  /// No description provided for @undergradDataOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.'**
+  String get undergradDataOnly;
+
   /// No description provided for @relogin.
   ///
   /// In en, this message translates to:
