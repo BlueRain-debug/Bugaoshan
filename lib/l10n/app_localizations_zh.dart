@@ -927,6 +927,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importFromJwxtOnlineHint => '将自动获取课表，需要先在「我的」页面完成统一身份认证登录';
 
   @override
+  String get importFromGraduate => '从研究生系统导入';
+
+  @override
   String get selectSemester => '选择学期';
 
   @override
@@ -2980,7 +2983,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get graduateScheduleImportAction => '导入到课表';
 
   @override
-  String get graduateScheduleImportDone => '课表导入完成';
+  String get graduateScheduleImportOverwriteTitle => '覆盖已有的课表？';
+
+  @override
+  String graduateScheduleImportOverwriteBody(String name) {
+    return '已存在名为「$name」的课表，继续导入会清空并替换它现有的全部课程。';
+  }
+
+  @override
+  String graduateScheduleImportDoneTo(String name) {
+    return '课表导入完成，已切换到「$name」';
+  }
 
   @override
   String get graduateScheduleImportFailed => '导入失败，请重试';

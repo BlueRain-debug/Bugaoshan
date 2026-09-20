@@ -379,6 +379,7 @@
   "logoutConfirm": "Are you sure you want to logout?",
   "importFromJwxtOnline": "Online Import from JWXT",
   "importFromJwxtOnlineHint": "Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.",
+  "importFromGraduate": "Import from Graduate System",
   "selectSemester": "Select Semester",
   "importAll": "Import All",
   "importingProgress": "Importing {current}/{total}...",
@@ -1710,7 +1711,23 @@
   "graduateScheduleImportWaiting": "Waiting for timetable data — sign in below and open the timetable",
   "graduateScheduleImportEmpty": "Data captured but no courses recognised — try switching weeks on the page",
   "graduateScheduleImportAction": "Import to timetable",
-  "graduateScheduleImportDone": "Timetable imported",
+  "graduateScheduleImportOverwriteTitle": "Overwrite the existing schedule?",
+  "graduateScheduleImportOverwriteBody": "A schedule named \"{name}\" already exists. Continuing will clear and replace all of its courses.",
+  "@graduateScheduleImportOverwriteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "graduateScheduleImportDoneTo": "Timetable imported — switched to \"{name}\"",
+  "@graduateScheduleImportDoneTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "graduateScheduleImportFailed": "Import failed, please try again",
   "graduateScheduleImportWebUnsupported": "Recognising the page requires script injection, which browsers block across origins. Please use this feature on Android, iOS or Windows.",
   "graduateScheduleImportNoWebView": "Direct connection failed and this platform has no in-app web fallback. Check your network and retry, or import on Android, iOS or desktop.",
