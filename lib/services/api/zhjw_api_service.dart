@@ -44,16 +44,19 @@ class ZhjwApiService {
   /// 登录页用 [looksLikeLoginPage] 的强特征组合判断，不做裸 login 子串
   /// 匹配——正常业务页（如选课页含 loginStatus/clientLogin）不能误伤
   /// （issue #282）。
+  ///
+  /// 注意：[_request] 的重认证自愈已经用全新 SSO 重试过一次，仍走到这里
+  /// 说明统一认证有效、本科教务却始终不认——多半是子系统没有此账号
+  /// （研究生账号）。打上 undergradOnly 标记，UI 据此给针对性指引而非
+  /// 「会话已过期请重试」。
   void _checkSessionExpiry(String body, int statusCode) {
-    if (statusCode == 302) {
-      throw const UnauthenticatedException();
-    }
-    if (body.trim().isEmpty) {
-      throw const UnauthenticatedException();
-    }
-    if (looksLikeLoginPage(body)) {
-      throw const UnauthenticatedException();
-    }
+    const flagged = UnauthenticatedException(
+      '本科教务会话未建立',
+      true,
+    );
+    if (statusCode == 302) throw flagged;
+    if (body.trim().isEmpty) throw flagged;
+    if (looksLikeLoginPage(body)) throw flagged;
   }
 
   // ═══════════════════════════════════════════════════════════════════

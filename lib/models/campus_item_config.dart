@@ -21,6 +21,7 @@ import 'package:bugaoshan/pages/campus/repair/repair_page.dart';
 import 'package:bugaoshan/pages/campus/train_program/train_program_page.dart';
 import 'package:bugaoshan/pages/campus_page/campus_page.dart';
 import 'package:bugaoshan/pages/course/main/course_page.dart';
+import 'package:bugaoshan/pages/graduate/schedule_import_page.dart';
 import 'package:bugaoshan/pages/profile/profile_page.dart';
 
 class CampusItemConfig {
@@ -260,6 +261,16 @@ final campusItemRepair = CampusItemConfig(
   page: () => const RepairPage(),
 );
 
+final campusItemGraduateScheduleImport = CampusItemConfig(
+  id: dockIdGraduateScheduleImport,
+  icon: Icons.cloud_download_outlined,
+  selectedIcon: Icons.cloud_download,
+  dockLabel: (l10n) => l10n.graduateScheduleImport,
+  dockFullLabel: (l10n) => l10n.graduateScheduleImport,
+  desc: (l10n) => l10n.graduateScheduleImportDesc,
+  page: () => const GraduateScheduleImportPage(),
+);
+
 final campusSections = [
   CampusSection(
     title: (l10n) => l10n.academicSection,
@@ -290,6 +301,10 @@ final campusSections = [
   CampusSection(
     title: (l10n) => l10n.noticeSection,
     items: [campusItemNotice, campusItemDownloads],
+  ),
+  CampusSection(
+    title: (l10n) => l10n.graduateSection,
+    items: [campusItemGraduateScheduleImport],
   ),
 ];
 
