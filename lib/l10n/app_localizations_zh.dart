@@ -927,6 +927,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importFromJwxtOnlineHint => '将自动获取课表，需要先在「我的」页面完成统一身份认证登录';
 
   @override
+  String get importFromGraduate => '从研究生系统导入';
+
+  @override
   String get selectSemester => '选择学期';
 
   @override
@@ -1095,6 +1098,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionExpired => '登录会话已过期';
+
+  @override
+  String get undergradDataOnly =>
+      '本科教务会话未建立。研究生账号请使用「校园 → 研究生」区功能；本科账号请重新登录后重试。';
 
   @override
   String get relogin => '重新登录';
@@ -2980,7 +2987,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get graduateScheduleImportAction => '导入到课表';
 
   @override
-  String get graduateScheduleImportDone => '课表导入完成';
+  String get graduateScheduleImportOverwriteTitle => '覆盖已有的课表？';
+
+  @override
+  String graduateScheduleImportOverwriteBody(String name) {
+    return '已存在名为「$name」的课表，继续导入会清空并替换它现有的全部课程。';
+  }
+
+  @override
+  String graduateScheduleImportDoneTo(String name) {
+    return '课表导入完成，已切换到「$name」';
+  }
 
   @override
   String get graduateScheduleImportFailed => '导入失败，请重试';
@@ -2995,6 +3012,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get graduateScheduleImportRetryDirect => '我已登录，重试';
+
+  @override
+  String get graduateScheduleImportSessionExpired =>
+      '研究生教务会话未建立或已过期，请先完成统一身份认证登录';
+
+  @override
+  String get graduateScheduleImportGoLogin => '前往登录';
+
+  @override
+  String get graduateScheduleImportEmergencyCapture => '应急网页抓取（直连不可用时）';
 
   @override
   String get graduateTrainPlanEmpty => '暂无培养方案数据';

@@ -5,29 +5,46 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
+import 'package:bugaoshan/pages/auth/scu_login_page.dart';
 import 'package:bugaoshan/services/api/gs_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/services/graduate_schedule_capture.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/graduate_schedule_parser.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart';
+import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/widgets/webview/webview_unsupported_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:os_type/os_type.dart';
 
+/// 直连失败的原因分类，决定失败态的文案与可用动作。
+enum _DirectFailureKind {
+  /// ehall 会话未建立 / 统一认证会话已过期。
+  unauthenticated,
+
+  /// 网络 / 接口 / 解析等其它错误。
+  other,
+
+  /// 兜底占位（fetchSchedule 返回空课表时与 [other] 同展示）。
+  unknown,
+}
+
 /// 研究生课表导入。
 ///
-/// **直连优先**（2026-09-15 接口定案后新增）：进入页面先尝试用 SCU 会话
-/// 直连 `xspkjgcx.do` 拉取课表（[GsApiService.fetchSchedule]），成功则直接
-/// 展示结果并导入，无需打开网页；学期第 1 周周一由首次上课日期（SCSKRQ）
-/// 反推，不再依赖「本周一」近似。
+/// **直连为主**：进入页面先尝试用 SCU 统一认证会话直连 `xspkjgcx.do`
+/// （[GsApiService.fetchSchedule]），成功则直接展示结果并导入，无需打开
+/// 网页；学期第 1 周周一由首次上课日期（SCSKRQ）反推，每节起止时刻由
+/// 行内 KSSJ/JSSJ 派生（缺省时按校区预置）。失败按原因分类展示：未登录
+/// 给「前往登录」（应用自带认证体系）+ 重试，其余给错误信息 + 重试。
 ///
-/// 直连失败（ehall 会话未建立 / 未登录 / 接口异常）时**降级为 WebView
-/// 抓取兜底**：加载 [kGsSchedulePageUrl]，并在文档开始前注入
-/// [kGraduateScheduleCaptureScript]，由页面自己去取课表数据时顺手把响应体
-/// 记下来；Dart 侧轮询取走，用 [graduateCoursesFromCapturedJson] 识别出课程，
-/// 再写进课表。兜底方案需用户在页面内登录一次 ehall。
+/// **WebView 只作应急**：用户在失败态主动点击「应急网页抓取」才加载
+/// [kGsSchedulePageUrl]，并在文档开始前注入 [kGraduateScheduleCaptureScript]，
+/// 由页面自己去取课表数据时顺手把响应体记下来；Dart 侧轮询取走，用
+/// [graduateCoursesFromCapturedJson] 识别出课程，再写进课表。应急方案需
+/// 用户在页面内登录一次 ehall，信息也不如直连全面，仅直连不可用时使用。
 class GraduateScheduleImportPage extends StatefulWidget {
   const GraduateScheduleImportPage({super.key});
 
@@ -51,10 +68,21 @@ class _GraduateScheduleImportPageState
   bool _pageLoading = true;
   bool _importing = false;
 
-  /// 直连三态：进行中 / 成功（隐藏 WebView）/ 失败（回退 WebView）。
+  /// 直连状态：进行中（`_directPhase`）/ 成功（`_directAvailable`）/
+  /// 失败（`_directFailureMessage` 非空，见 [_DirectFailureKind]）。
   bool _directPhase = true;
   bool _directAvailable = false;
   DateTime? _directSemesterStart;
+
+  /// 直连失败的原因分类与原文，用于失败态 UI。
+  _DirectFailureKind _directFailureKind = _DirectFailureKind.unknown;
+  String? _directFailureMessage;
+
+  /// 用户主动点了「应急网页抓取」——渲染 WebView，不再回到失败态。
+  bool _manualWebView = false;
+
+  /// 直连成功时由 KSSJ/JSSJ 派生的课表专属时刻表（应急路径为 null）。
+  List<TimeSlot>? _directTimeSlots;
 
   @override
   void initState() {
@@ -69,16 +97,23 @@ class _GraduateScheduleImportPageState
     super.dispose();
   }
 
-  /// 直连拉取课表；成功时隐藏 WebView，失败时静默回退。
+  /// 直连拉取课表；失败按原因分类，不再静默跳 WebView。
   Future<void> _tryDirectFetch() async {
+    setState(() {
+      _directPhase = true;
+      _directAvailable = false;
+      _directFailureMessage = null;
+      _manualWebView = false;
+    });
     try {
       final api = getIt<GsApiService>();
-      final courses = await api.fetchSchedule();
+      final data = await api.fetchSchedule();
       if (!mounted) return;
-      if (courses.isEmpty) {
+      if (data.courses.isEmpty) {
         setState(() {
           _directPhase = false;
-          _directAvailable = false;
+          _directFailureKind = _DirectFailureKind.other;
+          _directFailureMessage = null;
         });
         return;
       }
@@ -100,16 +135,29 @@ class _GraduateScheduleImportPageState
       setState(() {
         _directPhase = false;
         _directAvailable = true;
-        _courses = courses;
+        _courses = data.courses;
+        _directTimeSlots = data.timeSlots;
         _directSemesterStart = semesterStart;
       });
-      AppLog.i(_tag, '直连获取课表成功：${courses.length} 门课');
+      AppLog.i(_tag, '直连获取课表成功：${data.courses.length} 门课');
+    } on ScuException catch (e) {
+      AppLog.i(_tag, '直连获取课表失败：$e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      setState(() {
+        _directPhase = false;
+        _directFailureKind = e is UnauthenticatedException
+            ? _DirectFailureKind.unauthenticated
+            : _DirectFailureKind.other;
+        _directFailureMessage = l10n == null ? null : e.message;
+      });
     } catch (e) {
-      AppLog.i(_tag, '直连获取课表失败（回退 WebView 兜底）：$e');
+      AppLog.i(_tag, '直连获取课表失败：$e');
       if (!mounted) return;
       setState(() {
         _directPhase = false;
-        _directAvailable = false;
+        _directFailureKind = _DirectFailureKind.other;
+        _directFailureMessage = null;
       });
     }
   }
@@ -157,27 +205,28 @@ class _GraduateScheduleImportPageState
   }
 
   Future<void> _reload() async {
-    // 直连模式：刷新 = 重试直连。
-    if (_directAvailable || _directPhase) {
-      await _tryDirectFetch();
+    // 应急网页模式：清空捕获状态后重载页面。
+    if (_manualWebView) {
+      setState(() {
+        _entries = const [];
+        _courses = const [];
+        _captureUrls = const [];
+        _pageLoading = true;
+      });
+      final controller = _controller;
+      if (controller == null) return;
+      try {
+        await controller.evaluateJavascript(
+          source: 'window.$kGraduateCaptureGlobal = [];',
+        );
+        await controller.reload();
+      } catch (e) {
+        AppLog.w(_tag, '重新加载失败：$e');
+      }
       return;
     }
-    setState(() {
-      _entries = const [];
-      _courses = const [];
-      _captureUrls = const [];
-      _pageLoading = true;
-    });
-    final controller = _controller;
-    if (controller == null) return;
-    try {
-      await controller.evaluateJavascript(
-        source: 'window.$kGraduateCaptureGlobal = [];',
-      );
-      await controller.reload();
-    } catch (e) {
-      AppLog.w(_tag, '重新加载失败：$e');
-    }
+    // 其余状态（进行中 / 成功 / 失败）：刷新 = 重试直连。
+    await _tryDirectFetch();
   }
 
   /// 课表覆盖的最大周数：不少于默认 20 周，课程周次更靠后就跟着放大。
@@ -208,6 +257,14 @@ class _GraduateScheduleImportPageState
     // 按课程的主导校区挑时间表（江安 / 望江华西），节数非默认时不改动。
     ScheduleConfig.applyCampusTimeSlotsForCourses(config, _courses);
 
+    // 接口自带的精确作息（KSSJ/JSSJ 派生）优先于预置：显示时间与教务一致。
+    // 派生表长度与预置对齐（graduateTimeSlotsFromRows 保证），节数不符时不动。
+    final derivedSlots = _directTimeSlots;
+    if (derivedSlots != null &&
+        derivedSlots.length == config.timeSlots.length) {
+      config.timeSlots = List.of(derivedSlots);
+    }
+
     // 借用本科导入的校验标准，但逐条过滤而非中断整次导入。
     final clamped = clampGraduateCourses(
       _courses,
@@ -227,8 +284,22 @@ class _GraduateScheduleImportPageState
       return;
     }
 
+    // 目标课表已存在时是「整表替换」：同名课表里的课程会被全部清空，
+    // 且导入完成后会切换过去——先确认一次，避免从课表页入口误触发覆盖。
+    final existingId = provider.findScheduleIdByName(scheduleName);
+    if (existingId != null) {
+      final overwrite = await showYesNoDialog(
+        title: l10n.graduateScheduleImportOverwriteTitle,
+        content: l10n.graduateScheduleImportOverwriteBody(scheduleName),
+      );
+      if (!mounted) return;
+      if (overwrite != true) {
+        setState(() => _importing = false);
+        return;
+      }
+    }
+
     try {
-      final existingId = provider.findScheduleIdByName(scheduleName);
       if (existingId != null) {
         await provider.replaceScheduleCourses(existingId, courses);
         await provider.switchSchedule(existingId);
@@ -240,9 +311,11 @@ class _GraduateScheduleImportPageState
       AppLog.i(_tag, '导入完成：${courses.length} 门课程 → $scheduleName');
       if (!mounted) return;
       setState(() => _importing = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.graduateScheduleImportDone)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.graduateScheduleImportDoneTo(scheduleName)),
+        ),
+      );
       Navigator.of(context).pop();
     } catch (e) {
       AppLog.e(_tag, '导入失败：$e');
@@ -272,53 +345,100 @@ class _GraduateScheduleImportPageState
     }
 
     // 直连失败：Web 被跨域限制（ehall 不放行跨域凭据请求，实测 2026-09-15），
-    // 且无 WebView 兜底——如实提示需要原生客户端。鸿蒙无 WebView，提示重试。
+    // 且无 WebView 应急手段——如实提示需要原生客户端。
     if (kIsWeb) {
       // preview 分支的 WebViewUnsupportedPage 只接收 title（无 message 参数）
       return WebViewUnsupportedPage(title: l10n.graduateScheduleImport);
     }
-    if (OS.isHarmony) {
-      return _buildNoWebViewGuide(l10n);
+
+    // 用户主动点了「应急网页抓取」：渲染 WebView（鸿蒙无 WebView，给不了）。
+    if (_manualWebView && !OS.isHarmony) {
+      return Scaffold(appBar: _buildAppBar(l10n), body: _fallbackBody(l10n));
     }
 
-    return Scaffold(appBar: _buildAppBar(l10n), body: _fallbackBody(l10n));
+    return _buildDirectFailure(l10n);
   }
 
-  /// 鸿蒙的无兜底引导页：无 WebView 实现，仅提示可重试直连或换用其他客户端。
-  Widget _buildNoWebViewGuide(AppLocalizations l10n) {
+  /// 直连失败态：按原因给文案与动作。未登录给「前往登录」（走应用自带的
+  /// 统一认证登录页）+ 重试；其余给错误信息 + 重试。WebView 应急入口只在
+  /// 有 WebView 的平台显示，且保持不显眼（TextButton）。
+  Widget _buildDirectFailure(AppLocalizations l10n) {
+    final isHarmony = OS.isHarmony;
+    final isUnauthenticated =
+        _directFailureKind == _DirectFailureKind.unauthenticated;
+    final message = switch (_directFailureKind) {
+      _DirectFailureKind.unauthenticated =>
+        l10n.graduateScheduleImportSessionExpired,
+      _ when isHarmony => l10n.graduateScheduleImportNoWebView,
+      _ => l10n.graduateScheduleImportFailed,
+    };
+
     return Scaffold(
       appBar: _buildAppBar(l10n),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(
-                  Icons.public,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(height: 16),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                isUnauthenticated
+                    ? Icons.lock_outline
+                    : Icons.cloud_off_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              // 接口层的原文（如「研教务返回了无法解析的数据」），供对号入座。
+              if (!isUnauthenticated && _directFailureMessage != null) ...[
+                const SizedBox(height: 8),
                 Text(
-                  l10n.graduateScheduleImportNoWebView,
+                  _directFailureMessage!,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  onPressed: _tryDirectFetch,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(l10n.graduateScheduleImportRetryDirect),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
-            ),
+              const SizedBox(height: 24),
+              if (isUnauthenticated)
+                FilledButton.icon(
+                  onPressed: _openLoginPage,
+                  icon: const Icon(Icons.login),
+                  label: Text(l10n.graduateScheduleImportGoLogin),
+                ),
+              OutlinedButton.icon(
+                onPressed: _tryDirectFetch,
+                icon: const Icon(Icons.refresh),
+                label: Text(
+                  isUnauthenticated
+                      ? l10n.graduateScheduleImportRetryDirect
+                      : l10n.retry,
+                ),
+              ),
+              if (!isHarmony) ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => setState(() => _manualWebView = true),
+                  child: Text(l10n.graduateScheduleImportEmergencyCapture),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
+  }
+
+  /// 打开应用自带的统一认证登录页；登录完成返回后由用户点「重试」。
+  void _openLoginPage() {
+    popupOrNavigate(context, const ScuLoginPage());
   }
 
   PreferredSizeWidget _buildAppBar(AppLocalizations l10n) {

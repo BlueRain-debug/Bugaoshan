@@ -961,6 +961,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.';
 
   @override
+  String get importFromGraduate => 'Import from Graduate System';
+
+  @override
   String get selectSemester => 'Select Semester';
 
   @override
@@ -1132,6 +1135,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionExpired => 'Session expired';
+
+  @override
+  String get undergradDataOnly =>
+      'Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.';
 
   @override
   String get relogin => 'Login Again';
@@ -3076,7 +3083,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get graduateScheduleImportAction => 'Import to timetable';
 
   @override
-  String get graduateScheduleImportDone => 'Timetable imported';
+  String get graduateScheduleImportOverwriteTitle =>
+      'Overwrite the existing schedule?';
+
+  @override
+  String graduateScheduleImportOverwriteBody(String name) {
+    return 'A schedule named \"$name\" already exists. Continuing will clear and replace all of its courses.';
+  }
+
+  @override
+  String graduateScheduleImportDoneTo(String name) {
+    return 'Timetable imported — switched to \"$name\"';
+  }
 
   @override
   String get graduateScheduleImportFailed => 'Import failed, please try again';
@@ -3091,6 +3109,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get graduateScheduleImportRetryDirect => 'I have signed in, retry';
+
+  @override
+  String get graduateScheduleImportSessionExpired =>
+      'The graduate system session is missing or expired — sign in with SCU Unified Identity first';
+
+  @override
+  String get graduateScheduleImportGoLogin => 'Go to login';
+
+  @override
+  String get graduateScheduleImportEmergencyCapture =>
+      'Emergency web capture (when direct connection is unavailable)';
 
   @override
   String get graduateTrainPlanEmpty => 'No training plan data';

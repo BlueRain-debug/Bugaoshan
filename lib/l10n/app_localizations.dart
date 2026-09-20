@@ -1861,6 +1861,12 @@ abstract class AppLocalizations {
   /// **'Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.'**
   String get importFromJwxtOnlineHint;
 
+  /// No description provided for @importFromGraduate.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Graduate System'**
+  String get importFromGraduate;
+
   /// No description provided for @selectSemester.
   ///
   /// In en, this message translates to:
@@ -2184,6 +2190,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Session expired'**
   String get sessionExpired;
+
+  /// No description provided for @undergradDataOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.'**
+  String get undergradDataOnly;
 
   /// No description provided for @relogin.
   ///
@@ -5773,11 +5785,23 @@ abstract class AppLocalizations {
   /// **'Import to timetable'**
   String get graduateScheduleImportAction;
 
-  /// No description provided for @graduateScheduleImportDone.
+  /// No description provided for @graduateScheduleImportOverwriteTitle.
   ///
   /// In en, this message translates to:
-  /// **'Timetable imported'**
-  String get graduateScheduleImportDone;
+  /// **'Overwrite the existing schedule?'**
+  String get graduateScheduleImportOverwriteTitle;
+
+  /// No description provided for @graduateScheduleImportOverwriteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A schedule named \"{name}\" already exists. Continuing will clear and replace all of its courses.'**
+  String graduateScheduleImportOverwriteBody(String name);
+
+  /// No description provided for @graduateScheduleImportDoneTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Timetable imported — switched to \"{name}\"'**
+  String graduateScheduleImportDoneTo(String name);
 
   /// No description provided for @graduateScheduleImportFailed.
   ///
@@ -5802,6 +5826,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I have signed in, retry'**
   String get graduateScheduleImportRetryDirect;
+
+  /// No description provided for @graduateScheduleImportSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The graduate system session is missing or expired — sign in with SCU Unified Identity first'**
+  String get graduateScheduleImportSessionExpired;
+
+  /// No description provided for @graduateScheduleImportGoLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to login'**
+  String get graduateScheduleImportGoLogin;
+
+  /// No description provided for @graduateScheduleImportEmergencyCapture.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency web capture (when direct connection is unavailable)'**
+  String get graduateScheduleImportEmergencyCapture;
 
   /// No description provided for @graduateTrainPlanEmpty.
   ///

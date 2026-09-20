@@ -4,7 +4,7 @@ import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/utils/class_week_parser.dart';
 import 'package:bugaoshan/utils/gs_json_envelope.dart';
-import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/material.dart' show Colors, TimeOfDay;
 
 /// 研究生课表解析器（纯函数，无网络 / 无状态）。
 ///
@@ -108,6 +108,10 @@ const int _maxCaptureDepth = 6;
 // 一致：`rkjs` 任课教师、`skdd` 上课地点、`jcdm`/`jsdm` 起止节次（两位零填充
 // 代码）、`jcxx` 节次信息文本、`skzs` 上课周数、`dsz` 单双周、`rq` 上课日期
 // 或星期文本。
+//
+// `zcbh` / `kssj` / `jssj` 来自川大研教务（ehall xspkjgcx.do）2026-09-20
+// 抓包实测的行字段：`zcbh` 周次位串（逐周上课位图，周次权威源头）、
+// `kssj`/`jssj` 每节课起止时刻（形如 800 → 8:00 的分钟数）。
 
 const List<String> _kIdKeys = [
   'id',
@@ -186,6 +190,8 @@ const List<String> _kEndSectionKeys = [
   'JSJCDM',
 ];
 const List<String> _kWeekRangeKeys = [
+  'zcbh',
+  'ZCBH',
   'zcd',
   'ZCD',
   'zcmc',
@@ -193,6 +199,10 @@ const List<String> _kWeekRangeKeys = [
   'skzs',
   'SKZS',
 ];
+
+/// 上课起止时刻（分钟数，形如 800 → 8:00；研教务行内自带，精确于预置作息）。
+const List<String> _kClassStartKeys = ['KSSJ', 'kssj'];
+const List<String> _kClassEndKeys = ['JSSJ', 'jssj'];
 const List<String> _kStartWeekKeys = ['startWeek', 'zc', 'ZC'];
 const List<String> _kEndWeekKeys = ['endWeek', 'zc1', 'ZC1'];
 
@@ -277,31 +287,40 @@ int? _parseDayOfWeek(Map<String, dynamic> json) {
 
 /// 周次 → 可精确表达的若干区间。
 ///
-/// 四种写法都支持：位串（`"1100110011001100"`）、区间串（`"1-16周(单)"`）、
-/// 分开的起止字段（`zc` / `zc1`）。金智研究生的 `skzs` 通常只给周数区间，
-/// 单双周由独立的 `dsz` 字段标记，位串之外统一查它。
+/// 依 [_kWeekRangeKeys] 的优先级逐键尝试：位串（`"1100110011001100"`，
+/// 研教务 ZCBH 逐周位图，权威源头）→ 区间串（`"1-16周(单)"`）→ 分开的
+/// 起止字段（`zc`/`zc1`）。金智研究生的 `skzs` 通常只给周数区间，单双周
+/// 由独立的 `dsz` 字段标记；位串与区间文本自带的「单/双」优先于 `dsz`。
+/// 全 0 位串是脏数据（解析不出周次），跳过看下一个候选键。
 List<ClassWeekSegment> _weekSegmentsOf(Map<String, dynamic> json) {
-  final raw = _firstValue(json, _kWeekRangeKeys);
+  for (final key in _kWeekRangeKeys) {
+    final raw = json[key];
+    if (raw == null) continue;
 
-  final bitString = _asWeekBitString(raw);
-  if (bitString != null) return parseClassWeekSegments(bitString);
+    final bitString = _asWeekBitString(raw);
+    if (bitString != null) {
+      final segments = parseClassWeekSegments(bitString);
+      if (segments.isNotEmpty) return segments;
+      continue;
+    }
 
-  final parity = _weekParityOf(json);
-  final range = _parseWeekSpec(raw);
-  if (range != null) {
-    // `skzs` 只给了区间时，`dsz` 是单双周的权威来源；区间文本自带
-    // 「单/双」的情况（`_parseWeekSpec` 已推断）优先级更高，不覆盖。
-    final weekType = (range.weekType == WeekType.every && parity != null)
-        ? parity
-        : range.weekType;
-    return [(startWeek: range.start, endWeek: range.end, weekType: weekType)];
+    final parity = _weekParityOf(json);
+    final range = _parseWeekSpec(raw);
+    if (range != null) {
+      // 文本未带「单/双」时，`dsz` 是单双周的权威来源；区间文本自带的
+      // 情况（`_parseWeekSpec` 已推断）优先级更高，不覆盖。
+      final weekType = (range.weekType == WeekType.every && parity != null)
+          ? parity
+          : range.weekType;
+      return [(startWeek: range.start, endWeek: range.end, weekType: weekType)];
+    }
   }
 
   return [
     (
       startWeek: _firstInt(json, _kStartWeekKeys) ?? 1,
       endWeek: _firstInt(json, _kEndWeekKeys) ?? 1,
-      weekType: parity ?? WeekType.every,
+      weekType: _weekParityOf(json) ?? WeekType.every,
     ),
   ];
 }
@@ -546,12 +565,18 @@ List<Course> assignColorsByName(List<Course> courses) {
   );
 }
 
-/// 是否为单一连续区间的周次文本（`"3-17"`、`"1-16周"`、`"2-18周 "`）。
+/// 是否为单一连续区间的周次文本（`"3-17"`、`"1-16周"`、`"第3-17周"`、
+/// `"3-17周(每周)"`）。
 ///
-/// 逗号分隔的稀疏周次（`"1,3,5"`、`"1-8,10-16"`）不算——那种形态下
-/// 数字列表本身携带奇偶信息，仍交给 [_inferWeekType] 推断。
-bool _isContiguousRange(String text) =>
-    RegExp(r'^\s*\d+\s*[-–—]\s*\d+\s*周?\s*$').hasMatch(text);
+/// 容忍可选的「第」前缀（两段各自可有）与括号尾注——尾注内容若含「单/双」
+/// 已在 [_parseWeekSpec] 提前判定，不会走到这里。逗号分隔的稀疏周次
+/// （`"1,3,5"`、`"1-8,10-16"`）不算——那种形态下数字列表本身携带奇偶
+/// 信息，仍交给 [_inferWeekType] 推断。
+bool _isContiguousRange(String text) => _contiguousRangePattern.hasMatch(text);
+
+final RegExp _contiguousRangePattern = RegExp(
+  r'^\s*第?\s*\d+\s*周?\s*[-–—]\s*第?\s*\d+\s*周?\s*(?:（[^）]*）|\([^)]*\))?\s*$',
+);
 
 /// 全奇数 → 单周，全偶数 → 双周，其余 → 每周。单个周次不构成交替规律。
 WeekType _inferWeekType(List<int> weeks) {
@@ -594,6 +619,80 @@ int? _toInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value.toString().trim());
+}
+
+// ── 接口精确时刻（KSSJ / JSSJ）───────────────────────────────────
+
+/// 从研教务课表行生成该课表专属的每节起止时刻表。
+///
+/// `xspkjgcx.do` 每行带 `KSSJ` / `JSSJ`（形如 800 → 8:00 的分钟数，与
+/// 节次代码 KSJCDM/JSJCDM 一一对应）：节次起点取「该行起始节 → 该行
+/// KSSJ」，终点同理。同一节次多行观测投票取众数；未观测到的节次用
+/// [fallback]（通常是望江/华西预置作息）补齐，保证返回长度与 [fallback]
+/// 一致。没有任何可用时刻时返回 null，调用方沿用预置。
+List<TimeSlot>? graduateTimeSlotsFromRows(
+  List<Map<String, dynamic>> rows, {
+  required List<TimeSlot> fallback,
+}) {
+  // section -> {时刻(分钟数): 票数}
+  final startVotes = <int, Map<int, int>>{};
+  final endVotes = <int, Map<int, int>>{};
+  for (final row in rows) {
+    final startSection = _firstInt(row, _kStartSectionKeys);
+    final endSection = _firstInt(row, _kEndSectionKeys);
+    final startMinute = _classMinuteOf(row, _kClassStartKeys);
+    final endMinute = _classMinuteOf(row, _kClassEndKeys);
+    if (startSection != null && startMinute != null) {
+      startVotes.putIfAbsent(startSection, () => {})[startMinute] =
+          (startVotes[startSection]?[startMinute] ?? 0) + 1;
+    }
+    if (endSection != null && endMinute != null) {
+      endVotes.putIfAbsent(endSection, () => {})[endMinute] =
+          (endVotes[endSection]?[endMinute] ?? 0) + 1;
+    }
+  }
+  if (startVotes.isEmpty && endVotes.isEmpty) return null;
+
+  return [
+    for (var index = 0; index < fallback.length; index++)
+      _observedOrDefault(startVotes, endVotes, index, fallback[index]),
+  ];
+}
+
+/// 单个节次：观测到起止且起在止前 → 用观测值，否则用预置。
+TimeSlot _observedOrDefault(
+  Map<int, Map<int, int>> startVotes,
+  Map<int, Map<int, int>> endVotes,
+  int index,
+  TimeSlot preset,
+) {
+  final section = index + 1;
+  final start = _majorityMinute(startVotes[section]);
+  final end = _majorityMinute(endVotes[section]);
+  if (start == null || end == null || start >= end) return preset;
+  return TimeSlot(
+    startTime: _timeOfDayOfMinutes(start),
+    endTime: _timeOfDayOfMinutes(end),
+  );
+}
+
+/// 时刻字段换算与校验：形如 800 → 8:00、1045 → 10:45。
+/// 分钟位 ≥60、小时位 ≥24 或负数视为脏数据返回 null。
+int? _classMinuteOf(Map<String, dynamic> json, List<String> keys) {
+  final raw = _firstInt(json, keys);
+  if (raw == null || raw < 0 || raw >= 2400 || raw % 100 >= 60) return null;
+  return raw;
+}
+
+TimeOfDay _timeOfDayOfMinutes(int minutes) =>
+    TimeOfDay(hour: minutes ~/ 100, minute: minutes % 100);
+
+/// 多行观测投票取众数（并列时取先观测到的时刻）。
+int? _majorityMinute(Map<int, int>? votes) {
+  if (votes == null || votes.isEmpty) return null;
+  final sorted = votes.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return sorted.first.key;
 }
 
 // ── 学期起始日 ────────────────────────────────────────────────────

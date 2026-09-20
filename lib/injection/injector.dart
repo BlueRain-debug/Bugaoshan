@@ -162,6 +162,7 @@ void _configureAsyncDependencies() {
     await getIt.isReady<ServiceAuth>();
     await getIt.isReady<ZhhqAuth>();
     await getIt.isReady<NewServiceAuth>();
+    await getIt.isReady<GsAuth>();
     return AuthCoordinator([
       getIt<ZhjwAuth>(),
       getIt<WfwAuth>(),
@@ -171,6 +172,7 @@ void _configureAsyncDependencies() {
       getIt<ServiceAuth>(),
       getIt<ZhhqAuth>(),
       getIt<NewServiceAuth>(),
+      getIt<GsAuth>(),
     ]);
   });
 
@@ -412,6 +414,10 @@ void _configureAsyncDependencies() {
     getIt<ScuAuth>().addListener(() {
       final scu = getIt<ScuAuth>();
       if (scu.state == AuthState.unknown) {
+        // logout 发生，清理子系统会话缓存
+        if (getIt.isRegistered<GsAuth>()) {
+          getIt<GsAuth>().invalidate();
+        }
         // logout 发生，清理需要登录态的 Provider 缓存
         if (getIt.isRegistered<PlanCompletionProvider>()) {
           getIt<PlanCompletionProvider>().clearCache();
