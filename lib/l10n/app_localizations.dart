@@ -1861,6 +1861,12 @@ abstract class AppLocalizations {
   /// **'Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.'**
   String get importFromJwxtOnlineHint;
 
+  /// No description provided for @importFromGraduate.
+  ///
+  /// In en, this message translates to:
+  /// **'Graduate Schedule Import'**
+  String get importFromGraduate;
+
   /// No description provided for @selectSemester.
   ///
   /// In en, this message translates to:
