@@ -565,12 +565,18 @@ List<Course> assignColorsByName(List<Course> courses) {
   );
 }
 
-/// 是否为单一连续区间的周次文本（`"3-17"`、`"1-16周"`、`"2-18周 "`）。
+/// 是否为单一连续区间的周次文本（`"3-17"`、`"1-16周"`、`"第3-17周"`、
+/// `"3-17周(每周)"`）。
 ///
-/// 逗号分隔的稀疏周次（`"1,3,5"`、`"1-8,10-16"`）不算——那种形态下
-/// 数字列表本身携带奇偶信息，仍交给 [_inferWeekType] 推断。
-bool _isContiguousRange(String text) =>
-    RegExp(r'^\s*\d+\s*[-–—]\s*\d+\s*周?\s*$').hasMatch(text);
+/// 容忍可选的「第」前缀（两段各自可有）与括号尾注——尾注内容若含「单/双」
+/// 已在 [_parseWeekSpec] 提前判定，不会走到这里。逗号分隔的稀疏周次
+/// （`"1,3,5"`、`"1-8,10-16"`）不算——那种形态下数字列表本身携带奇偶
+/// 信息，仍交给 [_inferWeekType] 推断。
+bool _isContiguousRange(String text) => _contiguousRangePattern.hasMatch(text);
+
+final RegExp _contiguousRangePattern = RegExp(
+  r'^\s*第?\s*\d+\s*周?\s*[-–—]\s*第?\s*\d+\s*周?\s*(?:（[^）]*）|\([^)]*\))?\s*$',
+);
 
 /// 全奇数 → 单周，全偶数 → 双周，其余 → 每周。单个周次不构成交替规律。
 WeekType _inferWeekType(List<int> weeks) {

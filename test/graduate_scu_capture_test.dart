@@ -73,6 +73,38 @@ void main() {
         WeekType.odd,
       );
     });
+
+    test('「第3-17周」「3-17周(每周)」等变体也按连续区间处理（#329 遗留坑）', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '测试课程一',
+          'XQ': 1,
+          'KSJCDM': 2,
+          'JSJCDM': 3,
+          'ZCMC': '第3-17周',
+        },
+        {
+          'KCMC': '测试课程二',
+          'XQ': 2,
+          'KSJCDM': 4,
+          'JSJCDM': 5,
+          'ZCMC': '3-17周(每周)',
+        },
+      ]);
+      // 前缀「第」与尾注「(每周)」都不影响连续区间判定，不再掉进奇偶推断
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程一').weekType,
+        WeekType.every,
+      );
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程二').weekType,
+        WeekType.every,
+      );
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程一').endWeek,
+        17,
+      );
+    });
   });
 
   group('相邻节次合并', () {
