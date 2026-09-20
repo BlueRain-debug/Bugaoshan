@@ -1649,7 +1649,23 @@
   "graduateScheduleImportWaiting": "正在等待课表数据，请先在下方页面登录并打开课表",
   "graduateScheduleImportEmpty": "已抓到数据但没解析出课程，试试在页面里切换周次",
   "graduateScheduleImportAction": "导入到课表",
-  "graduateScheduleImportDone": "课表导入完成",
+  "graduateScheduleImportOverwriteTitle": "覆盖已有的课表？",
+  "graduateScheduleImportOverwriteBody": "已存在名为「{name}」的课表，继续导入会清空并替换它现有的全部课程。",
+  "@graduateScheduleImportOverwriteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "graduateScheduleImportDoneTo": "课表导入完成，已切换到「{name}」",
+  "@graduateScheduleImportDoneTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "graduateScheduleImportFailed": "导入失败，请重试",
   "graduateScheduleImportWebUnsupported": "识别网页需要在页面里注入脚本，浏览器会因跨域而拦截。请在 Android / iOS / Windows 客户端使用此功能。",
   "graduateScheduleImportNoWebView": "直连获取研究生课表失败，且当前平台没有内置网页兜底。请检查网络后重试，或使用 Android / iOS / 桌面客户端导入。",

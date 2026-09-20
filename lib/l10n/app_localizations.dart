@@ -5779,11 +5779,23 @@ abstract class AppLocalizations {
   /// **'Import to timetable'**
   String get graduateScheduleImportAction;
 
-  /// No description provided for @graduateScheduleImportDone.
+  /// No description provided for @graduateScheduleImportOverwriteTitle.
   ///
   /// In en, this message translates to:
-  /// **'Timetable imported'**
-  String get graduateScheduleImportDone;
+  /// **'Overwrite the existing schedule?'**
+  String get graduateScheduleImportOverwriteTitle;
+
+  /// No description provided for @graduateScheduleImportOverwriteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A schedule named \"{name}\" already exists. Continuing will clear and replace all of its courses.'**
+  String graduateScheduleImportOverwriteBody(String name);
+
+  /// No description provided for @graduateScheduleImportDoneTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Timetable imported — switched to \"{name}\"'**
+  String graduateScheduleImportDoneTo(String name);
 
   /// No description provided for @graduateScheduleImportFailed.
   ///

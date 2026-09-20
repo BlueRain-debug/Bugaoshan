@@ -10,6 +10,7 @@ import 'package:bugaoshan/services/graduate_schedule_capture.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/graduate_schedule_parser.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/webview/webview_unsupported_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -227,8 +228,22 @@ class _GraduateScheduleImportPageState
       return;
     }
 
+    // 目标课表已存在时是「整表替换」：同名课表里的课程会被全部清空，
+    // 且导入完成后会切换过去——先确认一次，避免从课表页入口误触发覆盖。
+    final existingId = provider.findScheduleIdByName(scheduleName);
+    if (existingId != null) {
+      final overwrite = await showYesNoDialog(
+        title: l10n.graduateScheduleImportOverwriteTitle,
+        content: l10n.graduateScheduleImportOverwriteBody(scheduleName),
+      );
+      if (!mounted) return;
+      if (overwrite != true) {
+        setState(() => _importing = false);
+        return;
+      }
+    }
+
     try {
-      final existingId = provider.findScheduleIdByName(scheduleName);
       if (existingId != null) {
         await provider.replaceScheduleCourses(existingId, courses);
         await provider.switchSchedule(existingId);
@@ -240,9 +255,11 @@ class _GraduateScheduleImportPageState
       AppLog.i(_tag, '导入完成：${courses.length} 门课程 → $scheduleName');
       if (!mounted) return;
       setState(() => _importing = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.graduateScheduleImportDone)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.graduateScheduleImportDoneTo(scheduleName)),
+        ),
+      );
       Navigator.of(context).pop();
     } catch (e) {
       AppLog.e(_tag, '导入失败：$e');
