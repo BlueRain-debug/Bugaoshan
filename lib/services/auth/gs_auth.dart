@@ -104,19 +104,18 @@ class GsAuth extends ChangeNotifier implements SubsystemAuth {
       'Authorization': 'Bearer $auth',
     };
 
-    // gsapp 域 SSO（成绩 / 培养计划等模块，占位接口未来上线时使用）。
-    final gsappResponse = await client.followRedirects(
-      Uri.parse(kGsSsoUrl),
-      headers: ssoHeaders,
-    );
-    if (gsappResponse.statusCode == 401 || gsappResponse.statusCode == 403) {
-      throw const UnauthenticatedException();
-    }
-    if (gsappResponse.statusCode < 200 || gsappResponse.statusCode >= 400) {
-      throw ServiceException(
-        '研教务 SSO 登录失败',
-        statusCode: gsappResponse.statusCode,
+    // gsapp 域 SSO 预热（成绩 / 培养计划等未来模块）。注意：kGsSsoUrl 当前
+    // 是占位地址（真实域名待定案），2026-09-20 实测该域在公网/校园网均不
+    // 可达——而当前研究生功能（课表）全部在 ehall 域。因此此步 **best-
+    // effort**：任何失败只记日志，不得打断下面的 ehall 登录主链路。
+    try {
+      final gsappResponse = await client.followRedirects(
+        Uri.parse(kGsSsoUrl),
+        headers: ssoHeaders,
       );
+      _log.d(_tag, 'gsapp SSO: status=${gsappResponse.statusCode}');
+    } catch (e) {
+      _log.w(_tag, 'gsapp 域 SSO 预热失败（占位域名，忽略）：$e');
     }
 
     // ehall 域会话预热：课表接口实测部署在 ehall 域（kGsScheduleEndpointPath，
