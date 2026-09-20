@@ -104,14 +104,14 @@ class PlanCompletionProvider extends ChangeNotifier {
         _state = PlanCompletionLoadState.error;
         _error = campusNetworkErrorType(LoadErrorType.loadFailed);
       }
-    } on UnauthenticatedException {
+    } on UnauthenticatedException catch (e) {
       if (generation != _requestGeneration) return;
       if (_plans.isNotEmpty) {
         _state = PlanCompletionLoadState.loaded;
       } else {
         _state = PlanCompletionLoadState.error;
       }
-      _error = LoadErrorType.sessionExpired;
+      _error = zhjwAuthErrorType(e);
     } catch (_) {
       if (generation != _requestGeneration) return;
       if (_plans.isNotEmpty) {

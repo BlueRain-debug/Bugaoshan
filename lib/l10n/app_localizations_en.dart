@@ -281,11 +281,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Hint: Adjust the slider to preview the animation, click Confirm to save the settings';
 
   @override
-  String get enablePageTransitionAnimation => 'Dock Page Transition Animation';
+  String get enablePageTransitionAnimation => 'Page Transition Animation';
 
   @override
   String get enablePageTransitionAnimationHint =>
-      'Enable slide and fade animation when switching Dock pages';
+      'Enable slide and fade animation when switching pages';
 
   @override
   String get themeColor => 'Theme Color';
@@ -332,9 +332,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get about => 'About';
 
   @override
-  String get userManual => 'User Manual';
-
-  @override
   String get developmentTeam => 'Dev Team';
 
   @override
@@ -365,9 +362,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectRepository => 'Repository';
-
-  @override
-  String get officialWebsite => 'Website';
 
   @override
   String get checkForUpdates => 'Check Updates';
@@ -729,9 +723,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showLocation => 'Show Location';
 
   @override
-  String get showCourseWeeks => 'Show Course Weeks';
-
-  @override
   String get showWeekend => 'Show Weekend';
 
   @override
@@ -894,12 +885,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copySuffix => ' (Copy)';
 
   @override
-  String get copyCourseTitle => 'New Copy';
-
-  @override
-  String get copyCourseSave => 'Save Copy';
-
-  @override
   String get notThisWeek => '[Not]';
 
   @override
@@ -976,6 +961,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.';
 
   @override
+  String get importFromGraduate => 'Import from Graduate System';
+
+  @override
   String get selectSemester => 'Select Semester';
 
   @override
@@ -1030,80 +1018,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captchaNotLoaded => 'Please load the captcha first';
-
-  @override
-  String get resetPassword => 'Reset Password';
-
-  @override
-  String get resetPasswordStepAccount => 'Account';
-
-  @override
-  String get resetPasswordStepVerify => 'Verification';
-
-  @override
-  String get resetPasswordStepReset => 'New Password';
-
-  @override
-  String get resetPasswordNext => 'Next';
-
-  @override
-  String get resetPasswordChooseMethod =>
-      'You are resetting your login password. Choose a verification method:';
-
-  @override
-  String get resetPasswordViaSms => 'Via SMS';
-
-  @override
-  String resetPasswordSmsTip(String phone) {
-    return 'A verification code will be sent via SMS to your phone $phone';
-  }
-
-  @override
-  String get resetPasswordViaEmail => 'Via Email';
-
-  @override
-  String resetPasswordEmailTip(String email) {
-    return 'A verification code will be sent via email to $email';
-  }
-
-  @override
-  String get resetPasswordSendCode => 'Send Code';
-
-  @override
-  String resetPasswordResendAfter(int seconds) {
-    return 'Resend in ${seconds}s';
-  }
-
-  @override
-  String get resetPasswordCodeRequired =>
-      'Please enter the 6-digit verification code';
-
-  @override
-  String get resetPasswordNewPasswordLabel => 'New Password';
-
-  @override
-  String get resetPasswordConfirmPasswordLabel => 'Confirm Password';
-
-  @override
-  String get resetPasswordPasswordMismatch => 'Passwords do not match';
-
-  @override
-  String get resetPasswordPolicyTip =>
-      'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters';
-
-  @override
-  String get resetPasswordPolicyInvalid =>
-      'Password does not meet the requirements';
-
-  @override
-  String get resetPasswordSubmit => 'Confirm';
-
-  @override
-  String get resetPasswordSuccess =>
-      'Password reset successfully. Please log in with your new password.';
-
-  @override
-  String get resetPasswordBackToLogin => 'Back to Login';
 
   @override
   String get gradesStats => 'Grade Statistics';
@@ -1221,6 +1135,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionExpired => 'Session expired';
+
+  @override
+  String get undergradDataOnly =>
+      'Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.';
 
   @override
   String get relogin => 'Login Again';
@@ -2402,48 +2320,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get classScheduleInquiryLoadMore => 'Load More';
 
   @override
-  String get dockLabelCourseCurriculum => 'Course Table';
-
-  @override
-  String get courseCurriculum => 'Course Curriculum';
-
-  @override
-  String get courseCurriculumDesc => 'View schedules for each course section';
-
-  @override
-  String get courseCurriculumNoData => 'No course data';
-
-  @override
-  String get courseCurriculumNoSchedule => 'No schedule data';
-
-  @override
-  String get courseCurriculumFilter => 'Filter';
-
-  @override
-  String get courseCurriculumSemester => 'Semester';
-
-  @override
-  String get courseCurriculumDepartment => 'Department';
-
-  @override
-  String get courseCurriculumCategory => 'Course Category';
-
-  @override
-  String get courseCurriculumCourseName => 'Course Name';
-
-  @override
-  String get courseCurriculumCourseCode => 'Course Code';
-
-  @override
-  String get courseCurriculumCourseSeq => 'Course Seq';
-
-  @override
-  String get courseCurriculumSearch => 'Search';
-
-  @override
-  String get courseCurriculumLoadMore => 'Load More';
-
-  @override
   String holidayTotalDays(int days) {
     return '$days-day holiday';
   }
@@ -3149,4 +3025,387 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get leaveStatusDone => 'Done';
+
+  @override
+  String get graduateSection => 'Graduate';
+
+  @override
+  String get graduateGrades => 'Graduate Grades';
+
+  @override
+  String get graduateGradesDesc => 'View graduate course grades';
+
+  @override
+  String get graduateGradesEmpty => 'No graduate grades yet';
+
+  @override
+  String get graduateGradesStats => 'Grade Summary';
+
+  @override
+  String get graduateStatsCourseCount => 'Courses';
+
+  @override
+  String get graduateStatsTotalCredit => 'Total Credits';
+
+  @override
+  String get graduateStatsAverage => 'Weighted Avg';
+
+  @override
+  String get graduateStatsPassRate => 'Pass Rate';
+
+  @override
+  String get graduateTrainPlan => 'Training Plan';
+
+  @override
+  String get graduateTrainPlanDesc => 'View the graduate training plan';
+
+  @override
+  String get graduateScheduleImport => 'Import Schedule';
+
+  @override
+  String get graduateScheduleImportDesc => 'Import the graduate schedule';
+
+  @override
+  String get graduateScheduleImportName => 'Graduate Timetable';
+
+  @override
+  String get graduateScheduleImportFound => 'Courses detected';
+
+  @override
+  String get graduateScheduleImportWaiting =>
+      'Waiting for timetable data — sign in below and open the timetable';
+
+  @override
+  String get graduateScheduleImportEmpty =>
+      'Data captured but no courses recognised — try switching weeks on the page';
+
+  @override
+  String get graduateScheduleImportAction => 'Import to timetable';
+
+  @override
+  String get graduateScheduleImportOverwriteTitle =>
+      'Overwrite the existing schedule?';
+
+  @override
+  String graduateScheduleImportOverwriteBody(String name) {
+    return 'A schedule named \"$name\" already exists. Continuing will clear and replace all of its courses.';
+  }
+
+  @override
+  String graduateScheduleImportDoneTo(String name) {
+    return 'Timetable imported — switched to \"$name\"';
+  }
+
+  @override
+  String get graduateScheduleImportFailed => 'Import failed, please try again';
+
+  @override
+  String get graduateScheduleImportWebUnsupported =>
+      'Recognising the page requires script injection, which browsers block across origins. Please use this feature on Android, iOS or Windows.';
+
+  @override
+  String get graduateScheduleImportNoWebView =>
+      'Direct connection failed and this platform has no in-app web fallback. Check your network and retry, or import on Android, iOS or desktop.';
+
+  @override
+  String get graduateScheduleImportRetryDirect => 'I have signed in, retry';
+
+  @override
+  String get graduateScheduleImportSessionExpired =>
+      'The graduate system session is missing or expired — sign in with SCU Unified Identity first';
+
+  @override
+  String get graduateScheduleImportGoLogin => 'Go to login';
+
+  @override
+  String get graduateScheduleImportEmergencyCapture =>
+      'Emergency web capture (when direct connection is unavailable)';
+
+  @override
+  String get graduateTrainPlanEmpty => 'No training plan data';
+
+  @override
+  String get graduateTrainPlanProgress => 'Progress';
+
+  @override
+  String graduateTrainPlanCreditText(String completed, String requiredCredit) {
+    return '$completed / $requiredCredit credits earned';
+  }
+
+  @override
+  String graduateTrainPlanModuleCredit(
+    String completed,
+    String requiredCredit,
+  ) {
+    return '$completed / $requiredCredit credits earned';
+  }
+
+  @override
+  String get graduateTrainPlanNoCourses => 'No courses in this module';
+
+  @override
+  String get labAttendance => 'Lab Attendance';
+
+  @override
+  String get labAttendanceDesc => 'Record lab attendance';
+
+  @override
+  String get labAttendanceMonthDay => 'Today';
+
+  @override
+  String get labAttendanceEmpty => 'No attendance records this month';
+
+  @override
+  String get labAttendanceDays => 'Days';
+
+  @override
+  String get labAttendanceHours => 'Hours';
+
+  @override
+  String get labCheckIn => 'Check in';
+
+  @override
+  String get labCheckOut => 'Check out';
+
+  @override
+  String get thesisProgress => 'Thesis Progress';
+
+  @override
+  String get thesisProgressDesc => 'Track thesis progress';
+
+  @override
+  String get thesisProgressEmpty => 'No thesis stages';
+
+  @override
+  String get thesisProgressOverview => 'Thesis Overview';
+
+  @override
+  String thesisProgressText(int completed, int total) {
+    return '$completed / $total stages done';
+  }
+
+  @override
+  String get thesisStageNotStarted => 'Not started';
+
+  @override
+  String get thesisStageInProgress => 'In progress';
+
+  @override
+  String get thesisStageCompleted => 'Done';
+
+  @override
+  String get thesisStageName => 'Stage name';
+
+  @override
+  String get thesisStageNameHint => 'e.g. Proposal, Mid-term, Defense';
+
+  @override
+  String get thesisStageNote => 'Note';
+
+  @override
+  String get thesisStageNoPlanDate => 'Set a plan date';
+
+  @override
+  String thesisStagePlanDate(String date) {
+    return 'Plan date: $date';
+  }
+
+  @override
+  String get thesisStagePlan => 'Plan';
+
+  @override
+  String get addThesisStage => 'Add Stage';
+
+  @override
+  String get editThesisStage => 'Edit Stage';
+
+  @override
+  String get mentorTasks => 'Mentor Tasks';
+
+  @override
+  String get mentorTasksDesc => 'View tasks from your mentor';
+
+  @override
+  String get mentorTasksEmpty => 'No mentor tasks';
+
+  @override
+  String get mentorTaskPending => 'Pending';
+
+  @override
+  String get mentorTaskOverdue => 'Overdue';
+
+  @override
+  String get mentorTaskDueSoon => 'Due soon';
+
+  @override
+  String get mentorTaskPriorityLow => 'Low';
+
+  @override
+  String get mentorTaskPriorityMedium => 'Medium';
+
+  @override
+  String get mentorTaskPriorityHigh => 'High';
+
+  @override
+  String get mentorTaskNoDueDate => 'No due date';
+
+  @override
+  String mentorTaskDueDate(String date) {
+    return 'Due: $date';
+  }
+
+  @override
+  String mentorTaskDaysText(int days) {
+    return '$days day(s) left';
+  }
+
+  @override
+  String get mentorTaskTitle => 'Task title';
+
+  @override
+  String get mentorTaskNote => 'Note';
+
+  @override
+  String get addMentorTask => 'Add Task';
+
+  @override
+  String get editMentorTask => 'Edit Task';
+
+  @override
+  String get mentorTaskLoginRequired => 'Log in to view mentor tasks';
+
+  @override
+  String get graduateLoginRequired =>
+      'Please log in via the unified identity on the Profile page to use graduate features';
+
+  @override
+  String get userManual => 'User Manual';
+
+  @override
+  String get officialWebsite => 'Website';
+
+  @override
+  String get showCourseWeeks => 'Show Course Weeks';
+
+  @override
+  String get copyCourseTitle => 'New Copy';
+
+  @override
+  String get copyCourseSave => 'Save Copy';
+
+  @override
+  String get resetPassword => 'Reset Password';
+
+  @override
+  String get resetPasswordStepAccount => 'Account';
+
+  @override
+  String get resetPasswordStepVerify => 'Verification';
+
+  @override
+  String get resetPasswordStepReset => 'New Password';
+
+  @override
+  String get resetPasswordNext => 'Next';
+
+  @override
+  String get resetPasswordChooseMethod =>
+      'You are resetting your login password. Choose a verification method:';
+
+  @override
+  String get resetPasswordViaSms => 'Via SMS';
+
+  @override
+  String resetPasswordSmsTip(String phone) {
+    return 'A verification code will be sent via SMS to your phone $phone';
+  }
+
+  @override
+  String get resetPasswordViaEmail => 'Via Email';
+
+  @override
+  String resetPasswordEmailTip(String email) {
+    return 'A verification code will be sent via email to $email';
+  }
+
+  @override
+  String get resetPasswordSendCode => 'Send Code';
+
+  @override
+  String resetPasswordResendAfter(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get resetPasswordCodeRequired =>
+      'Please enter the 6-digit verification code';
+
+  @override
+  String get resetPasswordNewPasswordLabel => 'New Password';
+
+  @override
+  String get resetPasswordConfirmPasswordLabel => 'Confirm Password';
+
+  @override
+  String get resetPasswordPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get resetPasswordPolicyTip =>
+      'Password must be at least 8 characters and contain upper/lower case letters, digits and special characters';
+
+  @override
+  String get resetPasswordPolicyInvalid =>
+      'Password does not meet the requirements';
+
+  @override
+  String get resetPasswordSubmit => 'Confirm';
+
+  @override
+  String get resetPasswordSuccess =>
+      'Password reset successfully. Please log in with your new password.';
+
+  @override
+  String get resetPasswordBackToLogin => 'Back to Login';
+
+  @override
+  String get dockLabelCourseCurriculum => 'Course Table';
+
+  @override
+  String get courseCurriculum => 'Course Curriculum';
+
+  @override
+  String get courseCurriculumDesc => 'View schedules for each course section';
+
+  @override
+  String get courseCurriculumNoData => 'No course data';
+
+  @override
+  String get courseCurriculumNoSchedule => 'No schedule data';
+
+  @override
+  String get courseCurriculumFilter => 'Filter';
+
+  @override
+  String get courseCurriculumSemester => 'Semester';
+
+  @override
+  String get courseCurriculumDepartment => 'Department';
+
+  @override
+  String get courseCurriculumCategory => 'Course Category';
+
+  @override
+  String get courseCurriculumCourseName => 'Course Name';
+
+  @override
+  String get courseCurriculumCourseCode => 'Course Code';
+
+  @override
+  String get courseCurriculumCourseSeq => 'Course Seq';
+
+  @override
+  String get courseCurriculumSearch => 'Search';
+
+  @override
+  String get courseCurriculumLoadMore => 'Load More';
 }

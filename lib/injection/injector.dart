@@ -27,6 +27,7 @@ import 'package:bugaoshan/providers/zhhq_repair_provider.dart';
 import 'package:bugaoshan/services/api/ccyl_api_service.dart';
 import 'package:bugaoshan/services/api/fitness_api_service.dart';
 import 'package:bugaoshan/services/api/forgot_password_service.dart';
+import 'package:bugaoshan/services/api/gs_api_service.dart';
 import 'package:bugaoshan/services/api/new_service_api_service.dart';
 import 'package:bugaoshan/services/api/payapp_api_service.dart';
 import 'package:bugaoshan/services/api/service_api_service.dart';
@@ -37,6 +38,7 @@ import 'package:bugaoshan/services/auth/auth_coordinator.dart';
 import 'package:bugaoshan/services/auth/auth_state.dart';
 import 'package:bugaoshan/services/auth/ccyl_auth.dart';
 import 'package:bugaoshan/services/auth/fitness_auth.dart';
+import 'package:bugaoshan/services/auth/gs_auth.dart';
 import 'package:bugaoshan/services/auth/new_service_auth.dart';
 import 'package:bugaoshan/services/auth/payapp_auth.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart';
@@ -160,6 +162,7 @@ void _configureAsyncDependencies() {
     await getIt.isReady<ServiceAuth>();
     await getIt.isReady<ZhhqAuth>();
     await getIt.isReady<NewServiceAuth>();
+    await getIt.isReady<GsAuth>();
     return AuthCoordinator([
       getIt<ZhjwAuth>(),
       getIt<WfwAuth>(),
@@ -169,6 +172,7 @@ void _configureAsyncDependencies() {
       getIt<ServiceAuth>(),
       getIt<ZhhqAuth>(),
       getIt<NewServiceAuth>(),
+      getIt<GsAuth>(),
     ]);
   });
 
@@ -204,6 +208,16 @@ void _configureAsyncDependencies() {
   getIt.registerSingletonAsync<NewServiceApiService>(() async {
     await getIt.isReady<NewServiceAuth>();
     return NewServiceApiService(getIt<NewServiceAuth>());
+  });
+
+  // ── 研教务（gsapp / ehall，研究生模块）──────────────────────────
+  getIt.registerSingletonAsync<GsAuth>(() async {
+    await getIt.isReady<ScuAuth>();
+    return GsAuth(getIt<ScuAuth>());
+  });
+  getIt.registerSingletonAsync<GsApiService>(() async {
+    await getIt.isReady<GsAuth>();
+    return GsApiService(getIt<GsAuth>());
   });
 
   // ── Provider ────────────────────────────────────────────────────
@@ -400,6 +414,10 @@ void _configureAsyncDependencies() {
     getIt<ScuAuth>().addListener(() {
       final scu = getIt<ScuAuth>();
       if (scu.state == AuthState.unknown) {
+        // logout 发生，清理子系统会话缓存
+        if (getIt.isRegistered<GsAuth>()) {
+          getIt<GsAuth>().invalidate();
+        }
         // logout 发生，清理需要登录态的 Provider 缓存
         if (getIt.isRegistered<PlanCompletionProvider>()) {
           getIt<PlanCompletionProvider>().clearCache();
