@@ -621,11 +621,15 @@ DateTime? semesterStartMondayFromFirstClassRows(List<dynamic> rows) {
     final startWeek = int.tryParse(startWeekMatch.group(1)!);
     if (firstClass == null || startWeek == null || startWeek < 1) continue;
 
-    final sameWeekdayInWeek1 = firstClass.subtract(
-      Duration(days: (startWeek - 1) * 7),
+    final sameWeekdayInWeek1 = DateTime(
+      firstClass.year, 
+      firstClass.month, 
+      firstClass.day - (startWeek - 1) * 7
     );
-    final monday = sameWeekdayInWeek1.subtract(
-      Duration(days: sameWeekdayInWeek1.weekday - 1),
+    final monday = DateTime(
+      sameWeekdayInWeek1.year, 
+      sameWeekdayInWeek1.month, 
+      sameWeekdayInWeek1.day - (sameWeekdayInWeek1.weekday - 1)
     );
     final day = DateTime(monday.year, monday.month, monday.day);
     votes[day] = (votes[day] ?? 0) + 1;
