@@ -35,9 +35,14 @@ def prepare_release_files(version, root=Path(".")):
         shutil.copy2(apk, dst)
         print(f"Copied {apk} -> {dst}")
 
-    windows_src = root / "windows-release" / "windows-release.zip"
-    shutil.copy2(windows_src, root / f"bugaoshan_{version}_windows_x64.zip")
-    print("Copied windows artifact")
+    windows_src_dir = root / "windows-release"
+    if not windows_src_dir.exists() or not windows_src_dir.is_dir():
+        raise FileNotFoundError(f"Missing windows release directory: {windows_src_dir}")
+        
+    zip_base_name = root / f"bugaoshan_{version}_windows_x64"
+    shutil.make_archive(str(zip_base_name), 'zip', windows_src_dir)
+    
+    print(f"Archived windows artifact -> {zip_base_name}.zip")
 
 
 def main():
