@@ -90,4 +90,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: windows-release.zip
+          path: build\windows\x64\runner\Release\
