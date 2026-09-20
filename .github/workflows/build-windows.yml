@@ -95,10 +95,6 @@ jobs:
           }
           Get-Item (Join-Path $releaseDir "WebView2Loader.dll") | Select-Object FullName, Length
 
-      - name: Archive Windows Release
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath
-          windows-release.zip
-
       - name: Upload Windows
         uses: actions/upload-artifact@v4
         with:
