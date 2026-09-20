@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bugaoshan/models/course.dart';
 import 'package:bugaoshan/utils/graduate_schedule_parser.dart';
@@ -166,6 +167,154 @@ void main() {
         semesterStartMondayFromFirstClassRows([
           {'SCSKRQ': '2026-09-14'},
         ]),
+        isNull,
+      );
+    });
+  });
+
+  group('ZCBH 周次位串（2026-09-20 浏览器抓包字段）', () {
+    test('连续周位串直接给出 every 区间（真实抓包形态）', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '波谱分析',
+          'XQ': 2,
+          'KSJCDM': 1,
+          'JSJCDM': 1,
+          'ZCBH': '000000011111110000000000000000',
+          'ZCMC': '8-14周',
+        },
+      ]);
+      expect(courses.first.startWeek, 8);
+      expect(courses.first.endWeek, 14);
+      expect(courses.first.weekType, WeekType.every);
+    });
+
+    test('单双周位串按位判定，不再依赖文本/端点推断', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '数值分析',
+          'XQ': 1,
+          'KSJCDM': 2,
+          'JSJCDM': 3,
+          'ZCBH': '101010101010101010101010101010',
+        },
+      ]);
+      expect(courses.first.weekType, WeekType.odd);
+      expect(courses.first.startWeek, 1);
+      expect(courses.first.endWeek, 29);
+    });
+
+    test('稀疏周次位串无损表达（1/5/9 周拆成三条单周记录）', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '分子模拟',
+          'XQ': 3,
+          'KSJCDM': 5,
+          'JSJCDM': 6,
+          'ZCBH': '1000100010${'0' * 20}',
+        },
+      ]);
+      expect(courses, hasLength(3));
+      expect(courses.map((c) => c.startWeek), [1, 5, 9]);
+      expect(courses.map((c) => c.endWeek), [1, 5, 9]);
+      expect(courses.map((c) => c.weekType), everyElement(WeekType.every));
+    });
+
+    test('ZCBH 优先于 ZCMC（冲突时以位串为准）', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '测试课程一',
+          'XQ': 1,
+          'KSJCDM': 1,
+          'JSJCDM': 1,
+          'ZCBH': '010101010101010101010101010101',
+          'ZCMC': '1-16周(单)',
+        },
+      ]);
+      // 位串说偶周，文本说单周——位串是权威，判定偶
+      expect(courses.first.weekType, WeekType.even);
+      expect(courses.first.startWeek, 2);
+      expect(courses.first.endWeek, 30);
+    });
+
+    test('全 0 位串视为脏数据，回退 ZCMC 文本', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'KCMC': '测试课程一',
+          'XQ': 1,
+          'KSJCDM': 1,
+          'JSJCDM': 1,
+          'ZCBH': '0' * 30,
+          'ZCMC': '2-17周',
+        },
+      ]);
+      expect(courses.first.startWeek, 2);
+      expect(courses.first.endWeek, 17);
+      expect(courses.first.weekType, WeekType.every);
+    });
+  });
+
+  group('接口精确时刻（KSSJ / JSSJ）', () {
+    List<TimeSlot> derived(List<Map<String, dynamic>> rows) =>
+        graduateTimeSlotsFromRows(
+          rows,
+          fallback: ScheduleConfig.wangJiangHuaXiTimeSlots,
+        )!;
+
+    test('按行内时刻生成专属时间表，未观测节次用预置补齐', () {
+      final slots = derived([
+        {'XQ': 1, 'KSJCDM': 2, 'JSJCDM': 3, 'KSSJ': 855, 'JSSJ': 1045},
+        {'XQ': 3, 'KSJCDM': 5, 'JSJCDM': 7, 'KSSJ': 1400, 'JSSJ': 1635},
+      ]);
+      expect(slots, hasLength(12));
+      // 第 1 节未观测 → 预置 8:00-8:45
+      expect(slots[0].startTime, const TimeOfDay(hour: 8, minute: 0));
+      expect(slots[0].endTime, const TimeOfDay(hour: 8, minute: 45));
+      // 第 2 节只观测到起点 8:55，终点仍用预置 9:40
+      expect(slots[1].startTime, const TimeOfDay(hour: 8, minute: 55));
+      expect(slots[1].endTime, const TimeOfDay(hour: 9, minute: 40));
+      // 第 3 节只观测到终点 10:45，起点仍用预置 10:00
+      expect(slots[2].startTime, const TimeOfDay(hour: 10, minute: 0));
+      expect(slots[2].endTime, const TimeOfDay(hour: 10, minute: 45));
+      // 第 5 节起点观测 14:00，第 7 节终点观测 16:35
+      expect(slots[4].startTime, const TimeOfDay(hour: 14, minute: 0));
+      expect(slots[6].endTime, const TimeOfDay(hour: 16, minute: 35));
+      // 第 10 节未观测 → 预置 19:30-20:15
+      expect(slots[9].startTime, const TimeOfDay(hour: 19, minute: 30));
+      expect(slots[9].endTime, const TimeOfDay(hour: 20, minute: 15));
+    });
+
+    test('同一节次多行观测投票取众数', () {
+      final slots = derived([
+        {'KSJCDM': 1, 'JSJCDM': 1, 'KSSJ': 800, 'JSSJ': 845},
+        {'KSJCDM': 1, 'JSJCDM': 1, 'KSSJ': 800, 'JSSJ': 845},
+        {'KSJCDM': 1, 'JSJCDM': 1, 'KSSJ': 830, 'JSSJ': 845},
+      ]);
+      // 800 两票压过 830 一票
+      expect(slots[0].startTime, const TimeOfDay(hour: 8, minute: 0));
+      expect(slots[0].endTime, const TimeOfDay(hour: 8, minute: 45));
+    });
+
+    test('脏时刻（分钟位/小时位越界）被忽略：任一侧非法则整节回退预置', () {
+      final slots = derived([
+        // 880 → 分钟位 80 非法：该节起点未观测，整节回退预置 8:00-8:45
+        // （不混用「预置起点 + 观测终点」两种来源）
+        {'KSJCDM': 1, 'JSJCDM': 1, 'KSSJ': 880, 'JSSJ': 930},
+        // 合法行正常采用
+        {'KSJCDM': 2, 'JSJCDM': 2, 'KSSJ': 855, 'JSSJ': 940},
+      ]);
+      expect(slots[0].startTime, const TimeOfDay(hour: 8, minute: 0));
+      expect(slots[0].endTime, const TimeOfDay(hour: 8, minute: 45));
+      expect(slots[1].startTime, const TimeOfDay(hour: 8, minute: 55));
+      expect(slots[1].endTime, const TimeOfDay(hour: 9, minute: 40));
+    });
+
+    test('没有任何可用时刻时返回 null', () {
+      expect(
+        graduateTimeSlotsFromRows(
+          const [{'XQ': 1}],
+          fallback: ScheduleConfig.wangJiangHuaXiTimeSlots,
+        ),
         isNull,
       );
     });
