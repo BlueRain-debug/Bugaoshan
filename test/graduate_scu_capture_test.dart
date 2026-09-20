@@ -47,6 +47,33 @@ void main() {
     });
   });
 
+  group('单双周判定', () {
+    test('连续区间端点同奇偶时不误判单双周（线上回归：3-17周 被标成单周）', () {
+      final payload =
+          '{"code":"0","datas":{"xspkjgcx":{"rows":['
+          '{"KCMC":"测试课程一","JSXM":"张老师","JASMC":"教学楼204","XQ":1,"KSJCDM":2,"JSJCDM":3,"ZCMC":"3-17周"},'
+          '{"KCMC":"测试课程二","JSXM":"李老师","JASMC":"教学楼204","XQ":2,"KSJCDM":4,"JSJCDM":5,"ZCMC":"2-18周"},'
+          '{"KCMC":"测试课程三","JSXM":"王老师","JASMC":"教学楼204","XQ":3,"KSJCDM":6,"JSJCDM":7,"ZCMC":"1,3,5,7"}'
+          ']}}}';
+      final courses = graduateCoursesFromCapturedJson([payload]);
+      expect(courses, hasLength(3));
+      // 两端全奇 / 全偶的连续区间是「每周上课」，不是单双周
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程一').weekType,
+        WeekType.every,
+      );
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程二').weekType,
+        WeekType.every,
+      );
+      // 稀疏周次列表仍按奇偶规律推断
+      expect(
+        courses.firstWhere((c) => c.name == '测试课程三').weekType,
+        WeekType.odd,
+      );
+    });
+  });
+
   group('相邻节次合并', () {
     test('同课名同周次同地点的连续节次合并为一条', () {
       final payload =

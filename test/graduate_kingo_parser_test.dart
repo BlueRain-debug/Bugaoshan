@@ -112,6 +112,22 @@ void main() {
       expect(courses[0].endWeek, 16);
     });
 
+    test('skzs 连续区间端点同奇偶时不误判（dsz 才是单双周权威来源）', () {
+      final courses = graduateCoursesFromJson([
+        {
+          'kcmc': '数值分析',
+          'xq': '3',
+          'jcdm': '03',
+          'jsdm': '05',
+          'skzs': '3-17',
+          'dsz': '',
+        },
+      ]);
+      expect(courses.first.weekType, WeekType.every);
+      expect(courses.first.startWeek, 3);
+      expect(courses.first.endWeek, 17);
+    });
+
     test('jcxx 文本可独立提供节次（jcdm/jsdm 缺失时）', () {
       final courses = graduateCoursesFromJson([
         {

@@ -530,6 +530,11 @@ List<Course> assignColorsByName(List<Course> courses) {
     weekType = WeekType.odd;
   } else if (text.contains('双')) {
     weekType = WeekType.even;
+  } else if (_isContiguousRange(text)) {
+    // 「a-b」连续区间：端点的奇偶不代表单双周。线上回归：研教务会把
+    // 每周都上课的课写成「3-17周」，两端恰好全奇，按数字推断会被
+    // 误标成单周。单双周课程必有显式标记（文本「单/双」或 `dsz` 字段）。
+    weekType = WeekType.every;
   } else {
     weekType = _inferWeekType(numbers);
   }
@@ -540,6 +545,13 @@ List<Course> assignColorsByName(List<Course> courses) {
     weekType: weekType,
   );
 }
+
+/// 是否为单一连续区间的周次文本（`"3-17"`、`"1-16周"`、`"2-18周 "`）。
+///
+/// 逗号分隔的稀疏周次（`"1,3,5"`、`"1-8,10-16"`）不算——那种形态下
+/// 数字列表本身携带奇偶信息，仍交给 [_inferWeekType] 推断。
+bool _isContiguousRange(String text) =>
+    RegExp(r'^\s*\d+\s*[-–—]\s*\d+\s*周?\s*$').hasMatch(text);
 
 /// 全奇数 → 单周，全偶数 → 双周，其余 → 每周。单个周次不构成交替规律。
 WeekType _inferWeekType(List<int> weeks) {
