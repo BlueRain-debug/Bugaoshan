@@ -1100,6 +1100,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionExpired => '登录会话已过期';
 
   @override
+  String get undergradDataOnly =>
+      '本科教务会话未建立。研究生账号请使用「校园 → 研究生」区功能；本科账号请重新登录后重试。';
+
+  @override
   String get relogin => '重新登录';
 
   @override

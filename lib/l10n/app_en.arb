@@ -444,6 +444,7 @@
   "sessionExpiredTitle": "Session Expired",
   "sessionExpiredMessage": "Your login session has expired. Please login again to continue using this feature.",
   "sessionExpired": "Session expired",
+  "undergradDataOnly": "Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.",
   "relogin": "Login Again",
   "trainProgram": "Training Program",
   "trainProgramDesc": "Search training programs by college and grade",

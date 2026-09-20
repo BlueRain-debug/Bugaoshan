@@ -1137,6 +1137,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionExpired => 'Session expired';
 
   @override
+  String get undergradDataOnly =>
+      'Undergraduate academic session unavailable. Graduate accounts: use the Graduate section under Campus. Undergraduate accounts: sign in again and retry.';
+
+  @override
   String get relogin => 'Login Again';
 
   @override
