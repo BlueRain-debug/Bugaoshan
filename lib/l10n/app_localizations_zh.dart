@@ -3010,6 +3010,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get graduateScheduleImportRetryDirect => '我已登录，重试';
 
   @override
+  String get graduateScheduleImportSessionExpired =>
+      '研究生教务会话未建立或已过期，请先完成统一身份认证登录';
+
+  @override
+  String get graduateScheduleImportGoLogin => '前往登录';
+
+  @override
+  String get graduateScheduleImportEmergencyCapture => '应急网页抓取（直连不可用时）';
+
+  @override
   String get graduateTrainPlanEmpty => '暂无培养方案数据';
 
   @override

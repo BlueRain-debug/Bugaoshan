@@ -5821,6 +5821,24 @@ abstract class AppLocalizations {
   /// **'I have signed in, retry'**
   String get graduateScheduleImportRetryDirect;
 
+  /// No description provided for @graduateScheduleImportSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The graduate system session is missing or expired — sign in with SCU Unified Identity first'**
+  String get graduateScheduleImportSessionExpired;
+
+  /// No description provided for @graduateScheduleImportGoLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to login'**
+  String get graduateScheduleImportGoLogin;
+
+  /// No description provided for @graduateScheduleImportEmergencyCapture.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency web capture (when direct connection is unavailable)'**
+  String get graduateScheduleImportEmergencyCapture;
+
   /// No description provided for @graduateTrainPlanEmpty.
   ///
   /// In en, this message translates to:

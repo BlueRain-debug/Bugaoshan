@@ -3107,6 +3107,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get graduateScheduleImportRetryDirect => 'I have signed in, retry';
 
   @override
+  String get graduateScheduleImportSessionExpired =>
+      'The graduate system session is missing or expired — sign in with SCU Unified Identity first';
+
+  @override
+  String get graduateScheduleImportGoLogin => 'Go to login';
+
+  @override
+  String get graduateScheduleImportEmergencyCapture =>
+      'Emergency web capture (when direct connection is unavailable)';
+
+  @override
   String get graduateTrainPlanEmpty => 'No training plan data';
 
   @override
