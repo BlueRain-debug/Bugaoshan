@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -9,6 +10,7 @@ import 'package:bugaoshan/pages/auth/scu_login_checkbox.dart';
 import 'package:bugaoshan/pages/auth/scu_login_disclaimer.dart';
 import 'package:bugaoshan/pages/auth/scu_login_header_image.dart';
 import 'package:bugaoshan/pages/auth/scu_login_input_field.dart';
+import 'package:bugaoshan/pages/auth/scu_reset_password_page.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart' show CaptchaResult;
 import 'package:bugaoshan/utils/app_log.dart';
@@ -17,7 +19,9 @@ import 'package:bugaoshan/services/ocr_service.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/widgets/common/third_center.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class ScuLoginPage extends StatefulWidget {
   const ScuLoginPage({super.key});
@@ -44,9 +48,12 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
   @override
   void initState() {
     super.initState();
-    OcrService.init().catchError((e) {
-      AppLog.e('ScuLoginPage', 'OCR Init error: $e');
-    });
+    // Web 端 scu_ocr_lite 依赖 dart:isolate，运行时不受支持，直接跳过初始化
+    if (OcrService.isSupported) {
+      OcrService.init().catchError((e) {
+        AppLog.e('ScuLoginPage', 'OCR Init error: $e');
+      });
+    }
     _loadSaved();
     _loadCaptcha();
   }
@@ -90,7 +97,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       }
 
       String? recognizedText;
-      if (imageBytes != null) {
+      if (imageBytes != null && OcrService.isSupported) {
         try {
           recognizedText = await OcrService.performOcr(imageBytes);
         } catch (e) {
@@ -169,11 +176,32 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       AppLog.e('ScuLoginPage', 'Login network error: $e');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      setState(() => _errorMsg = l10n.networkError);
+      setState(() => _errorMsg = _describeNetworkError(e, l10n));
       unawaited(_loadCaptcha());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// 兜底异常的展示文案。
+  ///
+  /// 传输层错误（超时 / 连接被拒 / DNS 失败）大概率是学校侧网络策略所致——
+  /// 尤其 23:00-次日6:00 教务相关系统仅限校园网——此时给出针对性提示；
+  /// 其余异常不吞细节、透传摘要，避免把非网络问题误标成「网络错误」
+  /// 导致真实原因无从定位。
+  String _describeNetworkError(Object error, AppLocalizations l10n) {
+    final isTransportError =
+        error is TimeoutException ||
+        error is http.ClientException ||
+        (!kIsWeb && error is SocketException);
+    if (!isTransportError) {
+      return error.toString();
+    }
+    final now = DateTime.now();
+    final inNightWindow = now.hour >= 23 || now.hour < 6;
+    return inNightWindow
+        ? l10n.campusNetworkRequiredAtNight
+        : l10n.networkError;
   }
 
   String _localizeLoginError(ScuLoginException e, AppLocalizations l10n) {
@@ -292,6 +320,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
               captchaImageBytes: _captchaImageBytes,
               captchaLoading: _captchaLoading,
               onRefresh: _loadCaptcha,
+              labelTrailing: _buildResetPasswordEntry(l10n),
             ),
             const SizedBox(height: 20),
             Wrap(
@@ -332,6 +361,26 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
             ScuLoginDisclaimer(l10n: l10n, isDark: isDark),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 与「验证码」标签同行、右对齐的「重置密码」入口，避免单独占一行
+  /// 拉开表单纵向间距；点击跳转应用内三步重置流程。
+  Widget _buildResetPasswordEntry(AppLocalizations l10n) {
+    return TextButton.icon(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScuResetPasswordPage()),
+      ),
+      icon: const Icon(Icons.lock_reset, size: 16),
+      label: Text(l10n.resetPassword),
+      style: TextButton.styleFrom(
+        foregroundColor: _brandColor,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
     );
   }

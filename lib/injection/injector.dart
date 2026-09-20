@@ -26,6 +26,8 @@ import 'package:bugaoshan/providers/update_provider.dart';
 import 'package:bugaoshan/providers/zhhq_repair_provider.dart';
 import 'package:bugaoshan/services/api/ccyl_api_service.dart';
 import 'package:bugaoshan/services/api/fitness_api_service.dart';
+import 'package:bugaoshan/services/api/forgot_password_service.dart';
+import 'package:bugaoshan/services/api/gs_api_service.dart';
 import 'package:bugaoshan/services/api/new_service_api_service.dart';
 import 'package:bugaoshan/services/api/payapp_api_service.dart';
 import 'package:bugaoshan/services/api/service_api_service.dart';
@@ -36,6 +38,7 @@ import 'package:bugaoshan/services/auth/auth_coordinator.dart';
 import 'package:bugaoshan/services/auth/auth_state.dart';
 import 'package:bugaoshan/services/auth/ccyl_auth.dart';
 import 'package:bugaoshan/services/auth/fitness_auth.dart';
+import 'package:bugaoshan/services/auth/gs_auth.dart';
 import 'package:bugaoshan/services/auth/new_service_auth.dart';
 import 'package:bugaoshan/services/auth/payapp_auth.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart';
@@ -68,6 +71,10 @@ void configureDependencies() {
   getIt.registerSingleton<ExitService>(ExitService());
   getIt.registerSingleton<DownloadManager>(DownloadManager());
   getIt.registerLazySingleton<AuthLogger>(() => AuthLogger());
+  // 忘记密码流程不依赖登录态，纯 HTTP 工具，同步注册即可
+  getIt.registerLazySingleton<ForgotPasswordService>(
+    () => ForgotPasswordService(),
+  );
   _configureAsyncDependencies();
 }
 
@@ -199,6 +206,16 @@ void _configureAsyncDependencies() {
   getIt.registerSingletonAsync<NewServiceApiService>(() async {
     await getIt.isReady<NewServiceAuth>();
     return NewServiceApiService(getIt<NewServiceAuth>());
+  });
+
+  // ── 研教务（gsapp / ehall，研究生模块）──────────────────────────
+  getIt.registerSingletonAsync<GsAuth>(() async {
+    await getIt.isReady<ScuAuth>();
+    return GsAuth(getIt<ScuAuth>());
+  });
+  getIt.registerSingletonAsync<GsApiService>(() async {
+    await getIt.isReady<GsAuth>();
+    return GsApiService(getIt<GsAuth>());
   });
 
   // ── Provider ────────────────────────────────────────────────────

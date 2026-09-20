@@ -319,9 +319,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get about => '关于';
 
   @override
-  String get userManual => '用户手册';
-
-  @override
   String get developmentTeam => '开发团队';
 
   @override
@@ -352,9 +349,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectRepository => '项目仓库';
-
-  @override
-  String get officialWebsite => '官方网站';
 
   @override
   String get checkForUpdates => '检查更新';
@@ -703,9 +697,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get showLocation => '显示教室';
-
-  @override
-  String get showCourseWeeks => '显示课程周数';
 
   @override
   String get showWeekend => '显示周末';
@@ -2253,48 +2244,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get classScheduleInquiryLoadMore => '加载更多';
 
   @override
-  String get dockLabelCourseCurriculum => '课程课表';
-
-  @override
-  String get courseCurriculum => '课程课表';
-
-  @override
-  String get courseCurriculumDesc => '查询各课程教学班的课表信息';
-
-  @override
-  String get courseCurriculumNoData => '暂无课程数据';
-
-  @override
-  String get courseCurriculumNoSchedule => '暂无课表数据';
-
-  @override
-  String get courseCurriculumFilter => '查询条件';
-
-  @override
-  String get courseCurriculumSemester => '学年学期';
-
-  @override
-  String get courseCurriculumDepartment => '开课院系';
-
-  @override
-  String get courseCurriculumCategory => '课程类别';
-
-  @override
-  String get courseCurriculumCourseName => '课程名';
-
-  @override
-  String get courseCurriculumCourseCode => '课程号';
-
-  @override
-  String get courseCurriculumCourseSeq => '课序号';
-
-  @override
-  String get courseCurriculumSearch => '查询';
-
-  @override
-  String get courseCurriculumLoadMore => '加载更多';
-
-  @override
   String holidayTotalDays(int days) {
     return '共$days天假';
   }
@@ -2975,6 +2924,359 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get leaveStatusDone => '已完成';
+
+  @override
+  String get graduateSection => '研究生';
+
+  @override
+  String get graduateGrades => '研究生成绩';
+
+  @override
+  String get graduateGradesDesc => '查看研究生课程成绩';
+
+  @override
+  String get graduateGradesEmpty => '暂无研究生成绩';
+
+  @override
+  String get graduateGradesStats => '成绩统计';
+
+  @override
+  String get graduateStatsCourseCount => '课程数';
+
+  @override
+  String get graduateStatsTotalCredit => '总学分';
+
+  @override
+  String get graduateStatsAverage => '加权均分';
+
+  @override
+  String get graduateStatsPassRate => '通过率';
+
+  @override
+  String get graduateTrainPlan => '培养方案';
+
+  @override
+  String get graduateTrainPlanDesc => '查看研究生培养方案';
+
+  @override
+  String get graduateScheduleImport => '课表导入';
+
+  @override
+  String get graduateScheduleImportDesc => '导入研究生课表';
+
+  @override
+  String get graduateScheduleImportName => '研究生课表';
+
+  @override
+  String get graduateScheduleImportFound => '已识别课程';
+
+  @override
+  String get graduateScheduleImportWaiting => '正在等待课表数据，请先在下方页面登录并打开课表';
+
+  @override
+  String get graduateScheduleImportEmpty => '已抓到数据但没解析出课程，试试在页面里切换周次';
+
+  @override
+  String get graduateScheduleImportAction => '导入到课表';
+
+  @override
+  String get graduateScheduleImportDone => '课表导入完成';
+
+  @override
+  String get graduateScheduleImportFailed => '导入失败，请重试';
+
+  @override
+  String get graduateScheduleImportWebUnsupported =>
+      '识别网页需要在页面里注入脚本，浏览器会因跨域而拦截。请在 Android / iOS / Windows 客户端使用此功能。';
+
+  @override
+  String get graduateScheduleImportNoWebView =>
+      '直连获取研究生课表失败，且当前平台没有内置网页兜底。请检查网络后重试，或使用 Android / iOS / 桌面客户端导入。';
+
+  @override
+  String get graduateScheduleImportRetryDirect => '我已登录，重试';
+
+  @override
+  String get graduateTrainPlanEmpty => '暂无培养方案数据';
+
+  @override
+  String get graduateTrainPlanProgress => '培养进度';
+
+  @override
+  String graduateTrainPlanCreditText(String completed, String requiredCredit) {
+    return '已修 $completed / 要求 $requiredCredit 学分';
+  }
+
+  @override
+  String graduateTrainPlanModuleCredit(
+    String completed,
+    String requiredCredit,
+  ) {
+    return '已修 $completed / 要求 $requiredCredit 学分';
+  }
+
+  @override
+  String get graduateTrainPlanNoCourses => '本模块暂无课程';
+
+  @override
+  String get labAttendance => '实验室考勤';
+
+  @override
+  String get labAttendanceDesc => '记录实验室出勤';
+
+  @override
+  String get labAttendanceMonthDay => '今日考勤';
+
+  @override
+  String get labAttendanceEmpty => '本月暂无考勤记录';
+
+  @override
+  String get labAttendanceDays => '出勤天数';
+
+  @override
+  String get labAttendanceHours => '出勤时长(小时)';
+
+  @override
+  String get labCheckIn => '签到';
+
+  @override
+  String get labCheckOut => '签退';
+
+  @override
+  String get thesisProgress => '论文进度';
+
+  @override
+  String get thesisProgressDesc => '跟踪课题论文进度';
+
+  @override
+  String get thesisProgressEmpty => '暂无论文阶段';
+
+  @override
+  String get thesisProgressOverview => '论文进度概览';
+
+  @override
+  String thesisProgressText(int completed, int total) {
+    return '已完成 $completed / $total 个阶段';
+  }
+
+  @override
+  String get thesisStageNotStarted => '未开始';
+
+  @override
+  String get thesisStageInProgress => '进行中';
+
+  @override
+  String get thesisStageCompleted => '已完成';
+
+  @override
+  String get thesisStageName => '阶段名称';
+
+  @override
+  String get thesisStageNameHint => '例如：开题、中期、预答辩';
+
+  @override
+  String get thesisStageNote => '备注';
+
+  @override
+  String get thesisStageNoPlanDate => '设置计划日期';
+
+  @override
+  String thesisStagePlanDate(String date) {
+    return '计划日期：$date';
+  }
+
+  @override
+  String get thesisStagePlan => '计划';
+
+  @override
+  String get addThesisStage => '添加阶段';
+
+  @override
+  String get editThesisStage => '编辑阶段';
+
+  @override
+  String get mentorTasks => '导师任务';
+
+  @override
+  String get mentorTasksDesc => '查看导师布置的任务';
+
+  @override
+  String get mentorTasksEmpty => '暂无导师任务';
+
+  @override
+  String get mentorTaskPending => '待完成';
+
+  @override
+  String get mentorTaskOverdue => '已逾期';
+
+  @override
+  String get mentorTaskDueSoon => '即将到期';
+
+  @override
+  String get mentorTaskPriorityLow => '低';
+
+  @override
+  String get mentorTaskPriorityMedium => '中';
+
+  @override
+  String get mentorTaskPriorityHigh => '高';
+
+  @override
+  String get mentorTaskNoDueDate => '无截止时间';
+
+  @override
+  String mentorTaskDueDate(String date) {
+    return '截止：$date';
+  }
+
+  @override
+  String mentorTaskDaysText(int days) {
+    return '剩余 $days 天';
+  }
+
+  @override
+  String get mentorTaskTitle => '任务标题';
+
+  @override
+  String get mentorTaskNote => '备注';
+
+  @override
+  String get addMentorTask => '添加任务';
+
+  @override
+  String get editMentorTask => '编辑任务';
+
+  @override
+  String get mentorTaskLoginRequired => '登录后查看导师任务';
+
+  @override
+  String get graduateLoginRequired => '请先在「我的」页面完成统一身份认证登录后再使用研究生功能';
+
+  @override
+  String get userManual => '用户手册';
+
+  @override
+  String get officialWebsite => '官方网站';
+
+  @override
+  String get showCourseWeeks => '显示课程周数';
+
+  @override
+  String get copyCourseTitle => '新建副本';
+
+  @override
+  String get copyCourseSave => '保存副本';
+
+  @override
+  String get resetPassword => '重置密码';
+
+  @override
+  String get resetPasswordStepAccount => '确认账户';
+
+  @override
+  String get resetPasswordStepVerify => '安全验证';
+
+  @override
+  String get resetPasswordStepReset => '重置密码';
+
+  @override
+  String get resetPasswordNext => '下一步';
+
+  @override
+  String get resetPasswordChooseMethod => '您正在重置登录密码，请选择以下安全验证方式：';
+
+  @override
+  String get resetPasswordViaSms => '通过短信验证';
+
+  @override
+  String resetPasswordSmsTip(String phone) {
+    return '您的手机 $phone 将收到一条短信验证码';
+  }
+
+  @override
+  String get resetPasswordViaEmail => '通过邮件验证';
+
+  @override
+  String resetPasswordEmailTip(String email) {
+    return '您的邮箱 $email 将收到一条邮件验证码';
+  }
+
+  @override
+  String get resetPasswordSendCode => '发送验证码';
+
+  @override
+  String resetPasswordResendAfter(int seconds) {
+    return '${seconds}s后可重发';
+  }
+
+  @override
+  String get resetPasswordCodeRequired => '请输入6位数字验证码';
+
+  @override
+  String get resetPasswordNewPasswordLabel => '新密码';
+
+  @override
+  String get resetPasswordConfirmPasswordLabel => '确认新密码';
+
+  @override
+  String get resetPasswordPasswordMismatch => '两次输入的密码不一致';
+
+  @override
+  String get resetPasswordPolicyTip => '密码至少包含大小写字母+数字+特殊字符，长度至少 8 位';
+
+  @override
+  String get resetPasswordPolicyInvalid => '密码不符合要求';
+
+  @override
+  String get resetPasswordSubmit => '确定';
+
+  @override
+  String get resetPasswordSuccess => '密码重置成功，请使用新密码登录';
+
+  @override
+  String get resetPasswordBackToLogin => '返回登录';
+
+  @override
+  String get dockLabelCourseCurriculum => '课程课表';
+
+  @override
+  String get courseCurriculum => '课程课表';
+
+  @override
+  String get courseCurriculumDesc => '查询各课程教学班的课表信息';
+
+  @override
+  String get courseCurriculumNoData => '暂无课程数据';
+
+  @override
+  String get courseCurriculumNoSchedule => '暂无课表数据';
+
+  @override
+  String get courseCurriculumFilter => '查询条件';
+
+  @override
+  String get courseCurriculumSemester => '学年学期';
+
+  @override
+  String get courseCurriculumDepartment => '开课院系';
+
+  @override
+  String get courseCurriculumCategory => '课程类别';
+
+  @override
+  String get courseCurriculumCourseName => '课程名';
+
+  @override
+  String get courseCurriculumCourseCode => '课程号';
+
+  @override
+  String get courseCurriculumCourseSeq => '课序号';
+
+  @override
+  String get courseCurriculumSearch => '查询';
+
+  @override
+  String get courseCurriculumLoadMore => '加载更多';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).
