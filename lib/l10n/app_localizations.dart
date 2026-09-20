@@ -1864,7 +1864,7 @@ abstract class AppLocalizations {
   /// No description provided for @importFromGraduate.
   ///
   /// In en, this message translates to:
-  /// **'Graduate Schedule Import'**
+  /// **'Import from Graduate System'**
   String get importFromGraduate;
 
   /// No description provided for @selectSemester.

@@ -359,7 +359,7 @@
   "logoutConfirm": "确定要退出登录吗？",
   "importFromJwxtOnline": "从教务系统在线导入",
   "importFromJwxtOnlineHint": "将自动获取课表，需要先在「我的」页面完成统一身份认证登录",
-  "importFromGraduate": "研究生课表导入",
+  "importFromGraduate": "从研究生系统导入",
   "selectSemester": "选择学期",
   "importAll": "全部导入",
   "importingProgress": "正在导入 {current}/{total}...",

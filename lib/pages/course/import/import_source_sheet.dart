@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/graduate/schedule_import_page.dart';
 import 'package:bugaoshan/providers/course_provider.dart';
 import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 
 import 'import_schedule_page.dart';
+
+/// 日志标签，与 [AppLog] 的 tag 约定一致。
+const String _tag = 'ScheduleImportSheet';
 
 /// 「课表导入」来源选择底部弹窗，课表页与课表管理页共用。
 ///
@@ -99,6 +104,11 @@ Future<void> showScheduleImportSheet(
                 leading: const Icon(Icons.cast_for_education),
                 title: Text(l10n.importFromGraduate),
                 onTap: () {
+                  if (kIsWeb) {
+                    // Web 端 ehall 不放行跨域凭据请求（见 schedule_import_page.dart），
+                    // 这条入口只会落到「请用原生客户端」说明页。暂不隐藏入口，先用日志留痕。
+                    AppLog.w(_tag, 'Web 端点击「研究生课表导入」：受 ehall CORS 限制，入口不可用');
+                  }
                   Navigator.pop(context);
                   popupOrNavigate(
                     outerContext,

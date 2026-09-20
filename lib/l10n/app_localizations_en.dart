@@ -961,7 +961,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.';
 
   @override
-  String get importFromGraduate => 'Graduate Schedule Import';
+  String get importFromGraduate => 'Import from Graduate System';
 
   @override
   String get selectSemester => 'Select Semester';

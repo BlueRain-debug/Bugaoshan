@@ -379,7 +379,7 @@
   "logoutConfirm": "Are you sure you want to logout?",
   "importFromJwxtOnline": "Online Import from JWXT",
   "importFromJwxtOnlineHint": "Automatically fetch schedule. Please login with SCU Unified Identity in the Profile page first.",
-  "importFromGraduate": "Graduate Schedule Import",
+  "importFromGraduate": "Import from Graduate System",
   "selectSemester": "Select Semester",
   "importAll": "Import All",
   "importingProgress": "Importing {current}/{total}...",
