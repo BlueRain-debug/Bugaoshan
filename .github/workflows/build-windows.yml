@@ -91,3 +91,4 @@ jobs:
         with:
           name: windows-release
           path: build\windows\x64\runner\Release\
+          if-no-files-found: error
