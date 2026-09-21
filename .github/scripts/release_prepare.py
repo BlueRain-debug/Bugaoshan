@@ -50,12 +50,13 @@ def prepare_release_files(version, root=Path(".")):
 
     with zipfile.ZipFile(zip_path, 'r') as zf:
         namelist = zf.namelist()
-        if "Bugaoshan.exe" not in namelist:
-            zip_path.unlink()
-            raise FileNotFoundError(
-                f"Invalid Windows artifact: 'Bugaoshan.exe' not found at the root of {zip_path.name}. "
-                f"Found contents: {namelist[:5]}..."
-            )
+
+    if "Bugaoshan.exe" not in namelist:
+        zip_path.unlink()
+        raise FileNotFoundError(
+            f"Invalid Windows artifact: 'Bugaoshan.exe' not found at the root of {zip_path.name}. "
+            f"Found contents: {namelist[:5]}..."
+        )
 
     print(f"Archived windows artifact -> {zip_base_name}.zip")
 
