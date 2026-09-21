@@ -59,5 +59,41 @@ class ReleasePrepareTest(unittest.TestCase):
                 release_prepare.prepare_release_files("v2.2.0", root=root)
 
 
+    def test_invalid_windows_artifact_raises_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            android_dir = root / "android-apk"
+            windows_dir = root / "windows-release"
+            android_dir.mkdir()
+            windows_dir.mkdir()
+
+            (android_dir / "app-universal-release.apk").write_bytes(b"universal")
+            (android_dir / "app-release.apk").write_bytes(b"raw")
+
+            # empty
+            with self.assertRaisesRegex(FileNotFoundError, "Windows release directory is empty"):
+                release_prepare.prepare_release_files("v2.2.0", root=root)
+
+            def assert_invalid_zip_error():
+                try:
+                    release_prepare.prepare_release_files("v2.2.0", root=root)
+                    self.fail("Expected exception was not raised.")
+                except PermissionError:
+                    pass
+                except FileNotFoundError as e:
+                    self.assertRegex(str(e), "Invalid Windows artifact")
+
+            # invalid main program
+            (windows_dir / "Bugaoshan.pdb").write_bytes(b"just a pdb")
+            assert_invalid_zip_error()
+
+            # nested dir
+            (windows_dir / "Bugaoshan.pdb").unlink() 
+            nested_dir = windows_dir / "windows-release"
+            nested_dir.mkdir()
+            (nested_dir / "Bugaoshan.exe").write_bytes(b"nested exe")
+            assert_invalid_zip_error()
+
+
 if __name__ == "__main__":
     unittest.main()
