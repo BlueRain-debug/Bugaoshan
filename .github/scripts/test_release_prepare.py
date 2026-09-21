@@ -78,8 +78,6 @@ class ReleasePrepareTest(unittest.TestCase):
                 try:
                     release_prepare.prepare_release_files("v2.2.0", root=root)
                     self.fail("Expected exception was not raised.")
-                except PermissionError:
-                    pass
                 except FileNotFoundError as e:
                     self.assertRegex(str(e), "Invalid Windows artifact")
 
