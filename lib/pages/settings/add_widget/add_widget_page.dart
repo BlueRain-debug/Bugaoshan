@@ -416,7 +416,7 @@ class _AddWidgetContentState extends State<AddWidgetContent>
             // Consolidated single card with size choices (Android only)
             if (isAndroid) _WidgetPickerCard(onPin: _pinWidget),
             if (isAndroid) const SizedBox(height: 16),
-            if (_platform == TargetPlatform.iOS) ...[
+            if (isApple) ...[
               _buildAppearanceCard(context, localizations, appConfig),
               const SizedBox(height: 16),
             ],
