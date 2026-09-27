@@ -36,7 +36,7 @@ class _WizardPageState extends State<WizardPage> {
       const StudentTypePage(),
       const LoginPage(),
       const FeaturesPage(),
-      if (Platform.isAndroid || Platform.isIOS) const WidgetPage(),
+      if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) const WidgetPage(),
     ];
     _totalPages = _pages.length;
 
