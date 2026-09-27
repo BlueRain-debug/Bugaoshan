@@ -40,9 +40,8 @@ class DatabaseService {
     debugPrint('BugaoShan Database: Initializing database...');
 
     Directory dir;
-    // iOS 使用 App Group 共享目录，让 Widget Extension 也能访问数据库。
-    // macOS 没有 Widget Extension，继续使用应用自己的 Support 目录。
-    if (!kIsWeb && Platform.isIOS) {
+    // iOS 与 macOS 使用 App Group 共享目录，让 Widget Extension 也能访问数据库。
+    if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
       const appGroupId = 'group.io.github.thebrotherhoodofscu.bugaoshan';
       try {
         final appGroupDir = await FlutterAppGroupDirectory.getAppGroupDirectory(
@@ -69,8 +68,8 @@ class DatabaseService {
     final dbPath = p.join(dir.path, 'bugaoshan.db');
     debugPrint('BugaoShan Database: Database path: $dbPath');
 
-    // iOS 检查是否需要从旧位置迁移数据库到 App Group。
-    if (!kIsWeb && Platform.isIOS) {
+    // iOS 与 macOS 检查是否需要从旧位置迁移数据库到 App Group。
+    if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
       try {
         final oldDir = await getApplicationSupportDirectory();
         final oldDbPath = p.join(oldDir.path, 'bugaoshan.db');
