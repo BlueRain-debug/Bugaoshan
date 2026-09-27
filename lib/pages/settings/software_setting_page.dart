@@ -71,7 +71,7 @@ class SoftwareSettingPage extends StatelessWidget {
                 label: localizations.customDock,
                 onTap: () => popupOrNavigate(context, const SetDockPage()),
               ),
-              if (Platform.isAndroid)
+              if (Platform.isAndroid || Platform.isIOS)
                 IconTile(
                   icon: Icons.widgets_outlined,
                   label: localizations.addWidgetPageTitle,
