@@ -47,7 +47,7 @@ class LogEntryTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.tag,
+                  '${entry.category == LogCategory.authentication ? '认证' : '业务'} · ${entry.tag}',
                   style: Theme.of(
                     context,
                   ).textTheme.labelSmall?.copyWith(color: fg),

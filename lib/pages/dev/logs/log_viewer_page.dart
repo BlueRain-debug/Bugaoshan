@@ -8,6 +8,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/pages/dev/logs/log_entry_tile.dart';
 import 'package:bugaoshan/pages/dev/logs/log_filter_bar.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
 
 /// 全屏日志查看器（开发者调试用）。
@@ -25,12 +26,14 @@ class LogViewerPage extends StatefulWidget {
 }
 
 class _LogViewerPageState extends State<LogViewerPage> {
-  static const String _appBarTitle = '应用日志';
+  static const String _appBarTitle = '运行日志';
+  static const String _tag = 'LogViewerPage';
 
   final _log = getIt<AppLogger>();
   // null = 全部 level 启用（无筛选）；非空 = 仅显示集合中的 level。
   Set<LogLevel>? _filterLevels;
   String? _filterTag; // null = All
+  int _view = 0; // 全部 / 认证 / 业务错误
 
   /// 解析到日志落盘目录（必要时创建子目录）：
   /// - Android = app 外部 cache 下的 `Bugaoshan/logs/`（文件管理器可见，OS 可清理）
@@ -79,6 +82,24 @@ class _LogViewerPageState extends State<LogViewerPage> {
               builder: (context, _) {
                 return Column(
                   children: [
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final (index, label) in [
+                          '全部',
+                          '认证日志',
+                          '业务错误',
+                        ].indexed)
+                          ChoiceChip(
+                            label: Text(label),
+                            selected: _view == index,
+                            onSelected: (_) => setState(() {
+                              _view = index;
+                              _filterTag = null;
+                            }),
+                          ),
+                      ],
+                    ),
                     LogFilterBar(
                       tagCounts: _log.tagCounts,
                       levels: _filterLevels,
@@ -104,6 +125,14 @@ class _LogViewerPageState extends State<LogViewerPage> {
     final filtered = all
         .where((e) {
           if (levels != null && !levels.contains(e.level)) return false;
+          if (_view == 1 && e.category != LogCategory.authentication) {
+            return false;
+          }
+          if (_view == 2 &&
+              (e.category != LogCategory.business ||
+                  (e.level != LogLevel.warn && e.level != LogLevel.error))) {
+            return false;
+          }
           if (_filterTag != null && e.tag != _filterTag) return false;
           return true;
         })
@@ -156,8 +185,15 @@ class _LogViewerPageState extends State<LogViewerPage> {
 
   Future<void> _copyAll() async {
     final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(ClipboardData(text: _log.exportToText()));
-    messenger.showSnackBar(const SnackBar(content: Text('已复制全部日志到剪贴板')));
+    try {
+      await Clipboard.setData(ClipboardData(text: _log.exportToText()));
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('已复制全部日志到剪贴板')));
+    } catch (error, stackTrace) {
+      AppLog.e(_tag, '复制日志失败', error: error, stackTrace: stackTrace);
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('复制日志失败')));
+    }
   }
 
   Future<void> _save() async {
@@ -169,10 +205,14 @@ class _LogViewerPageState extends State<LogViewerPage> {
         if (!mounted) return;
         await shareSingleFile(path, context: context);
         messenger.showSnackBar(const SnackBar(content: Text('已导出，正在分享…')));
-      } catch (e) {
+      } catch (e, stackTrace) {
+        AppLog.e(_tag, '分享日志失败', error: e, stackTrace: stackTrace);
+        if (!mounted) return;
         messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLog.e(_tag, '保存日志失败', error: e, stackTrace: stackTrace);
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
     }
   }
@@ -190,17 +230,20 @@ class _LogViewerPageState extends State<LogViewerPage> {
   /// 取出来的正确路径。其余平台 `Uri.file(dir)` 交给桌面文件管理器是有效的。
   Future<void> _openFolder() async {
     final messenger = ScaffoldMessenger.of(context);
-    final dir = await _logDir();
-    if (Platform.isAndroid) {
-      await Clipboard.setData(ClipboardData(text: dir.path));
-      messenger.showSnackBar(
-        SnackBar(content: Text('已复制目录路径：${dir.path}\n点「保存并分享」可把日志发给自己。')),
-      );
-      return;
-    }
     try {
-      await launchUrl(Uri.file(dir.path));
-    } catch (e) {
+      final dir = await _logDir();
+      if (Platform.isAndroid) {
+        await Clipboard.setData(ClipboardData(text: dir.path));
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('已复制目录路径：${dir.path}\n点「保存并分享」可把日志发给自己。')),
+        );
+        return;
+      }
+      if (!await launchUrl(Uri.file(dir.path))) throw StateError('文件管理器无法打开');
+    } catch (e, stackTrace) {
+      AppLog.e(_tag, '打开日志目录失败', error: e, stackTrace: stackTrace);
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('打开目录失败：$e')));
     }
   }

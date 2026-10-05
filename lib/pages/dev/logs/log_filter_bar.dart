@@ -51,7 +51,7 @@ class LogFilterBar extends StatelessWidget {
           // 按条数降序而非字母序：排查时第一眼就能看出哪个模块在刷屏，
           // 而不必在字母序列表里逐个辨认。
           DropdownButton<String?>(
-            value: tag,
+            value: tagCounts.any((entry) => entry.key == tag) ? tag : null,
             focusColor: Colors.transparent,
             hint: const Text('全部 tag'),
             onChanged: onTagChanged,
