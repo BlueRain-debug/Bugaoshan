@@ -13,6 +13,20 @@ const int _kMaxExceptionChars = 2000;
 /// context 占位后仍留给异常本身的最小预算。
 const int _kMinExceptionChars = 200;
 
+bool _reporting = false;
+RawReceivePort? _errorPort;
+
+void _report(String tag, String operation, Object error, Object? stack) {
+  // 日志订阅者自身报错时防止递归记录。
+  if (_reporting) return;
+  _reporting = true;
+  try {
+    AppLog.e(tag, operation, error: error, stackTrace: stack);
+  } finally {
+    _reporting = false;
+  }
+}
+
 /// 把异常与堆栈拼成一条适合放进日志 message 的文本（超长则截断）。
 String formatExceptionForLog(
   Object error,
@@ -63,22 +77,28 @@ void setupGlobalErrorHandlers() {
       _kMinExceptionChars,
       _kMaxExceptionChars,
     );
-    AppLog.e(
+    _report(
       tag,
       context.isEmpty ? '未捕获的框架异常' : '未捕获的框架异常\ncontext: $context',
-      error: details.exception,
-      stackTrace: formatExceptionForLog(
-        details.exception,
-        details.stack,
-        maxChars: budget,
-      ),
+      details.exception,
+      details.stack == null
+          ? null
+          : formatExceptionForLog('', details.stack, maxChars: budget),
     );
     // 保留默认行为：debug 下红屏、release 下打印，否则会静默掩盖框架错误。
-    previousFlutterOnError?.call(details);
+    if (previousFlutterOnError != null) {
+      previousFlutterOnError(details);
+    } else {
+      FlutterError.presentError(details);
+    }
   };
 
+  final previousAsyncHandler = PlatformDispatcher.instance.onError;
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    AppLog.e('PlatformDispatcher', '未捕获的异步异常', error: error, stackTrace: stack);
+    _report('PlatformDispatcher', '未捕获的异步异常', error, stack);
+    if (previousAsyncHandler != null) {
+      return previousAsyncHandler(error, stack);
+    }
     // 返回 true 表示已处理，避免引擎把进程直接杀掉。
     // 进程被杀则内存中的日志随进程消失，用户将完全拿不到崩溃现场——
     // 这正是「生产环境拿不到日志」问题的另一面。
@@ -86,9 +106,12 @@ void setupGlobalErrorHandlers() {
   };
 
   // 持有引用防止端口被 GC 关闭；非 main isolate 的错误会送到这里。
+  if (_errorPort != null) return;
   final port = RawReceivePort((dynamic pair) {
     if (pair is! List || pair.length < 2) return;
-    AppLog.e('Isolate', formatExceptionForLog(pair[0], pair[1] as StackTrace?));
+    if (pair[0] == null) return;
+    _report('Isolate', '未捕获的 isolate 错误', pair[0] as Object, pair[1]);
   });
   Isolate.current.addErrorListener(port.sendPort);
+  _errorPort = port;
 }
