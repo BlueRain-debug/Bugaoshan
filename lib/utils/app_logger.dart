@@ -8,6 +8,9 @@ import 'package:path_provider/path_provider.dart';
 /// 日志级别。
 enum LogLevel { debug, info, warn, error }
 
+/// 分类与级别独立：认证失败仍属于认证日志，业务失败属于业务日志。
+enum LogCategory { authentication, business }
+
 /// 日志目录名，位于 [getLogBaseDir]`/Bugaoshan/` 下。
 ///
 /// 与通知附件目录同级，便于用户在 Android 文件管理器里定位。
@@ -49,6 +52,7 @@ class LogEntry {
   final LogLevel level;
   final String tag;
   final String message;
+  final LogCategory category;
 
   /// 异常对象与其堆栈，**独立于 [message]**。
   ///
@@ -66,6 +70,7 @@ class LogEntry {
     required this.level,
     required this.tag,
     required this.message,
+    this.category = LogCategory.authentication,
     this.error,
     this.stackTrace,
   });
@@ -83,7 +88,8 @@ class LogEntry {
     final stack = (!includeStackTrace || stackTrace == null)
         ? ''
         : '\n$stackTrace';
-    return '$ts ${level.name.toUpperCase().padRight(5)} [$tag] $message$detail$stack';
+    return '$ts ${level.name.toUpperCase().padRight(5)} '
+        '[${category.name}] [$tag] $message$detail$stack';
   }
 
   static String _two(int n) => n.toString().padLeft(2, '0');
@@ -109,7 +115,7 @@ class LogEntry {
 /// 防止日志被分享到 issue 或支持工单时泄露凭据。
 class LogRedactor {
   static final RegExp _accessTokenJson = RegExp(
-    r'("access_token"\s*:\s*)"[^"]*"',
+    r'("(?:access_?token|refresh_?token|token(?:key)?|cookie|authorization|userinfo|ticket)"\s*:\s*)"[^"]*"',
     caseSensitive: false,
   );
   static final RegExp _passwordJson = RegExp(
@@ -121,7 +127,7 @@ class LogRedactor {
     caseSensitive: false,
   );
   static final RegExp _oauthCode = RegExp(
-    r'([?&](?:code|access_token)=)([^&\s"]+)',
+    r'([?&](?:code|access_?token|refresh_?token|token(?:key)?|password|userinfo|ticket)=)([^&\s"]+)',
     caseSensitive: false,
   );
 
@@ -136,7 +142,7 @@ class LogRedactor {
   /// 这两个由 [_bearerHeader] 等专门规则处理，若在此一并匹配会先吃掉
   /// `Authorization: Bearer xxx` 的前缀，导致 Bearer 规则失效。
   static final RegExp _credentialLabel = RegExp(
-    r"""\b((?:access_?token|refresh_?token|token|password|passwd|pwd|secret)\s*[=:]\s*)([^\s,;"'\]\}]+)""",
+    r"""\b((?:access_?token|refresh_?token|token(?:key)?|password|passwd|pwd|secret)\s*[=:]\s*)([^\s,;"'\]\}]+)""",
     caseSensitive: false,
   );
   static final RegExp _principalLabel = RegExp(
@@ -181,6 +187,9 @@ class LogRedactor {
     result = result.replaceAllMapped(_oauthCode, (m) {
       final prefix = m[1] ?? '';
       final value = m[2] ?? '';
+      if (!RegExp(r'^[?&]code=$', caseSensitive: false).hasMatch(prefix)) {
+        return '$prefix<redacted>';
+      }
       if (value.length <= 4) return '$prefix<redacted>';
       return '$prefix${value.substring(0, 4)}…';
     });
@@ -366,6 +375,7 @@ class AppLogger extends ChangeNotifier {
     String tag,
     String message, {
     DateTime? timestamp,
+    LogCategory category = LogCategory.authentication,
     Object? error,
     Object? stackTrace,
   }) {
@@ -374,6 +384,7 @@ class AppLogger extends ChangeNotifier {
       level: level,
       tag: tag,
       message: LogRedactor.apply(message),
+      category: category,
       error: error == null ? null : LogRedactor.apply(error.toString()),
       stackTrace: stackTrace == null
           ? null
