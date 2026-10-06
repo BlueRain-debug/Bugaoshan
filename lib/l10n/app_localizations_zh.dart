@@ -3417,6 +3417,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderHostProbeFailed => '排期失败';
 
   @override
+  String get reminderHostProbePermissionTitle => '通知权限';
+
+  @override
+  String get reminderHostProbePermissionUnknown => '查询中…';
+
+  @override
+  String get reminderHostProbePermissionAuthorized => '已授权';
+
+  @override
+  String get reminderHostProbePermissionProvisional => '临时授权（安静投递）';
+
+  @override
+  String get reminderHostProbePermissionDeniedLabel => '已被系统设置拒绝';
+
+  @override
+  String get reminderHostProbePermissionNotDetermined => '尚未请求';
+
+  @override
+  String get reminderHostProbeRequestPermission => '请求授权';
+
+  @override
+  String get reminderHostProbeOpenSettings => '去系统设置';
+
+  @override
+  String get reminderHostProbeOpenSettingsFailed => '无法打开系统设置';
+
+  @override
+  String get reminderHostProbePermissionGranted => '已获得通知权限';
+
+  @override
+  String get reminderHostProbePermissionDenied => '权限被拒绝';
+
+  @override
   String get reminderProbeTitle => '课表提醒探针';
 
   @override

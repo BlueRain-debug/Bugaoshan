@@ -3528,6 +3528,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderHostProbeFailed => 'Scheduling failed';
 
   @override
+  String get reminderHostProbePermissionTitle => 'Notification permission';
+
+  @override
+  String get reminderHostProbePermissionUnknown => 'Checking…';
+
+  @override
+  String get reminderHostProbePermissionAuthorized => 'Authorized';
+
+  @override
+  String get reminderHostProbePermissionProvisional =>
+      'Provisional (quiet delivery)';
+
+  @override
+  String get reminderHostProbePermissionDeniedLabel =>
+      'Denied in system settings';
+
+  @override
+  String get reminderHostProbePermissionNotDetermined => 'Not requested yet';
+
+  @override
+  String get reminderHostProbeRequestPermission => 'Request';
+
+  @override
+  String get reminderHostProbeOpenSettings => 'Open Settings';
+
+  @override
+  String get reminderHostProbeOpenSettingsFailed =>
+      'Could not open system settings';
+
+  @override
+  String get reminderHostProbePermissionGranted =>
+      'Notification permission granted';
+
+  @override
+  String get reminderHostProbePermissionDenied => 'Permission denied';
+
+  @override
   String get reminderProbeTitle => '课表提醒探针';
 
   @override

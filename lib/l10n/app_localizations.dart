@@ -6577,6 +6577,72 @@ abstract class AppLocalizations {
   /// **'Scheduling failed'**
   String get reminderHostProbeFailed;
 
+  /// No description provided for @reminderHostProbePermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission'**
+  String get reminderHostProbePermissionTitle;
+
+  /// No description provided for @reminderHostProbePermissionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get reminderHostProbePermissionUnknown;
+
+  /// No description provided for @reminderHostProbePermissionAuthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized'**
+  String get reminderHostProbePermissionAuthorized;
+
+  /// No description provided for @reminderHostProbePermissionProvisional.
+  ///
+  /// In en, this message translates to:
+  /// **'Provisional (quiet delivery)'**
+  String get reminderHostProbePermissionProvisional;
+
+  /// No description provided for @reminderHostProbePermissionDeniedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Denied in system settings'**
+  String get reminderHostProbePermissionDeniedLabel;
+
+  /// No description provided for @reminderHostProbePermissionNotDetermined.
+  ///
+  /// In en, this message translates to:
+  /// **'Not requested yet'**
+  String get reminderHostProbePermissionNotDetermined;
+
+  /// No description provided for @reminderHostProbeRequestPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Request'**
+  String get reminderHostProbeRequestPermission;
+
+  /// No description provided for @reminderHostProbeOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get reminderHostProbeOpenSettings;
+
+  /// No description provided for @reminderHostProbeOpenSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open system settings'**
+  String get reminderHostProbeOpenSettingsFailed;
+
+  /// No description provided for @reminderHostProbePermissionGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission granted'**
+  String get reminderHostProbePermissionGranted;
+
+  /// No description provided for @reminderHostProbePermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission denied'**
+  String get reminderHostProbePermissionDenied;
+
   /// No description provided for @reminderProbeTitle.
   ///
   /// In en, this message translates to:

@@ -53,6 +53,9 @@ class RecordingTransport implements ReminderTransport {
   @override
   Future<int> getPendingCount() async =>
       unavailable ? 0 : (synced.isEmpty ? 0 : synced.last.reminders.length);
+
+  @override
+  Future<bool> openNotificationSettings() async => !unavailable;
 }
 
 /// 内存版课表数据源。

@@ -248,6 +248,15 @@ class ReminderService {
     }
   }
 
+  /// 打开系统通知设置页。权限被拒后系统不再弹框，这是唯一的出路。
+  Future<bool> openNotificationSettings() async {
+    try {
+      return await _transport.openNotificationSettings();
+    } on ReminderTransportUnavailable {
+      return false;
+    }
+  }
+
   /// 走真实链路排一条 [delay] 之后触发的探针通知，用于端到端验证宿主投递。
   ///
   /// 本地提醒是典型的「失败起来和没做一样」的功能：Dart 算错、未授权、系统超限、

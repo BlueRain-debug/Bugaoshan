@@ -23,6 +23,61 @@ class ReminderProbeTile extends StatefulWidget {
 
 class _ReminderProbeTileState extends State<ReminderProbeTile> {
   bool _sending = false;
+  bool _requesting = false;
+
+  /// 当前授权状态，`null` 表示还没查过。被拒后系统不会再弹第二次，
+  /// 所以设置页必须能把「去系统设置」和「点按钮请求」区分开。
+  String? _permissionStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshPermission();
+  }
+
+  Future<void> _refreshPermission() async {
+    final status = await getIt<ReminderService>().permissionStatus();
+    if (mounted) setState(() => _permissionStatus = status);
+  }
+
+  Future<void> _requestPermission() async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final service = getIt<ReminderService>();
+
+    // 已被拒绝时系统不再弹框（iOS 上 requestAuthorization 直接返回 false），
+    // 再点一次是死路，改为把用户送到系统设置。
+    if (_permissionStatus == 'denied') {
+      final opened = await service.openNotificationSettings();
+      if (!opened && mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.reminderHostProbeOpenSettingsFailed)),
+        );
+      }
+      return;
+    }
+
+    setState(() => _requesting = true);
+    try {
+      final granted = await service.requestPermission();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            granted
+                ? l10n.reminderHostProbePermissionGranted
+                : l10n.reminderHostProbePermissionDenied,
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('${l10n.reminderHostProbeFailed}: $e')),
+      );
+    } finally {
+      await _refreshPermission();
+      if (mounted) setState(() => _requesting = false);
+    }
+  }
 
   Future<void> _fireProbe() async {
     final l10n = AppLocalizations.of(context)!;
@@ -40,6 +95,7 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.reminderHostProbeDenied)),
       );
+      await _refreshPermission();
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('${l10n.reminderHostProbeFailed}: $e')),
@@ -63,6 +119,49 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     }
   }
 
+  /// 授权状态行。
+  ///
+  /// 三态分开处理（未知 / 已授权 / 未授权），因为「点按钮请求」与「去系统设置」是
+  /// 两条不同的路径：iOS 上被拒之后 `requestAuthorization` 不再弹框、直接返回
+  /// false，此时再让用户点按钮是死路，必须指向系统设置。
+  Widget _buildPermissionRow(AppLocalizations l10n, ThemeData theme) {
+    final status = _permissionStatus;
+    final granted = status == 'authorized' || status == 'provisional';
+    final label = switch (status) {
+      null => l10n.reminderHostProbePermissionUnknown,
+      'authorized' => l10n.reminderHostProbePermissionAuthorized,
+      'provisional' => l10n.reminderHostProbePermissionProvisional,
+      'denied' => l10n.reminderHostProbePermissionDeniedLabel,
+      'notDetermined' => l10n.reminderHostProbePermissionNotDetermined,
+      _ => l10n.reminderHostProbePermissionUnknown,
+    };
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        granted ? Icons.notifications_active : Icons.notifications_off_outlined,
+        color: granted ? theme.colorScheme.primary : theme.colorScheme.error,
+      ),
+      title: Text(l10n.reminderHostProbePermissionTitle),
+      subtitle: Text(label, style: theme.textTheme.bodySmall),
+      trailing: _requesting
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : FilledButton.tonal(
+              onPressed: _requestPermission,
+              child: Text(
+                // 被拒之后系统不再弹窗，按钮改为语义正确的「去系统设置」。
+                status == 'denied'
+                    ? l10n.reminderHostProbeOpenSettings
+                    : l10n.reminderHostProbeRequestPermission,
+              ),
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -72,6 +171,8 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildPermissionRow(l10n, theme),
+        const Divider(height: 24),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.notifications_active_outlined),

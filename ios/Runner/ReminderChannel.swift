@@ -52,6 +52,8 @@ final class ReminderChannel: NSObject {
         // 暴露系统实际登记数：Dart 侧只知道「我下发了 N 条」，不知道系统收下了几条
         // （超上限、时刻已过、未授权都会被系统丢弃）。排期类问题几乎都出在这个差值上。
         self.getPendingCount(result: result)
+      case "openNotificationSettings":
+        self.openNotificationSettings(result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -237,6 +239,24 @@ final class ReminderChannel: NSObject {
         .filter { $0.hasPrefix(Self.identifierPrefix) }
         .count
       DispatchQueue.main.async { result(count) }
+    }
+  }
+
+  // MARK: - 设置跳转
+
+  /// 打开本应用的系统设置页。
+  ///
+  /// iOS 没有「直接跳到通知子页」的公开 API，`openSettingsURLString` 落在应用
+  /// 自己的设置页，通知开关就在首屏，是实际可用的最短路径。
+  private func openNotificationSettings(result: @escaping FlutterResult) {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else {
+      result(false)
+      return
+    }
+    DispatchQueue.main.async {
+      UIApplication.shared.open(url, options: [:]) { opened in
+        result(opened)
+      }
     }
   }
 

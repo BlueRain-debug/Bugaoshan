@@ -26,6 +26,12 @@ abstract class ReminderTransport {
   /// 与下发的 `plan.reminders.length` 之差就是被系统丢掉的部分（未授权、超上限、
   /// 时刻已过）。排期类问题几乎都出在这个差值上，所以它必须可观测。
   Future<int> getPendingCount();
+
+  /// 打开本应用的系统通知设置页。
+  ///
+  /// 用途：权限被拒后系统不再弹授权框，唯一出路是让用户自己去设置里开。
+  /// 返回是否成功跳转。
+  Future<bool> openNotificationSettings();
 }
 
 /// 跨平台的 MethodChannel 实现。
@@ -116,6 +122,20 @@ class MethodChannelReminderTransport implements ReminderTransport {
       return 0;
     }
   }
+
+  @override
+  Future<bool> openNotificationSettings() async {
+    try {
+      final opened = await _channel.invokeMethod<bool>(
+        'openNotificationSettings',
+      );
+      return opened ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }
 
 /// 用户尚未授予通知权限。
@@ -162,6 +182,9 @@ class NoopReminderTransport implements ReminderTransport {
 
   @override
   Future<int> getPendingCount() async => 0;
+
+  @override
+  Future<bool> openNotificationSettings() async => false;
 }
 
 /// 按当前平台选择实现。
