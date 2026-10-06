@@ -1875,5 +1875,20 @@
   "courseCurriculumCourseCode": "课程号",
   "courseCurriculumCourseSeq": "课序号",
   "courseCurriculumSearch": "查询",
-  "courseCurriculumLoadMore": "加载更多"
+  "courseCurriculumLoadMore": "加载更多",
+  "reminderHostProbeTitle": "宿主通知探针",
+  "reminderHostProbeSubtitle": "走真实链路排一条 N 秒后的通知，用于验证宿主能否真的投递。",
+  "reminderHostProbeAction": "15 秒后触发",
+  "reminderHostProbeSent": "已排期。锁屏即可看到横幅。",
+  "reminderHostProbeDenied": "通知权限被拒绝，请先到系统设置中开启。",
+  "reminderHostProbeFailed": "排期失败",
+  "reminderProbeTitle": "课表提醒探针",
+  "reminderProbeBody": "这是一条 15 秒后触发的测试提醒",
+  "reminderPlanTitle": "当前排期计划",
+  "reminderPlanEmpty": "尚未生成计划",
+  "reminderPlanSummary": "共 {count} 条，窗口截止 {end}",
+  "reminderPlanDropped": "因平台待投递上限被裁掉 {count} 条",
+  "reminderPlanCopy": "复制计划 JSON",
+  "reminderPlanCopied": "已复制",
+  "reminderPlanFailed": "计划序列化失败"
 }

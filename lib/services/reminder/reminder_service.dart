@@ -46,6 +46,12 @@ class ReminderService {
   /// 排期失败原因。设置页据此给出可操作的提示，而不是静默失败。
   final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
 
+  /// 用户尚未授予通知权限（或授权被撤销）。
+  ///
+  /// 与 [lastError] 分开：这是用户可处理的状态，设置页应显示「去授权」，
+  /// 而不是把它当成故障报错。授权后调用 [onPermissionGranted] 立即重排。
+  final ValueNotifier<bool> needsPermission = ValueNotifier<bool>(false);
+
   Timer? _debounceTimer;
   bool _inFlight = false;
   bool _needsRunAgain = false;
@@ -85,6 +91,7 @@ class ReminderService {
     _appConfig.showTeacherName.removeListener(_onSourceChanged);
     lastPlan.dispose();
     lastError.dispose();
+    needsPermission.dispose();
   }
 
   void _onSourceChanged() {
@@ -154,6 +161,7 @@ class ReminderService {
       _lastPushedPlanId = plan.planId;
       lastPlan.value = plan;
       lastError.value = null;
+      needsPermission.value = false;
       if (plan.droppedCount > 0) {
         AppLog.w(
           'ReminderService',
@@ -163,8 +171,14 @@ class ReminderService {
     } catch (e, stack) {
       // 失败时不更新 _lastPushedPlanId，下次触发会重试同一份计划。
       //
-      // 「原生尚未接线」与「真正投递失败」要分开：前者是开发期常态，记 warn
-      // 且不污染 lastError（否则设置页会对一个用户无能为力的原因报警）。
+      // 「未授权」「原生尚未接线」与「真正投递失败」要分开：前两者是用户/开发期
+      // 常态，记 warn 且不污染 lastError，否则设置页会对用户无能为力的原因报警。
+      if (e is ReminderPermissionDenied) {
+        AppLog.w('ReminderService', 'syncPlan 跳过：$e');
+        lastPlan.value = plan;
+        needsPermission.value = true;
+        return;
+      }
       if (e is ReminderTransportUnavailable) {
         AppLog.w('ReminderService', 'syncPlan 跳过：$e');
         lastPlan.value = plan;
@@ -187,4 +201,36 @@ class ReminderService {
 
   /// 供设置页在用户授权后立即重排（授权状态变化不在监听列表里）。
   Future<void> onPermissionGranted() => reschedule(force: true);
+
+  /// 请求通知权限并在获得后立即重排。
+  ///
+  /// 返回是否已获得。调用方负责在 false 时给出「去系统设置」的引导——
+  /// 被拒绝后系统不会再弹第二次，重复请求只会静默返回 false。
+  Future<bool> requestPermission({bool provisional = false}) async {
+    try {
+      final granted = await _transport.requestAuthorization(
+        provisional: provisional,
+      );
+      if (granted) {
+        needsPermission.value = false;
+        await reschedule(force: true);
+      } else {
+        needsPermission.value = true;
+      }
+      return granted;
+    } on ReminderTransportUnavailable catch (e) {
+      AppLog.w('ReminderService', 'requestPermission 跳过：$e');
+      return false;
+    }
+  }
+
+  /// 查询系统授权状态：`authorized` / `provisional` / `denied` /
+  /// `notDetermined` / `unknown`。
+  Future<String> permissionStatus() async {
+    try {
+      return await _transport.getPermissionStatus();
+    } on ReminderTransportUnavailable {
+      return MethodChannelReminderTransport.permissionUnknown;
+    }
+  }
 }

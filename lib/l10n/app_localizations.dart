@@ -6540,6 +6540,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load More'**
   String get courseCurriculumLoadMore;
+
+  /// No description provided for @reminderHostProbeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Host notification probe'**
+  String get reminderHostProbeTitle;
+
+  /// No description provided for @reminderHostProbeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules one notification N seconds from now through the real pipeline, so you can verify the host actually delivers it.'**
+  String get reminderHostProbeSubtitle;
+
+  /// No description provided for @reminderHostProbeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Fire in 15s'**
+  String get reminderHostProbeAction;
+
+  /// No description provided for @reminderHostProbeSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled. Lock the screen to see the banner.'**
+  String get reminderHostProbeSent;
+
+  /// No description provided for @reminderHostProbeDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission denied — grant it in system settings first.'**
+  String get reminderHostProbeDenied;
+
+  /// No description provided for @reminderHostProbeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling failed'**
+  String get reminderHostProbeFailed;
+
+  /// No description provided for @reminderProbeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'课表提醒探针'**
+  String get reminderProbeTitle;
+
+  /// No description provided for @reminderProbeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'这是一条 15 秒后触发的测试提醒'**
+  String get reminderProbeBody;
+
+  /// No description provided for @reminderPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled reminder plan'**
+  String get reminderPlanTitle;
+
+  /// No description provided for @reminderPlanEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plan generated yet'**
+  String get reminderPlanEmpty;
+
+  /// No description provided for @reminderPlanSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reminders, window ends {end}'**
+  String reminderPlanSummary(int count, String end);
+
+  /// No description provided for @reminderPlanDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} dropped by the platform pending limit'**
+  String reminderPlanDropped(int count);
+
+  /// No description provided for @reminderPlanCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy plan JSON'**
+  String get reminderPlanCopy;
+
+  /// No description provided for @reminderPlanCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get reminderPlanCopied;
+
+  /// No description provided for @reminderPlanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan serialization failed'**
+  String get reminderPlanFailed;
 }
 
 class _AppLocalizationsDelegate

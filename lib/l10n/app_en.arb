@@ -1945,5 +1945,37 @@
   "courseCurriculumCourseCode": "Course Code",
   "courseCurriculumCourseSeq": "Course Seq",
   "courseCurriculumSearch": "Search",
-  "courseCurriculumLoadMore": "Load More"
+  "courseCurriculumLoadMore": "Load More",
+  "reminderHostProbeTitle": "Host notification probe",
+  "reminderHostProbeSubtitle": "Schedules one notification N seconds from now through the real pipeline, so you can verify the host actually delivers it.",
+  "reminderHostProbeAction": "Fire in 15s",
+  "reminderHostProbeSent": "Scheduled. Lock the screen to see the banner.",
+  "reminderHostProbeDenied": "Notification permission denied — grant it in system settings first.",
+  "reminderHostProbeFailed": "Scheduling failed",
+  "reminderProbeTitle": "课表提醒探针",
+  "reminderProbeBody": "这是一条 15 秒后触发的测试提醒",
+  "reminderPlanTitle": "Scheduled reminder plan",
+  "reminderPlanEmpty": "No plan generated yet",
+  "reminderPlanSummary": "{count} reminders, window ends {end}",
+  "@reminderPlanSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderPlanDropped": "{count} dropped by the platform pending limit",
+  "@reminderPlanDropped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderPlanCopy": "Copy plan JSON",
+  "reminderPlanCopied": "Copied",
+  "reminderPlanFailed": "Plan serialization failed"
 }

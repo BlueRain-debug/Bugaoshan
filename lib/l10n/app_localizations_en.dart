@@ -3505,4 +3505,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get courseCurriculumLoadMore => 'Load More';
+
+  @override
+  String get reminderHostProbeTitle => 'Host notification probe';
+
+  @override
+  String get reminderHostProbeSubtitle =>
+      'Schedules one notification N seconds from now through the real pipeline, so you can verify the host actually delivers it.';
+
+  @override
+  String get reminderHostProbeAction => 'Fire in 15s';
+
+  @override
+  String get reminderHostProbeSent =>
+      'Scheduled. Lock the screen to see the banner.';
+
+  @override
+  String get reminderHostProbeDenied =>
+      'Notification permission denied — grant it in system settings first.';
+
+  @override
+  String get reminderHostProbeFailed => 'Scheduling failed';
+
+  @override
+  String get reminderProbeTitle => '课表提醒探针';
+
+  @override
+  String get reminderProbeBody => '这是一条 15 秒后触发的测试提醒';
+
+  @override
+  String get reminderPlanTitle => 'Scheduled reminder plan';
+
+  @override
+  String get reminderPlanEmpty => 'No plan generated yet';
+
+  @override
+  String reminderPlanSummary(int count, String end) {
+    return '$count reminders, window ends $end';
+  }
+
+  @override
+  String reminderPlanDropped(int count) {
+    return '$count dropped by the platform pending limit';
+  }
+
+  @override
+  String get reminderPlanCopy => 'Copy plan JSON';
+
+  @override
+  String get reminderPlanCopied => 'Copied';
+
+  @override
+  String get reminderPlanFailed => 'Plan serialization failed';
 }

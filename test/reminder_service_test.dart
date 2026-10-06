@@ -21,10 +21,12 @@ class RecordingTransport implements ReminderTransport {
   int cancelAllCount = 0;
   Object? failWith;
   bool unavailable = false;
+  bool denied = false;
 
   @override
   Future<void> syncPlan(ReminderPlan plan) async {
     if (unavailable) throw const ReminderTransportUnavailable();
+    if (denied) throw const ReminderPermissionDenied();
     if (failWith != null) throw failWith!;
     synced.add(plan);
   }
@@ -32,9 +34,21 @@ class RecordingTransport implements ReminderTransport {
   @override
   Future<void> cancelAll() async {
     if (unavailable) throw const ReminderTransportUnavailable();
+    if (denied) throw const ReminderPermissionDenied();
     if (failWith != null) throw failWith!;
     cancelAllCount++;
   }
+
+  @override
+  Future<bool> requestAuthorization({bool provisional = false}) async {
+    if (unavailable) throw const ReminderTransportUnavailable();
+    return !denied;
+  }
+
+  @override
+  Future<String> getPermissionStatus() async => unavailable
+      ? MethodChannelReminderTransport.permissionUnknown
+      : (denied ? 'denied' : 'authorized');
 }
 
 /// 内存版课表数据源。
@@ -262,6 +276,22 @@ void main() {
       // 用户无法处理这种状态，设置页不应据此报警
       expect(service.lastError.value, isNull);
       expect(service.lastPlan.value, isNotNull);
+      expect(service.needsPermission.value, isFalse);
+    });
+
+    test('未授权时标记 needsPermission 而非 lastError', () async {
+      await setUpService();
+      transport.denied = true;
+      await service.reschedule(force: true);
+
+      expect(service.needsPermission.value, isTrue);
+      expect(service.lastError.value, isNull);
+
+      // 授权后重排应清掉标记
+      transport.denied = false;
+      await service.onPermissionGranted();
+      expect(service.needsPermission.value, isFalse);
+      expect(transport.synced, hasLength(1));
     });
 
     test('dispose 之后不再排期', () async {

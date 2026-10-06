@@ -3397,6 +3397,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get courseCurriculumLoadMore => '加载更多';
+
+  @override
+  String get reminderHostProbeTitle => '宿主通知探针';
+
+  @override
+  String get reminderHostProbeSubtitle => '走真实链路排一条 N 秒后的通知，用于验证宿主能否真的投递。';
+
+  @override
+  String get reminderHostProbeAction => '15 秒后触发';
+
+  @override
+  String get reminderHostProbeSent => '已排期。锁屏即可看到横幅。';
+
+  @override
+  String get reminderHostProbeDenied => '通知权限被拒绝，请先到系统设置中开启。';
+
+  @override
+  String get reminderHostProbeFailed => '排期失败';
+
+  @override
+  String get reminderProbeTitle => '课表提醒探针';
+
+  @override
+  String get reminderProbeBody => '这是一条 15 秒后触发的测试提醒';
+
+  @override
+  String get reminderPlanTitle => '当前排期计划';
+
+  @override
+  String get reminderPlanEmpty => '尚未生成计划';
+
+  @override
+  String reminderPlanSummary(int count, String end) {
+    return '共 $count 条，窗口截止 $end';
+  }
+
+  @override
+  String reminderPlanDropped(int count) {
+    return '因平台待投递上限被裁掉 $count 条';
+  }
+
+  @override
+  String get reminderPlanCopy => '复制计划 JSON';
+
+  @override
+  String get reminderPlanCopied => '已复制';
+
+  @override
+  String get reminderPlanFailed => '计划序列化失败';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).

@@ -10,6 +10,16 @@ abstract class ReminderTransport {
 
   /// 撤销全部已排期提醒（I4：总开关关闭时调用）。
   Future<void> cancelAll();
+
+  /// 请求系统通知权限，返回是否已获得。
+  ///
+  /// [provisional] 为 true 时走「安静投递」——不弹授权框，通知只进通知中心
+  /// （仅 iOS 支持，Android 忽略该参数）。用于「先让用户看到价值再要授权」的场景。
+  Future<bool> requestAuthorization({bool provisional = false});
+
+  /// 查询当前授权状态。返回值与原生状态字符串一一对应
+  /// （`authorized` / `provisional` / `denied` / `notDetermined` / `unknown`）。
+  Future<String> getPermissionStatus();
 }
 
 /// 跨平台的 MethodChannel 实现。
@@ -31,6 +41,9 @@ class MethodChannelReminderTransport implements ReminderTransport {
       if (e.code == unsupportedPlatformCode) {
         throw const ReminderTransportUnavailable();
       }
+      if (e.code == notAuthorizedCode) {
+        throw const ReminderPermissionDenied();
+      }
       rethrow;
     }
   }
@@ -51,6 +64,51 @@ class MethodChannelReminderTransport implements ReminderTransport {
 
   /// 原生侧在尚未接线或平台不支持时返回的错误码。
   static const String unsupportedPlatformCode = 'UNSUPPORTED_PLATFORM';
+
+  /// 用户尚未授予通知权限时返回的错误码。
+  static const String notAuthorizedCode = 'NOT_AUTHORIZED';
+
+  @override
+  Future<bool> requestAuthorization({bool provisional = false}) async {
+    try {
+      final granted = await _channel.invokeMethod<bool>(
+        'requestAuthorization',
+        {'provisional': provisional},
+      );
+      return granted ?? false;
+    } on MissingPluginException {
+      throw const ReminderTransportUnavailable();
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  @override
+  Future<String> getPermissionStatus() async {
+    try {
+      final status = await _channel.invokeMethod<String>('getPermissionStatus');
+      return status ?? permissionUnknown;
+    } on MissingPluginException {
+      throw const ReminderTransportUnavailable();
+    } on PlatformException {
+      return permissionUnknown;
+    }
+  }
+
+  /// 原生状态无法取得时的兜底值。不假设已授权——假设已授权会让设置页
+  /// 显示「已开启」而实际不投递。
+  static const String permissionUnknown = 'unknown';
+}
+
+/// 用户尚未授予通知权限。
+///
+/// 这是用户可处理的状态，不是程序缺陷：设置页应据此显示「去授权」入口，
+/// 日志记 warn 而非 error——否则未授权期间每次重排都会刷一条错误日志。
+class ReminderPermissionDenied implements Exception {
+  const ReminderPermissionDenied();
+
+  @override
+  String toString() => '尚未获得通知权限';
 }
 
 /// 原生侧尚未提供投递能力（或该平台不支持）。
@@ -76,6 +134,13 @@ class NoopReminderTransport implements ReminderTransport {
 
   @override
   Future<void> cancelAll() async {}
+
+  @override
+  Future<bool> requestAuthorization({bool provisional = false}) async => false;
+
+  @override
+  Future<String> getPermissionStatus() async =>
+      MethodChannelReminderTransport.permissionUnknown;
 }
 
 /// 按当前平台选择实现。
