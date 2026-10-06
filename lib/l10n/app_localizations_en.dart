@@ -3550,6 +3550,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String reminderPlanPending(int count) {
+    return 'System has $count registered';
+  }
+
+  @override
   String get reminderPlanCopy => 'Copy plan JSON';
 
   @override

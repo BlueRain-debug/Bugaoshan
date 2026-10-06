@@ -147,7 +147,10 @@ class ReminderPlanBuilder {
               withLocation: settings.includeLocation,
               withTeacher: settings.includeTeacher,
             ),
-            collapseKey: 'course:${_yyyymmdd(day)}',
+            // 折叠键按「课程 + 上课日」分组：折叠的语义是「同一门课的多条提前量
+            // 归入一条会话」，而不是「同一天的所有课归入一条」。只用日期会把
+            // 同日不同课程的通知合并进同一条锁屏会话。
+            collapseKey: 'course:${_courseKey(course)}:${_yyyymmdd(day)}',
           );
           // 同一门课在库里可能存在多条记录（不同周段展开），同 id 覆盖即可。
           byId[item.id] = item;
@@ -206,6 +209,9 @@ class ReminderPlanBuilder {
       '${day.year.toString().padLeft(4, '0')}'
       '${day.month.toString().padLeft(2, '0')}'
       '${day.day.toString().padLeft(2, '0')}';
+
+  /// 折叠键里的课程身份，沿用提醒 id 的口径。
+  static String _courseKey(Course course) => course.name;
 
   /// 计划哈希 = 「全部提醒内容 + 排期窗口」。
   ///

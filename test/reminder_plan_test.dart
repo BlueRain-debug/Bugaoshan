@@ -87,7 +87,7 @@ void main() {
       expect(item.fireAt, at(2026, 9, 1, 8, 45));
       expect(item.title, '高等数学');
       expect(item.body, '09:00 · 综C407 · 张老师');
-      expect(item.collapseKey, 'course:20260901');
+      expect(item.collapseKey, 'course:高等数学:20260901');
     });
 
     test('没有课表配置时返回空计划而不抛异常', () {
@@ -273,6 +273,8 @@ void main() {
 
       expect(plan.reminders, hasLength(2));
       expect(plan.reminders.map((e) => e.id).toSet(), hasLength(2));
+      // 折叠键必须按课程区分：只用日期会把同日不同课程合并进同一条锁屏会话
+      expect(plan.reminders.map((e) => e.collapseKey).toSet(), hasLength(2));
       expect(plan.reminders.map((e) => e.fireAt).toList(), [
         at(2026, 9, 1, 8, 45),
         at(2026, 9, 1, 9, 45),

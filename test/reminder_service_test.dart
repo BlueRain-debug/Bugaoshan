@@ -49,6 +49,10 @@ class RecordingTransport implements ReminderTransport {
   Future<String> getPermissionStatus() async => unavailable
       ? MethodChannelReminderTransport.permissionUnknown
       : (denied ? 'denied' : 'authorized');
+
+  @override
+  Future<int> getPendingCount() async =>
+      unavailable ? 0 : (synced.isEmpty ? 0 : synced.last.reminders.length);
 }
 
 /// 内存版课表数据源。

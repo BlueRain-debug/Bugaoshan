@@ -58,6 +58,10 @@ class ReminderService {
   bool _disposed = false;
 
   /// 挂监听并做一次初始排期。
+  ///
+  /// 注册时课表可能尚未加载完（`CourseProvider` 的加载是异步的），此时会先下发
+  /// 一份空计划；加载完成会触发监听器重排，`planId` 随之改变并被重新下发。
+  /// 这个过程自洽，不需要额外的启动时序协调。
   Future<void> start() async {
     if (_disposed) return;
     _courseProvider.courses.addListener(_onSourceChanged);
@@ -232,5 +236,49 @@ class ReminderService {
     } on ReminderTransportUnavailable {
       return MethodChannelReminderTransport.permissionUnknown;
     }
+  }
+
+  /// 系统实际登记的提醒条数。与 `lastPlan.value.reminders.length` 的差值
+  /// 即被系统丢弃的条数。
+  Future<int> pendingCount() async {
+    try {
+      return await _transport.getPendingCount();
+    } on ReminderTransportUnavailable {
+      return 0;
+    }
+  }
+
+  /// 走真实链路排一条 [delay] 之后触发的探针通知，用于端到端验证宿主投递。
+  ///
+  /// 本地提醒是典型的「失败起来和没做一样」的功能：Dart 算错、未授权、系统超限、
+  /// 原生未接线，四种症状都是「没有提醒」。这条探针把前两类和「确实投不出去」
+  /// 区分开——它必然在几秒内触发，用户锁屏就能看到结果。
+  ///
+  /// 返回是否成功交给原生登记。
+  Future<bool> fireProbe({
+    Duration delay = const Duration(seconds: 15),
+    required String title,
+    required String body,
+  }) async {
+    final now = DateTime.now();
+    final plan = ReminderPlan(
+      planId: 'probe-${now.millisecondsSinceEpoch}',
+      generatedAt: now,
+      windowStart: now,
+      windowEnd: now.add(delay).add(const Duration(minutes: 1)),
+      channel: ReminderPlanBuilder.defaultChannel,
+      reminders: [
+        ReminderItem(
+          id: 'probe:${now.millisecondsSinceEpoch}',
+          kind: ReminderKind.courseStart,
+          fireAt: now.add(delay),
+          title: title,
+          body: body,
+          collapseKey: 'probe',
+        ),
+      ],
+    );
+    await _transport.syncPlan(plan);
+    return true;
   }
 }

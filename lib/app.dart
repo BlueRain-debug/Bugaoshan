@@ -1,3 +1,5 @@
+import 'dart:async';
+
 // 这个库是为了在iOS上使用CupertinoPageTransitionsBuilder，flutter新版已经分离出来了，不要删
 // ignore: unnecessary_import
 import 'package:flutter/cupertino.dart';
@@ -9,6 +11,7 @@ import 'package:bugaoshan/pages/wizard/eula_gate_page.dart';
 import 'package:bugaoshan/pages/wizard/wizard_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/services/background_cache_service.dart';
+import 'package:bugaoshan/services/reminder/reminder_service.dart';
 import 'package:bugaoshan/theme.dart';
 import 'package:bugaoshan/widgets/common/session_expired_listener.dart';
 import 'package:bugaoshan/widgets/eula_content.dart';
@@ -24,13 +27,14 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final AppConfigProvider _appConfig = getIt<AppConfigProvider>();
   late final BackgroundCacheService _bgCache = getIt<BackgroundCacheService>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _bgCache.precache();
@@ -39,8 +43,19 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _bgCache.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 回到前台时重排：授权状态可能在系统设置里被改动，计划窗口也可能已经走完。
+    // 这两件事都没有别的通知渠道，只能靠前台恢复这个时机兜住。
+    if (state != AppLifecycleState.resumed) return;
+    if (!getIt.isRegistered<ReminderService>()) return;
+    unawaited(getIt<ReminderService>().reschedule());
   }
 
   @override

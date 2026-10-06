@@ -20,6 +20,12 @@ abstract class ReminderTransport {
   /// 查询当前授权状态。返回值与原生状态字符串一一对应
   /// （`authorized` / `provisional` / `denied` / `notDetermined` / `unknown`）。
   Future<String> getPermissionStatus();
+
+  /// 系统当前实际登记的提醒条数。
+  ///
+  /// 与下发的 `plan.reminders.length` 之差就是被系统丢掉的部分（未授权、超上限、
+  /// 时刻已过）。排期类问题几乎都出在这个差值上，所以它必须可观测。
+  Future<int> getPendingCount();
 }
 
 /// 跨平台的 MethodChannel 实现。
@@ -98,6 +104,18 @@ class MethodChannelReminderTransport implements ReminderTransport {
   /// 原生状态无法取得时的兜底值。不假设已授权——假设已授权会让设置页
   /// 显示「已开启」而实际不投递。
   static const String permissionUnknown = 'unknown';
+
+  @override
+  Future<int> getPendingCount() async {
+    try {
+      final count = await _channel.invokeMethod<int>('getPendingCount');
+      return count ?? 0;
+    } on MissingPluginException {
+      throw const ReminderTransportUnavailable();
+    } on PlatformException {
+      return 0;
+    }
+  }
 }
 
 /// 用户尚未授予通知权限。
@@ -141,6 +159,9 @@ class NoopReminderTransport implements ReminderTransport {
   @override
   Future<String> getPermissionStatus() async =>
       MethodChannelReminderTransport.permissionUnknown;
+
+  @override
+  Future<int> getPendingCount() async => 0;
 }
 
 /// 按当前平台选择实现。

@@ -6613,6 +6613,12 @@ abstract class AppLocalizations {
   /// **'{count} dropped by the platform pending limit'**
   String reminderPlanDropped(int count);
 
+  /// No description provided for @reminderPlanPending.
+  ///
+  /// In en, this message translates to:
+  /// **'System has {count} registered'**
+  String reminderPlanPending(int count);
+
   /// No description provided for @reminderPlanCopy.
   ///
   /// In en, this message translates to:

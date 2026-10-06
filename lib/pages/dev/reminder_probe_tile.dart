@@ -29,35 +29,16 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _sending = true);
     try {
-      final now = DateTime.now();
-      final plan = ReminderPlan(
-        planId: 'probe-${now.millisecondsSinceEpoch}',
-        generatedAt: now,
-        windowStart: now,
-        windowEnd: now.add(const Duration(minutes: 5)),
-        channel: 'bugaoshan_reminder',
-        reminders: [
-          ReminderItem(
-            id: 'probe:${now.millisecondsSinceEpoch}',
-            kind: ReminderKind.courseStart,
-            fireAt: now.add(const Duration(seconds: 15)),
-            title: l10n.reminderProbeTitle,
-            body: l10n.reminderProbeBody,
-            collapseKey: 'probe',
-          ),
-        ],
+      await getIt<ReminderService>().fireProbe(
+        title: l10n.reminderProbeTitle,
+        body: l10n.reminderProbeBody,
       );
-      await const MethodChannelReminderTransport().syncPlan(plan);
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.reminderHostProbeSent)),
       );
     } on ReminderPermissionDenied {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.reminderHostProbeDenied)),
-      );
-    } on ReminderTransportUnavailable catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('${l10n.reminderHostProbeFailed}: $e')),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -138,6 +119,15 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
                       color: theme.colorScheme.error,
                     ),
                   ),
+                FutureBuilder<int>(
+                  future: service.pendingCount(),
+                  builder: (context, snapshot) => snapshot.hasData
+                      ? Text(
+                          l10n.reminderPlanPending(snapshot.data!),
+                          style: theme.textTheme.bodySmall,
+                        )
+                      : const SizedBox.shrink(),
+                ),
                 if (plan.reminders.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

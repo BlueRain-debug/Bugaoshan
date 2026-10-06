@@ -48,6 +48,10 @@ final class ReminderChannel: NSObject {
         self.requestAuthorization(provisional: provisional, result: result)
       case "getPermissionStatus":
         self.getPermissionStatus(result: result)
+      case "getPendingCount":
+        // 暴露系统实际登记数：Dart 侧只知道「我下发了 N 条」，不知道系统收下了几条
+        // （超上限、时刻已过、未授权都会被系统丢弃）。排期类问题几乎都出在这个差值上。
+        self.getPendingCount(result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -221,6 +225,20 @@ final class ReminderChannel: NSObject {
   }
 
   // MARK: - 落盘（仅供排查与展示）
+
+  /// 系统当前实际登记的本应用提醒条数。
+  ///
+  /// 与 Dart 侧的 `plan.reminders.length` 之差即「被系统丢弃的条数」——
+  /// 未授权、超过 64 条上限、时刻已过都会体现为这个差值。
+  private func getPendingCount(result: @escaping FlutterResult) {
+    center.getPendingNotificationRequests { pending in
+      let count = pending
+        .map(\.identifier)
+        .filter { $0.hasPrefix(Self.identifierPrefix) }
+        .count
+      DispatchQueue.main.async { result(count) }
+    }
+  }
 
   private var sharedDefaults: UserDefaults? {
     UserDefaults(suiteName: Self.appGroupId)

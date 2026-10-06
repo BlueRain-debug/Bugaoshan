@@ -1968,6 +1968,14 @@
     }
   },
   "reminderPlanDropped": "{count} dropped by the platform pending limit",
+  "reminderPlanPending": "System has {count} registered",
+  "@reminderPlanPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@reminderPlanDropped": {
     "placeholders": {
       "count": {

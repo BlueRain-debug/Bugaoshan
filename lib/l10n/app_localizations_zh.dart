@@ -3439,6 +3439,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String reminderPlanPending(int count) {
+    return '系统已登记 $count 条';
+  }
+
+  @override
   String get reminderPlanCopy => '复制计划 JSON';
 
   @override

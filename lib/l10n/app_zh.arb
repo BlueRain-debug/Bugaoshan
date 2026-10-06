@@ -1888,6 +1888,7 @@
   "reminderPlanEmpty": "尚未生成计划",
   "reminderPlanSummary": "共 {count} 条，窗口截止 {end}",
   "reminderPlanDropped": "因平台待投递上限被裁掉 {count} 条",
+  "reminderPlanPending": "系统已登记 {count} 条",
   "reminderPlanCopy": "复制计划 JSON",
   "reminderPlanCopied": "已复制",
   "reminderPlanFailed": "计划序列化失败"
