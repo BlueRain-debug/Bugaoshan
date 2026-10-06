@@ -1,0 +1,97 @@
+import 'package:bugaoshan/models/reminder_plan.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+/// 排期计划的投递通道。把「原生怎么排」与「计划怎么算」隔开，
+/// 使 [ReminderService] 可以对着一个可替换的接口测试。
+abstract class ReminderTransport {
+  /// 全量替换为 [plan]（I2）：计划里没有的 id 必须被撤销。
+  Future<void> syncPlan(ReminderPlan plan);
+
+  /// 撤销全部已排期提醒（I4：总开关关闭时调用）。
+  Future<void> cancelAll();
+}
+
+/// 跨平台的 MethodChannel 实现。
+///
+/// 平台差异只体现在方法名上，Dart 侧不判断「当前能不能投递」——原生侧不支持时
+/// 应回一个 `UNSUPPORTED_PLATFORM` 错误，由这里统一收敛成 no-op 并记日志。
+class MethodChannelReminderTransport implements ReminderTransport {
+  static const MethodChannel _channel = MethodChannel('bugaoshan/reminder');
+
+  const MethodChannelReminderTransport();
+
+  @override
+  Future<void> syncPlan(ReminderPlan plan) async {
+    try {
+      await _channel.invokeMethod<void>('syncPlan', plan.toChannelPayload());
+    } on MissingPluginException {
+      throw const ReminderTransportUnavailable();
+    } on PlatformException catch (e) {
+      if (e.code == unsupportedPlatformCode) {
+        throw const ReminderTransportUnavailable();
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> cancelAll() async {
+    try {
+      await _channel.invokeMethod<void>('cancelAll');
+    } on MissingPluginException {
+      throw const ReminderTransportUnavailable();
+    } on PlatformException catch (e) {
+      if (e.code == unsupportedPlatformCode) {
+        throw const ReminderTransportUnavailable();
+      }
+      rethrow;
+    }
+  }
+
+  /// 原生侧在尚未接线或平台不支持时返回的错误码。
+  static const String unsupportedPlatformCode = 'UNSUPPORTED_PLATFORM';
+}
+
+/// 原生侧尚未提供投递能力（或该平台不支持）。
+///
+/// 与「真正的投递失败」区分开：这不是用户能处理的错误，设置页不该据此报警，
+/// 但开发者需要能看到——调用方应记 warn 而非 error，且不清空已排期状态。
+class ReminderTransportUnavailable implements Exception {
+  const ReminderTransportUnavailable();
+
+  @override
+  String toString() => '原生侧未提供提醒投递能力（尚未接线或平台不支持）';
+}
+
+/// 未实现的平台（Windows / Linux / Web，以及原生尚未接线的阶段）使用的空实现。
+///
+/// 刻意返回成功而不是抛异常：Dart 侧的排期逻辑应当在所有平台都能跑通并留下
+/// 可观测的 [ReminderService.lastPlan]，只是不产生系统通知。
+class NoopReminderTransport implements ReminderTransport {
+  const NoopReminderTransport();
+
+  @override
+  Future<void> syncPlan(ReminderPlan plan) async {}
+
+  @override
+  Future<void> cancelAll() async {}
+}
+
+/// 按当前平台选择实现。
+///
+/// 平台判断集中在这里，Dart 侧的排期与设置逻辑不再散落 `if (Platform.isX)`。
+/// Windows / Linux 暂无原生投递实现（见 issue #358 的平台范围决策）。
+ReminderTransport createReminderTransport() {
+  if (kIsWeb) return const NoopReminderTransport();
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.android:
+    case TargetPlatform.iOS:
+    case TargetPlatform.macOS:
+      return const MethodChannelReminderTransport();
+    case TargetPlatform.windows:
+    case TargetPlatform.linux:
+    case TargetPlatform.fuchsia:
+      return const NoopReminderTransport();
+  }
+}

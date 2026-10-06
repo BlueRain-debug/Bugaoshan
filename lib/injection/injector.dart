@@ -53,6 +53,8 @@ import 'package:bugaoshan/services/background_cache_service.dart';
 import 'package:bugaoshan/services/database_service.dart';
 import 'package:bugaoshan/services/download_manager.dart';
 import 'package:bugaoshan/services/exit_service.dart';
+import 'package:bugaoshan/services/reminder/reminder_service.dart';
+import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/services/api/academic_calendar_service.dart';
@@ -416,6 +418,20 @@ void _configureAsyncDependencies() {
       }
     }
 
+    return service;
+  });
+
+  // 本地提醒排期协调器。挂在 CourseProvider / AppConfigProvider 之后注册，
+  // 因为它同时监听两者（课表决定内容、设置决定时机）。
+  getIt.registerSingletonAsync<ReminderService>(() async {
+    await getIt.isReady<CourseProvider>();
+    await getIt.isReady<AppConfigProvider>();
+    final service = ReminderService(
+      courseProvider: getIt<CourseProvider>(),
+      appConfig: getIt<AppConfigProvider>(),
+      transport: createReminderTransport(),
+    );
+    await service.start();
     return service;
   });
 
