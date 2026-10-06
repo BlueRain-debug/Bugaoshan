@@ -121,9 +121,9 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
 
   /// 授权状态行。
   ///
-  /// 三态分开处理（未知 / 已授权 / 未授权），因为「点按钮请求」与「去系统设置」是
-  /// 两条不同的路径：iOS 上被拒之后 `requestAuthorization` 不再弹框、直接返回
-  /// false，此时再让用户点按钮是死路，必须指向系统设置。
+  /// 与同级 [ListTile] 的差异只在 `trailing`（按钮代替 chevron/数字），
+  /// 因此刻意**不设** `contentPadding`：其余 tile 都用 ListTile 默认内边距，
+  /// 这里单独归零会让图标列与下方「通知探针」「UI Preview」错开。
   Widget _buildPermissionRow(AppLocalizations l10n, ThemeData theme) {
     final status = _permissionStatus;
     final granted = status == 'authorized' || status == 'provisional';
@@ -137,7 +137,6 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     };
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
       leading: Icon(
         granted ? Icons.notifications_active : Icons.notifications_off_outlined,
         color: granted ? theme.colorScheme.primary : theme.colorScheme.error,
@@ -174,7 +173,6 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
         _buildPermissionRow(l10n, theme),
         const Divider(height: 24),
         ListTile(
-          contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.notifications_active_outlined),
           title: Text(l10n.reminderHostProbeTitle),
           subtitle: Text(
@@ -195,66 +193,70 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
         ValueListenableBuilder<ReminderPlan?>(
           valueListenable: service.lastPlan,
           builder: (context, plan, _) {
-            if (plan == null) {
-              return Text(
-                l10n.reminderPlanEmpty,
-                style: theme.textTheme.bodySmall,
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.reminderPlanSummary(
-                    plan.reminders.length,
-                    '${plan.windowEnd.month}/${plan.windowEnd.day} '
-                    '${plan.windowEnd.hour.toString().padLeft(2, '0')}:'
-                    '${plan.windowEnd.minute.toString().padLeft(2, '0')}',
-                  ),
-                  style: theme.textTheme.bodySmall,
-                ),
-                if (plan.droppedCount > 0)
-                  Text(
-                    l10n.reminderPlanDropped(plan.droppedCount),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                FutureBuilder<int>(
-                  future: service.pendingCount(),
-                  builder: (context, snapshot) => snapshot.hasData
-                      ? Text(
-                          l10n.reminderPlanPending(snapshot.data!),
-                          style: theme.textTheme.bodySmall,
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                if (plan.reminders.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      plan.reminders
-                          .take(3)
-                          .map(
-                            (r) =>
-                                '${r.fireAt.month}/${r.fireAt.day} '
-                                '${r.fireAt.hour.toString().padLeft(2, '0')}:'
-                                '${r.fireAt.minute.toString().padLeft(2, '0')} '
-                                '${r.title}',
-                          )
-                          .join('\n'),
+            // 与 ListTile 默认内边距对齐：Dev 页各 tile 的内容都从 16 起排，
+            // 这块纯文本若不补同样的缩进会顶到最左边，看起来像脱离了分组。
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: plan == null
+                  ? Text(
+                      l10n.reminderPlanEmpty,
                       style: theme.textTheme.bodySmall,
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.reminderPlanSummary(
+                            plan.reminders.length,
+                            '${plan.windowEnd.month}/${plan.windowEnd.day} '
+                            '${plan.windowEnd.hour.toString().padLeft(2, '0')}:'
+                            '${plan.windowEnd.minute.toString().padLeft(2, '0')}',
+                          ),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        if (plan.droppedCount > 0)
+                          Text(
+                            l10n.reminderPlanDropped(plan.droppedCount),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        FutureBuilder<int>(
+                          future: service.pendingCount(),
+                          builder: (context, snapshot) => snapshot.hasData
+                              ? Text(
+                                  l10n.reminderPlanPending(snapshot.data!),
+                                  style: theme.textTheme.bodySmall,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                        if (plan.reminders.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              plan.reminders
+                                  .take(3)
+                                  .map(
+                                    (r) =>
+                                        '${r.fireAt.month}/${r.fireAt.day} '
+                                        '${r.fireAt.hour.toString().padLeft(2, '0')}:'
+                                        '${r.fireAt.minute.toString().padLeft(2, '0')} '
+                                        '${r.title}',
+                                  )
+                                  .join('\n'),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => _copyPlan(plan),
+                            icon: const Icon(Icons.copy, size: 16),
+                            label: Text(l10n.reminderPlanCopy),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => _copyPlan(plan),
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: Text(l10n.reminderPlanCopy),
-                  ),
-                ),
-              ],
             );
           },
         ),
@@ -262,10 +264,16 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
           valueListenable: service.lastError,
           builder: (context, error, _) => error == null
               ? const SizedBox.shrink()
-              : Text(
-                  error,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
+              : Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    error,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
                   ),
                 ),
         ),
