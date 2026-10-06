@@ -65,6 +65,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _appConfig.locale,
         _appConfig.themeColor,
         _appConfig.themeColorMode,
+        _appConfig.themeMode,
         _appConfig.useGoogleFonts,
         // 页面转场时长跟随设置变化，需要重建 MaterialApp 使新主题生效
         // （「页面切换动画」开关只控制 Dock 栏切换，不进全局主题）
@@ -78,7 +79,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         supportedLocales: AppLocalizations.supportedLocales,
         theme: _buildTheme(Brightness.light, context),
         darkTheme: _buildTheme(Brightness.dark, context),
-        themeMode: ThemeMode.system,
+        themeMode: _appConfig.themeMode.value,
         builder: (context, child) {
           final scale = MediaQuery.textScalerOf(context).scale(1.0);
           final clamped = scale.clamp(1.0, 2.0);
