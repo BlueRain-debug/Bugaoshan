@@ -3601,6 +3601,116 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String reminderStatusScheduled(Object count, Object end) {
+    return '$count reminders scheduled, window ends $end';
+  }
+
+  @override
+  String reminderStatusPending(Object count) {
+    return 'The system has $count registered';
+  }
+
+  @override
+  String reminderStatusDropped(Object count) {
+    return '$count dropped by the platform limit';
+  }
+
+  @override
+  String reminderStatusError(Object error) {
+    return 'Scheduling failed: $error';
+  }
+
+  @override
+  String reminderLeadMinutes(Object count) {
+    return '$count min';
+  }
+
+  @override
+  String get reminderSettingsTitle => 'Notifications & Reminders';
+
+  @override
+  String get reminderMasterSwitch => 'Reminders';
+
+  @override
+  String get reminderMasterSwitchHint =>
+      'Turn off to cancel every scheduled reminder';
+
+  @override
+  String get reminderCourseSection => 'Class reminders';
+
+  @override
+  String get reminderLeadTime => 'Remind me before class';
+
+  @override
+  String get reminderLeadTimeHint => 'How early should a class reminder fire?';
+
+  @override
+  String get reminderLeadTimeMultiHint =>
+      'You can pick more than one. Each adds a separate notification.';
+
+  @override
+  String get reminderQuietSection => 'Quiet hours';
+
+  @override
+  String get reminderQuietEnabled => 'Quiet hours';
+
+  @override
+  String get reminderQuietHint =>
+      'Reminders inside this window are dropped, not delayed';
+
+  @override
+  String get reminderQuietStart => 'From';
+
+  @override
+  String get reminderQuietEnd => 'To';
+
+  @override
+  String get reminderStatusSection => 'Scheduling status';
+
+  @override
+  String get reminderStatusEmpty => 'No plan generated yet';
+
+  @override
+  String get reminderStatusNoUpcoming => 'No upcoming reminders in this window';
+
+  @override
+  String get reminderStatusRefresh => 'Reschedule now';
+
+  @override
+  String get reminderPermissionTitle => 'Notifications are off';
+
+  @override
+  String get reminderPermissionDeniedHint =>
+      'You denied the permission earlier, so iOS will not ask again. Enable it in system settings.';
+
+  @override
+  String get reminderPermissionNotDeterminedHint =>
+      'Grant the permission so reminders can reach you.';
+
+  @override
+  String get reminderPermissionRequest => 'Allow';
+
+  @override
+  String get reminderPermissionOpenSettings => 'Open Settings';
+
+  @override
+  String get reminderPermissionOpenFailed => 'Could not open system settings';
+
+  @override
+  String get reminderPermissionGrantedToast =>
+      'Notification permission granted';
+
+  @override
+  String get reminderPermissionDeniedToast => 'Permission denied';
+
+  @override
+  String get reminderPermissionFailed => 'Permission request failed';
+
+  @override
+  String get reminderPrivacyHint =>
+      'Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher\'s name, it stays hidden here too.';
+
+  @override
   String get reminderPlanCopy => 'Copy plan JSON';
 
   @override

@@ -6703,6 +6703,192 @@ abstract class AppLocalizations {
   /// **'System has {count} registered'**
   String reminderPlanPending(int count);
 
+  /// No description provided for @reminderStatusScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reminders scheduled, window ends {end}'**
+  String reminderStatusScheduled(Object count, Object end);
+
+  /// No description provided for @reminderStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'The system has {count} registered'**
+  String reminderStatusPending(Object count);
+
+  /// No description provided for @reminderStatusDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} dropped by the platform limit'**
+  String reminderStatusDropped(Object count);
+
+  /// No description provided for @reminderStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling failed: {error}'**
+  String reminderStatusError(Object error);
+
+  /// No description provided for @reminderLeadMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String reminderLeadMinutes(Object count);
+
+  /// No description provided for @reminderSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications & Reminders'**
+  String get reminderSettingsTitle;
+
+  /// No description provided for @reminderMasterSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get reminderMasterSwitch;
+
+  /// No description provided for @reminderMasterSwitchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off to cancel every scheduled reminder'**
+  String get reminderMasterSwitchHint;
+
+  /// No description provided for @reminderCourseSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Class reminders'**
+  String get reminderCourseSection;
+
+  /// No description provided for @reminderLeadTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me before class'**
+  String get reminderLeadTime;
+
+  /// No description provided for @reminderLeadTimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How early should a class reminder fire?'**
+  String get reminderLeadTimeHint;
+
+  /// No description provided for @reminderLeadTimeMultiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick more than one. Each adds a separate notification.'**
+  String get reminderLeadTimeMultiHint;
+
+  /// No description provided for @reminderQuietSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours'**
+  String get reminderQuietSection;
+
+  /// No description provided for @reminderQuietEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours'**
+  String get reminderQuietEnabled;
+
+  /// No description provided for @reminderQuietHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders inside this window are dropped, not delayed'**
+  String get reminderQuietHint;
+
+  /// No description provided for @reminderQuietStart.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get reminderQuietStart;
+
+  /// No description provided for @reminderQuietEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get reminderQuietEnd;
+
+  /// No description provided for @reminderStatusSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling status'**
+  String get reminderStatusSection;
+
+  /// No description provided for @reminderStatusEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plan generated yet'**
+  String get reminderStatusEmpty;
+
+  /// No description provided for @reminderStatusNoUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming reminders in this window'**
+  String get reminderStatusNoUpcoming;
+
+  /// No description provided for @reminderStatusRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Reschedule now'**
+  String get reminderStatusRefresh;
+
+  /// No description provided for @reminderPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off'**
+  String get reminderPermissionTitle;
+
+  /// No description provided for @reminderPermissionDeniedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You denied the permission earlier, so iOS will not ask again. Enable it in system settings.'**
+  String get reminderPermissionDeniedHint;
+
+  /// No description provided for @reminderPermissionNotDeterminedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant the permission so reminders can reach you.'**
+  String get reminderPermissionNotDeterminedHint;
+
+  /// No description provided for @reminderPermissionRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get reminderPermissionRequest;
+
+  /// No description provided for @reminderPermissionOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get reminderPermissionOpenSettings;
+
+  /// No description provided for @reminderPermissionOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open system settings'**
+  String get reminderPermissionOpenFailed;
+
+  /// No description provided for @reminderPermissionGrantedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission granted'**
+  String get reminderPermissionGrantedToast;
+
+  /// No description provided for @reminderPermissionDeniedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission denied'**
+  String get reminderPermissionDeniedToast;
+
+  /// No description provided for @reminderPermissionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission request failed'**
+  String get reminderPermissionFailed;
+
+  /// No description provided for @reminderPrivacyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher\'s name, it stays hidden here too.'**
+  String get reminderPrivacyHint;
+
   /// No description provided for @reminderPlanCopy.
   ///
   /// In en, this message translates to:

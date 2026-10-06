@@ -3486,6 +3486,109 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String reminderStatusScheduled(Object count, Object end) {
+    return '已排期 $count 条，窗口截止 $end';
+  }
+
+  @override
+  String reminderStatusPending(Object count) {
+    return '系统已登记 $count 条';
+  }
+
+  @override
+  String reminderStatusDropped(Object count) {
+    return '因平台上限被裁掉 $count 条';
+  }
+
+  @override
+  String reminderStatusError(Object error) {
+    return '排期失败：$error';
+  }
+
+  @override
+  String reminderLeadMinutes(Object count) {
+    return '提前 $count 分钟';
+  }
+
+  @override
+  String get reminderSettingsTitle => '通知与提醒';
+
+  @override
+  String get reminderMasterSwitch => '提醒';
+
+  @override
+  String get reminderMasterSwitchHint => '关闭后将清空所有已排期的提醒';
+
+  @override
+  String get reminderCourseSection => '课前提醒';
+
+  @override
+  String get reminderLeadTime => '提前提醒时间';
+
+  @override
+  String get reminderLeadTimeHint => '在上课前多久提醒你';
+
+  @override
+  String get reminderLeadTimeMultiHint => '可多选，每选一项会产生一条独立的提醒。';
+
+  @override
+  String get reminderQuietSection => '免打扰';
+
+  @override
+  String get reminderQuietEnabled => '免打扰时段';
+
+  @override
+  String get reminderQuietHint => '落在该时段内的提醒会被丢弃，而不是延后';
+
+  @override
+  String get reminderQuietStart => '开始';
+
+  @override
+  String get reminderQuietEnd => '结束';
+
+  @override
+  String get reminderStatusSection => '排期状态';
+
+  @override
+  String get reminderStatusEmpty => '尚未生成排期计划';
+
+  @override
+  String get reminderStatusNoUpcoming => '当前窗口内没有待提醒的课程';
+
+  @override
+  String get reminderStatusRefresh => '立即重新排期';
+
+  @override
+  String get reminderPermissionTitle => '通知未开启';
+
+  @override
+  String get reminderPermissionDeniedHint => '之前已拒绝过授权，系统不会再弹窗，请到系统设置里开启。';
+
+  @override
+  String get reminderPermissionNotDeterminedHint => '需要授予通知权限，提醒才能送达。';
+
+  @override
+  String get reminderPermissionRequest => '去授权';
+
+  @override
+  String get reminderPermissionOpenSettings => '去系统设置';
+
+  @override
+  String get reminderPermissionOpenFailed => '无法打开系统设置';
+
+  @override
+  String get reminderPermissionGrantedToast => '已获得通知权限';
+
+  @override
+  String get reminderPermissionDeniedToast => '权限被拒绝';
+
+  @override
+  String get reminderPermissionFailed => '请求权限失败';
+
+  @override
+  String get reminderPrivacyHint => '提醒会显示在锁屏上，因此与隐私开关联动：关掉了「显示教师姓名」，锁屏上也不会出现。';
+
+  @override
   String get reminderPlanCopy => '复制计划 JSON';
 
   @override
