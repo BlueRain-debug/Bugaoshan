@@ -88,7 +88,8 @@ class _DevPageState extends State<DevPage> {
       ListenableBuilder(
         listenable: _appConfig.usePreviewUpdateSource,
         builder: (BuildContext context, _) => SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+          // 不设 contentPadding：本页其余条目都是 ListTile 默认内边距，
+          // 归零会让这几行的图标与文字列整体向左错开。
           title: Text(localizations.usePreviewUpdateSource),
           subtitle: Text(
             localizations.usePreviewUpdateSourceHint,
@@ -147,6 +148,7 @@ class _DevPageState extends State<DevPage> {
           ValueListenableBuilder<bool>(
             valueListenable: _appConfig.forceCaptchaForDownload,
             builder: (context, value, _) => SwitchListTile(
+              // 同上：与 EnvironmentInfoTile 等 ListTile 默认内边距对齐。
               secondary: const Icon(Icons.tab),
               title: Text(localizations.forceCaptchaForDownload),
               subtitle: Text(
