@@ -79,6 +79,7 @@ class ServiceApiService {
       _auth.getClient,
       fn,
       invalidate: _auth.invalidate,
+      logTag: 'ServiceApiService',
     );
   }
 
@@ -113,20 +114,17 @@ class ServiceApiService {
     _checkSessionExpiry(body, statusCode);
     // 诊断日志：记录非 2xx/非 JSON 的响应，便于定位服务端拒绝原因
     if (statusCode < 200 || statusCode >= 300) {
-      AppLog.w(
-        'ServiceApi',
-        'non-2xx: status=$statusCode body=${body.length > 500 ? body.substring(0, 500) : body}',
-      );
+      AppLog.e(_tag, 'non-2xx: status=$statusCode bodyLength=${body.length}');
     }
     final json = jsonDecode(body) as Map<String, dynamic>;
     // e:10042 表示未登录（vjuid cookie 缺失/失效），交给认证层重试
     if (json['e']?.toString() == '10042') {
       throw const UnauthenticatedException('办事大厅会话已失效');
     }
-    // 业务错误记录到 AppLogger，导出 auth log 可直接查看 e/m
+    // 业务错误按 business 分类记录，导出运行日志可查看 e/m
     if (json['e']?.toString() != '0') {
       final msg = '业务错误 e=${json['e']} m=${json['m']} status=$statusCode';
-      _log.w(_tag, msg);
+      _log.e(_tag, msg, category: LogCategory.business);
     }
     return json;
   }
@@ -314,11 +312,19 @@ class ServiceApiService {
       return _decodeResponse(resp.body, resp.statusCode);
     });
     if (json['e'] != 0 || json['d'] == null) {
-      _log.w(_tag, 'fetchDataSourceValue 失败 e=${json['e']} m=${json['m']}');
+      _log.e(
+        _tag,
+        'fetchDataSourceValue 失败 e=${json['e']} m=${json['m']}',
+        category: LogCategory.business,
+      );
       return null;
     }
     final d = json['d'];
-    _log.i(_tag, 'fetchDataSourceValue(${ref.component}) -> ${jsonEncode(d)}');
+    _log.i(
+      _tag,
+      'fetchDataSourceValue(${ref.component}) -> type=${d.runtimeType}',
+      category: LogCategory.business,
+    );
     if (d is Map<String, dynamic>) return d;
     if (d is Map) return Map<String, dynamic>.from(d);
     return null;
@@ -337,14 +343,22 @@ class ServiceApiService {
       return _decodeResponse(resp.body, resp.statusCode);
     });
     if (json['e'] != 0 || json['d'] == null) {
-      _log.w(_tag, 'fetchProvinces 失败 e=${json['e']} m=${json['m']}');
+      _log.e(
+        _tag,
+        'fetchProvinces 失败 e=${json['e']} m=${json['m']}',
+        category: LogCategory.business,
+      );
       return const [];
     }
     final d = json['d'];
     if (d is List) return d;
     if (d is Map && d['list'] is List) return d['list'] as List;
     if (d is Map && d['children'] is List) return d['children'] as List;
-    _log.w(_tag, 'fetchProvinces 未知结构: $d');
+    _log.e(
+      _tag,
+      'fetchProvinces 未知结构: ${d.runtimeType}',
+      category: LogCategory.business,
+    );
     return const [];
   }
 
@@ -396,14 +410,28 @@ class ServiceApiService {
           decoded = jsonDecode(decoded);
         }
         json = decoded as Map<String, dynamic>;
-      } catch (e) {
-        _log.w(_tag, 'uploadAttachment 响应非 JSON: $body');
+      } catch (e, logStackTrace) {
+        AppLog.e(
+          _tag,
+          'uploadAttachment 失败',
+          error: e,
+          stackTrace: logStackTrace,
+        );
+        _log.e(
+          _tag,
+          'uploadAttachment 响应非 JSON: length=${body.length}',
+          category: LogCategory.business,
+        );
         throw ServiceException('上传失败');
       }
       final uploadOk =
           json['url'] != null || json['state']?.toString() == 'SUCCESS';
       if (!uploadOk || json['id'] == null) {
-        _log.w(_tag, 'uploadAttachment 失败: $json');
+        _log.e(
+          _tag,
+          'uploadAttachment 失败: state=${json['state']}',
+          category: LogCategory.business,
+        );
         throw ServiceException('上传失败');
       }
       final id = json['id']?.toString() ?? '';
@@ -418,7 +446,11 @@ class ServiceApiService {
         url: '$_base$downloadPath?file_id=$id',
         id: id,
       );
-      _log.i(_tag, 'uploadAttachment -> id=$id name=$original');
+      _log.i(
+        _tag,
+        'uploadAttachment -> id=$id',
+        category: LogCategory.business,
+      );
       return attachment;
     });
   }
