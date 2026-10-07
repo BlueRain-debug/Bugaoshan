@@ -11,11 +11,10 @@ import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/common/styled_tile.dart';
 import 'package:flutter/material.dart';
 
-/// 「通知与提醒」设置页。
+/// 「通知与提醒」设置页面。
 ///
-/// 本地提醒的失败症状高度同质：Dart 算错、未授权、系统超限、原生未接线，
-/// 四种情况在用户看来都是「没有提醒」。因此本页除了开关，还必须把
-/// **授权状态**与**排期状态**摆出来——否则用户只能反馈「不工作」。
+/// 聚合系统通知权限授权状态、提醒主开关、提前量偏好、免打扰时段及当前排期状态。
+/// 显式呈现授权状态与系统待投递状态，用于异常排查与状态感知。
 class ReminderSettingPage extends StatefulWidget {
   const ReminderSettingPage({super.key});
 
@@ -28,21 +27,17 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   final _appConfig = getIt<AppConfigProvider>();
   final _service = getIt<ReminderService>();
 
-  /// `null` = 尚未查询。取值与原生状态字符串一致。
+  /// 系统通知权限状态标识，为 null 时表示尚未完成查询。取值与原生平台返回枚举一致。
   String? _permissionStatus;
   bool _requestingPermission = false;
   int? _pendingCount;
   bool _refreshing = false;
 
-  /// 关掉免打扰时记住的时刻，重新打开时还原。
-  ///
-  /// 不记的话「关掉又打开」会把用户设过的 22:30–06:30 悄悄换成 23:00–07:00——
-  /// 一个看起来无害、但确实改动了用户数据的开关。
+  /// 缓存关闭免打扰功能前的起止时间，用于再次启用时恢复用户原配置，避免覆盖自定义时段。
   TimeOfDay? _lastQuietStart;
   TimeOfDay? _lastQuietEnd;
 
-  /// 多选提前量的候选项。取值依据：5 分钟适合教学楼就在隔壁的场景，
-  /// 60 分钟适合需要跨校区通勤的场景；中间三档覆盖大多数情况。
+  /// 提前提醒备选时间列表（单位：分钟）。涵盖近距离教学区与跨校区通勤等不同时间粒度。
   static const List<int> _leadChoices = [5, 10, 15, 30, 60];
 
   @override
@@ -63,14 +58,12 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 失败路径需要用户去系统设置里改，而系统设置是另一个应用：本页重新可见时
-    // 必须重查，否则用户授权完回来看到的还是那张「未授权」卡片。
+    // 应用恢复前台时重新查询授权与排期状态，保证用户从系统设置返回后界面及时刷新。
     if (state == AppLifecycleState.resumed) unawaited(_refreshStatus());
   }
 
   Future<void> _refreshStatus() async {
-    // 排期是 debounce 后异步完成的，立刻查 pendingCount 只会拿到上一批的条数，
-    // 界面上就会出现「已排期 15 条 / 系统已登记 0 条」。给一次机会让下发先落地。
+    // 强制执行同步以确保排期任务立即落盘，防止直接查询 pendingCount 时读取到上一批次的旧数据。
     await _service.reschedule(force: true);
     final status = await _service.permissionStatus();
     final pending = await _service.pendingCount();
@@ -86,8 +79,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
 
   Future<void> _toggleMaster(bool enabled) async {
     _appConfig.reminderEnabled.value = enabled;
-    // 打开总开关时若尚未授权，顺手请求一次——否则用户开了开关却收不到提醒，
-    // 而界面上没有任何提示。
+    // 开启主开关且处于未决定授权状态时，主动请求系统权限以完成引导流程。
     if (enabled && !_isGranted && _permissionStatus == 'notDetermined') {
       await _requestPermission();
       return;
@@ -98,8 +90,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   Future<void> _requestPermission() async {
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
-    // 被拒之后系统不再弹框（iOS 上 requestAuthorization 直接返回 false），
-    // 再点按钮是死路，改为把用户送到系统设置。
+    // 权限被系统明确拒绝后无法重复触发授权弹窗，直接引导跳转系统设置页面。
     if (_permissionStatus == 'denied') {
       final opened = await _service.openNotificationSettings();
       if (!opened && mounted) {
@@ -152,7 +143,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   Future<void> _refreshPlan() async {
     setState(() => _refreshing = true);
     try {
-      // _refreshStatus 内部已包含一次强制重排，不必在这里重复调用。
+      // _refreshStatus 内部已包含强制重排逻辑，此处直接复用。
       await _refreshStatus();
     } finally {
       if (mounted) setState(() => _refreshing = false);
@@ -172,8 +163,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
-          // 权限先于开关：没有授权时下面所有开关都没有实际效果，
-          // 把这一段放最前面可以避免用户在设置里徒劳地反复开关。
+          // 权限状态卡片置顶展示：未授权状态下优先引导用户完成权限配置。
           if (!_isGranted) ...[
             _buildPermissionCard(l10n),
             const SizedBox(height: 14),
@@ -199,9 +189,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   Widget _buildPermissionCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final denied = _permissionStatus == 'denied';
-    // 用中性容器 + 错误色图标/按钮，而不是 errorContainer 实底：
-    // 后者在深色主题下是一大块高饱和红，视觉重量远超它承载的信息量
-    // （这只是「还没授权」，不是出错）。
+    // 采用中性背景容器搭配错误强调色，避免深色模式下大面积高饱和容器过度强调。
     final accent = theme.colorScheme.error;
     return StyledCard(
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
@@ -286,7 +274,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
         children: [
           SectionTitle(title: l10n.reminderCourseSection),
           Opacity(
-            // 总开关关闭时整组置灰但保持可见：直接隐藏会让用户以为功能不存在。
+            // 主开关关闭时置灰并禁用交互，维持界面结构可见性。
             opacity: masterEnabled ? 1 : 0.45,
             child: IgnorePointer(
               ignoring: !masterEnabled,
@@ -332,8 +320,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
                                       } else {
                                         next.remove(minutes);
                                       }
-                                      // 一个都不选等于关掉课前提醒，但总开关
-                                      // 仍显示为开——语义容易误解，因此至少保留一个。
+                                      // 保证至少保留一个提前时间选项，避免全部取消后与主开关开启状态语义冲突。
                                       if (next.isEmpty) return;
                                       _appConfig.reminderLeadMinutes.value =
                                           next.toList()..sort();
@@ -413,7 +400,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
                                   value: enabled,
                                   onChanged: (on) {
                                     if (on) {
-                                      // 还原上次的值；首次打开时才落到默认时段。
+                                      // 优先恢复历史时段；无历史记录时应用默认起止时段。
                                       final start =
                                           _lastQuietStart ??
                                           const TimeOfDay(hour: 23, minute: 0);
@@ -569,7 +556,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
     );
   }
 
-  /// 列出最近的几条提醒，让「已排期 N 条」这句话变得可核对。
+  /// 生成最近待触发提醒项的预览文本，便于用户直观核验排期结果。
   String _previewOf(ReminderPlan plan, AppLocalizations l10n) {
     return plan.reminders
         .take(3)

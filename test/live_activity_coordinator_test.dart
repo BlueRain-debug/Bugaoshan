@@ -3,13 +3,12 @@ import 'package:bugaoshan/services/reminder/live_activity_coordinator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// [LiveCourseResolver] 的判定测试。
+/// [LiveCourseResolver] 当前课程解析逻辑单元测试。
 ///
-/// 这里只验证「此刻上的是哪节课」——它决定灵动岛显示什么，也决定 Live Activity
-/// 的开关时机。周次口径本身由 `reminder_plan_test.dart` 与 ADR-0006 覆盖，
-/// 两处刻意走同一个 `courseWeekOf` / `Course.isActiveInWeek`。
+/// 验证进行中课程匹配、下课时刻换算与后序课程推导；
+/// 周次判定规则遵循校历周日成行口径及 [Course.isActiveInWeek] 约定。
 void main() {
-  /// 2026-08-31 是周一，教学第 1 周；09-01 为周二，仍在第 1 周。
+  /// 测试基准时间：学期起点 2026-08-31（周一，第 1 教学周）；2026-09-01（周二，第 1 教学周）。
   ScheduleConfig schedule({int totalWeeks = 20}) => ScheduleConfig(
     id: 's1',
     semesterStartDate: DateTime(2026, 8, 31),
@@ -76,7 +75,7 @@ void main() {
         resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 0)).hasCurrent,
         isTrue,
       );
-      // 半开区间：下课那一秒不该还挂着「后下课 0:00」。
+      // 验证左闭右开区间 [start, end) 语义：到达下课时刻即视为已结束。
       expect(
         resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 45)).hasCurrent,
         isFalse,
@@ -115,7 +114,7 @@ void main() {
         ).hasCurrent,
         isFalse,
       );
-      // 第 1 周不在自定义离散周次里。
+      // 验证离散周次 customWeeks 过滤逻辑：当前周次未命中时不处于活跃状态。
       expect(
         resolve(
           courses: [
@@ -135,7 +134,7 @@ void main() {
         ).hasCurrent,
         isFalse,
       );
-      // 第 21 周已超出总周数。
+      // 验证假期状态过滤逻辑：教学周超出 totalWeeks 时不匹配课程。
       expect(
         resolve(
           courses: [course(dayOfWeek: 1)],
@@ -146,8 +145,7 @@ void main() {
     });
 
     test('无课表或无课程时返回空快照而不是抛异常', () {
-      // 这里刻意直接调用 resolve 而不用上面的辅助函数：辅助函数把 null 当作
-      // 「用默认课表」，无法表达「课表尚未加载」这一真实状态。
+      // 显式传入 null 配置验证空课表状态下的异常安全回退。
       expect(
         LiveCourseResolver.resolve(
           courses: const [],

@@ -8,12 +8,10 @@ import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Dev 页的提醒排期探针。
+/// 开发者选项中的本地提醒排期探针组件。
 ///
-/// 存在的理由：本地提醒是典型的「失败起来和没做一样」的功能。用户报「没有提醒」
-/// 时，可能是未授权、窗口过期、闹钟丢失、或排期根本没生成，四者症状完全一样。
-/// 这个入口把状态摆出来，并提供一个走真实链路的短延时探针，用来把
-/// 「Dart 算错了」与「宿主投递不了」两类问题区分开。
+/// 用于调试并观测本地提醒状态：展示授权状态、排期计划摘要与系统挂起计数，
+/// 并通过真实调度链路发送短延迟探针通知，以隔离排期计算异常与宿主平台投递异常。
 class ReminderProbeTile extends StatefulWidget {
   const ReminderProbeTile({super.key});
 
@@ -25,8 +23,8 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
   bool _sending = false;
   bool _requesting = false;
 
-  /// 当前授权状态，`null` 表示还没查过。被拒后系统不会再弹第二次，
-  /// 所以设置页必须能把「去系统设置」和「点按钮请求」区分开。
+  /// 系统通知授权状态，为 null 表示尚未查询。
+  /// 用于区分直接触发权限请求弹窗与引导跳转系统设置页面的交互分支。
   String? _permissionStatus;
 
   @override
@@ -45,8 +43,7 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     final messenger = ScaffoldMessenger.of(context);
     final service = getIt<ReminderService>();
 
-    // 已被拒绝时系统不再弹框（iOS 上 requestAuthorization 直接返回 false），
-    // 再点一次是死路，改为把用户送到系统设置。
+    // 权限被拒后系统不再弹窗提示，引导跳转至系统设置界面进行手动授权。
     if (_permissionStatus == 'denied') {
       final opened = await service.openNotificationSettings();
       if (!opened && mounted) {
@@ -119,11 +116,9 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     }
   }
 
-  /// 授权状态行。
+  /// 构建授权状态视图行。
   ///
-  /// 与同级 [ListTile] 的差异只在 `trailing`（按钮代替 chevron/数字），
-  /// 因此刻意**不设** `contentPadding`：其余 tile 都用 ListTile 默认内边距，
-  /// 这里单独归零会让图标列与下方「通知探针」「UI Preview」错开。
+  /// 保持 ListTile 默认 contentPadding，确保左侧图标列与同级列表项视觉对齐。
   Widget _buildPermissionRow(AppLocalizations l10n, ThemeData theme) {
     final status = _permissionStatus;
     final granted = status == 'authorized' || status == 'provisional';
@@ -152,7 +147,7 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
           : FilledButton.tonal(
               onPressed: _requestPermission,
               child: Text(
-                // 被拒之后系统不再弹窗，按钮改为语义正确的「去系统设置」。
+                // 权限处于被拒状态时切换按钮文案为引导打开系统设置。
                 status == 'denied'
                     ? l10n.reminderHostProbeOpenSettings
                     : l10n.reminderHostProbeRequestPermission,
@@ -193,8 +188,7 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
         ValueListenableBuilder<ReminderPlan?>(
           valueListenable: service.lastPlan,
           builder: (context, plan, _) {
-            // 与 ListTile 默认内边距对齐：Dev 页各 tile 的内容都从 16 起排，
-            // 这块纯文本若不补同样的缩进会顶到最左边，看起来像脱离了分组。
+            // 保持与同级 ListTile 内容对齐（水平内边距 16）。
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: plan == null

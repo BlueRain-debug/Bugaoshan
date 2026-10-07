@@ -4,15 +4,15 @@ import 'package:bugaoshan/services/reminder/reminder_plan_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 排期计划构建器的口径回归测试。
+/// 提醒排期计划构建器（ReminderPlanBuilder）规则与边界回归测试。
 ///
-/// 构建器是纯函数，这里覆盖三类容易出错的地方：
-/// 1. 教学周 ↔ 自然日的映射（周一起点学期里周日归属下一周，见 ADR-0006）；
-/// 2. 课程活跃周判定（离散周次 `customWeeks` 是成员判断，不受起止周约束）；
-/// 3. 投递边界的裁剪（过去时刻、窗口末端、免打扰、平台条数上限）。
+/// 覆盖要点：
+/// 1. 教学周与自然日的映射规则（周一起点学期周日归属下一周，遵循校历周日成行口径）；
+/// 2. 课程周次活跃性判定（覆盖离散周次 customWeeks 判定规则）；
+/// 3. 排期边界过滤与容量截断（历史时刻、时间窗边界、免打扰区间与系统配额限制）。
 ///
-/// 学期固定用 2026-2027 秋季：起点 2026-08-31（周一），块首日 2026-08-30（周日），
-/// 因此 2026-09-20（周日）属第 4 周 —— 历史线上问题正是把它算成第 3 周。
+/// 基准测试学期：2026-2027 秋季学期（学期起点 2026-08-31 周一，周块首日 2026-08-30 周日，
+/// 2026-09-20 周日归属第 4 教学周）。
 void main() {
   DateTime at(int y, int m, int d, [int h = 0, int mi = 0]) =>
       DateTime(y, m, d, h, mi);
@@ -29,12 +29,12 @@ void main() {
     timeSlots:
         slots ??
         const [
-          // 节次 1：09:00-09:45
+          // 第 1 节：09:00-09:45
           TimeSlot(
             startTime: TimeOfDay(hour: 9, minute: 0),
             endTime: TimeOfDay(hour: 9, minute: 45),
           ),
-          // 节次 2：10:00-10:45
+          // 第 2 节：10:00-10:45
           TimeSlot(
             startTime: TimeOfDay(hour: 10, minute: 0),
             endTime: TimeOfDay(hour: 10, minute: 45),
@@ -46,7 +46,7 @@ void main() {
     String name = '高等数学',
     String teacher = '张老师',
     String location = '综C407',
-    int dayOfWeek = 2, // 周二
+    int dayOfWeek = 2, // 星期二
     int startWeek = 1,
     int endWeek = 20,
     int startSection = 1,
@@ -78,7 +78,7 @@ void main() {
         courses: [course()],
         config: config(),
         settings: enabled,
-        now: at(2026, 9, 1), // 周二 00:00
+        now: at(2026, 9, 1), // 星期二 00:00
       );
 
       expect(plan.reminders, hasLength(1));
@@ -115,17 +115,17 @@ void main() {
 
     test('结果按触发时刻升序，且窗口内每天各一条', () {
       final plan = ReminderPlanBuilder.build(
-        // 周二与周四各一门
+        // 星期二与星期四各配置一门课程
         courses: [
           course(dayOfWeek: 2),
           course(name: '线性代数', dayOfWeek: 4),
         ],
         config: config(),
         settings: enabled,
-        now: at(2026, 9, 1), // 周二
+        now: at(2026, 9, 1), // 星期二
       );
 
-      // 窗口 7 天覆盖 9/1~9/7：周二 9/1、周四 9/3（下一个周二 9/8 已在窗口外）
+      // 7 天窗口覆盖 9/1 至 9/7：包含 9/1（周二）与 9/3（周四）；9/8（次周二）超出时间窗
       expect(plan.reminders.map((e) => e.fireAt).toList(), [
         at(2026, 9, 1, 8, 45),
         at(2026, 9, 3, 8, 45),
@@ -151,10 +151,10 @@ void main() {
           leadMinutes: [15],
           windowDays: 7,
         ),
-        now: at(2026, 9, 16), // 周三，窗口覆盖 9/16~9/22
+        now: at(2026, 9, 16), // 星期三，时间窗覆盖 9/16 至 9/22
       );
 
-      // 若按「自起点起算的整 7 天块」计算，9/20 会被算成第 3 周而漏掉这条。
+      // 验证周日成行规则：9/20（周日）按校历归入第 4 周，而非固定 7 天块推算的第 3 周
       expect(plan.reminders, hasLength(1));
       expect(plan.reminders.single.fireAt, at(2026, 9, 20, 8, 45));
     });
@@ -164,14 +164,14 @@ void main() {
         courses: [course()],
         config: config(),
         settings: enabled,
-        now: at(2026, 8, 20), // 开学前
+        now: at(2026, 8, 20), // 早于学期起点
       );
 
       expect(plan.reminders, isEmpty);
     });
 
     test('超出总周数后不排期', () {
-      // 2026-08-31 起 20 周：末周最后一天 = 2027-01-16(六)
+      // 2026-08-31 起算 20 周：末周截止日为 2027-01-16（周六）
       final plan = ReminderPlanBuilder.build(
         courses: [course()],
         config: config(totalWeeks: 20),
@@ -194,8 +194,8 @@ void main() {
           course(
             name: '离散课',
             startWeek: 1,
-            endWeek: 2, // 起止周故意收窄
-            customWeeks: [1, 10], // 但第 10 周仍应上课
+            endWeek: 2, // 收窄起止周范围
+            customWeeks: [1, 10], // 显式指定第 10 周活跃
           ),
         ],
         config: config(),
@@ -204,10 +204,10 @@ void main() {
           leadMinutes: [15],
           windowDays: 7,
         ),
-        now: at(2026, 9, 1), // 第 1 周周二
+        now: at(2026, 9, 1), // 第 1 周星期二
       );
 
-      // 第 1 周命中；第 2~9 周都不该有
+      // 仅匹配第 1 周，第 2 至 9 周不生成排期
       expect(plan.reminders, hasLength(1));
       expect(plan.reminders.single.fireAt, at(2026, 9, 1, 8, 45));
     });
@@ -221,11 +221,11 @@ void main() {
           leadMinutes: [15],
           windowDays: 22,
         ),
-        now: at(2026, 9, 1), // 第 1 周周二
+        now: at(2026, 9, 1), // 第 1 周星期二
       );
 
-      // 窗口 22 天覆盖 9/1~9/22：奇数周 1/3 的周二为 9/1 与 9/15；
-      // 9/8 与 9/22 是第 2、4 周（偶数周），被排除
+      // 22 天时间窗覆盖 9/1 至 9/22：包含第 1、3 周（9/1 与 9/15）；
+      // 排除偶数周第 2、4 周（9/8 与 9/22）
       expect(plan.reminders.map((e) => e.fireAt).toList(), [
         at(2026, 9, 1, 8, 45),
         at(2026, 9, 15, 8, 45),
@@ -273,7 +273,7 @@ void main() {
 
       expect(plan.reminders, hasLength(2));
       expect(plan.reminders.map((e) => e.id).toSet(), hasLength(2));
-      // 折叠键必须按课程区分：只用日期会把同日不同课程合并进同一条锁屏会话
+      // collapseKey 按课程粒度隔离，避免同日不同课程归并至同一会话
       expect(plan.reminders.map((e) => e.collapseKey).toSet(), hasLength(2));
       expect(plan.reminders.map((e) => e.fireAt).toList(), [
         at(2026, 9, 1, 8, 45),
@@ -288,10 +288,10 @@ void main() {
         courses: [course()],
         config: config(),
         settings: enabled,
-        now: at(2026, 9, 1, 9, 30), // 周二 09:30，08:45 已过
+        now: at(2026, 9, 1, 9, 30), // 星期二 09:30，触发时间 08:45 已过
       );
 
-      // 09:30 之后最近的周二在窗口内是 9/8，但窗口 7 天只到 9/7
+      // 09:30 之后同课程下次排期为 9/8，超出 7 天时间窗（截止至 9/7）
       expect(plan.reminders, isEmpty);
     });
 
@@ -307,8 +307,8 @@ void main() {
       );
 
       expect(plan.reminders.map((e) => e.fireAt).toList(), [
-        at(2026, 9, 1, 8, 30), // 提前 30 分
-        at(2026, 9, 1, 8, 55), // 提前 5 分
+        at(2026, 9, 1, 8, 30), // 提前 30 分钟
+        at(2026, 9, 1, 8, 55), // 提前 5 分钟
       ]);
       expect(plan.reminders.map((e) => e.id).toSet(), hasLength(2));
     });
@@ -342,7 +342,7 @@ void main() {
         now: at(2026, 9, 1),
       );
 
-      // 08:45 不在 07:30~08:30 内，应保留；再补一个落在区间内的提前量验证丢弃
+      // 08:45 未落入 07:30-08:30 免打扰区间，应予以保留
       expect(plan.reminders, hasLength(1));
 
       final quiet = ReminderPlanBuilder.build(
@@ -350,7 +350,7 @@ void main() {
         config: config(),
         settings: const ReminderSettings(
           courseReminderEnabled: true,
-          leadMinutes: [45], // 09:00 - 45min = 08:15，落在静默区间
+          leadMinutes: [45], // 09:00 - 45 分钟 = 08:15，落入免打扰区间
           quietStart: TimeOfDay(hour: 7, minute: 30),
           quietEnd: TimeOfDay(hour: 8, minute: 30),
         ),
@@ -389,13 +389,13 @@ void main() {
 
       expect(plan.reminders, hasLength(3));
       expect(plan.droppedCount, greaterThan(0));
-      // 截断保留的是最近的 3 条
+      // 验证截断策略按时间升序保留最近的 3 项
       expect(plan.reminders.first.fireAt, at(2026, 9, 1, 8, 45));
       expect(plan.reminders.last.fireAt, at(2026, 9, 15, 8, 45));
     });
 
     test('负数上限视为「不限制」而非崩溃', () {
-      // 纯函数契约是不抛异常；`sublist(0, -1)` 会抛 RangeError。
+      // 异常安全验证：负数上限不触发 RangeError
       final plan = ReminderPlanBuilder.build(
         courses: [course()],
         config: config(),
@@ -507,7 +507,7 @@ void main() {
         courses: [course()],
         config: config(),
         settings: enabled,
-        now: at(2026, 9, 1, 1), // 同一天晚一小时，窗口未变
+        now: at(2026, 9, 1, 1), // 同一日延迟 1 小时，时间窗保持一致
       );
 
       expect(a.planId, b.planId);
@@ -658,12 +658,12 @@ void main() {
         collapseKey: 'c',
       );
 
-      // 若字段之间不补分隔符，「ab」+「c」与「a」+「bc」会混成同一串。
+      // 字段定界符校验：避免相邻字段拼接产生哈希碰撞（如 "ab"+"c" 与 "a"+"bc"）
       expect(
         planContentHash([item('ab', 'c')]),
         isNot(planContentHash([item('a', 'bc')])),
       );
-      // 条目之间同理：一条空 title 与少一条不能等价。
+      // 条目定界符校验：确保空字段与缺失字段产生不同哈希
       expect(
         planContentHash([item('a', '')]),
         isNot(planContentHash(const [])),

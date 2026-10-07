@@ -5,31 +5,31 @@ import WidgetKit
 
 // MARK: - 数据契约（Attributes & ContentState）
 
-/// 课程 Live Activity 的数据契约。
+/// 课程实时活动（Live Activity）数据契约。
 ///
 /// 遵循 ActivityKit 规范：
-/// - 静态属性（[sessionId]）在一次 Activity 周期内不变；
-/// - 动态属性定义在 [ContentState] 中，支持通过 `Activity.update` 局部更新；
-/// - 当前课程信息、起止时间与下节课预览均封装于此。
+/// - 静态属性（`sessionId`）在会话生命周期内保持不可变；
+/// - 动态状态封装于 `ContentState` 中，通过 `Activity.update` 增量同步；
+/// - 包含当前课程详情、时间区间以及后续课程预览信息。
 @available(iOS 16.1, *)
 public struct CourseLiveActivityAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
-    /// 当前课程名称（如 "高等数学"）
+    /// 当前课程名称。
     public var courseName: String
 
-    /// 上课教室地点（如 "综合楼C101"）
+    /// 授课地点。
     public var location: String
 
-    /// 本节课开始时间（用于计算安全时间区间）
+    /// 课程开始时间，用于构建系统计时区间。
     public var startAt: Date
 
-    /// 本节课结束时间（倒计时终点）
+    /// 课程结束时间（倒计时目标时刻）。
     public var endAt: Date
 
-    /// 下一节课程名称（若有）
+    /// 下一节课程名称（可选）。
     public var nextCourseName: String?
 
-    /// 下一节课地点（若有）
+    /// 下一节课程授课地点（可选）。
     public var nextLocation: String?
 
     public init(
@@ -49,7 +49,7 @@ public struct CourseLiveActivityAttributes: ActivityAttributes {
     }
   }
 
-  /// 标识此 Activity 的业务类型标识
+  /// 实时活动业务会话标识。
   public var sessionId: String
 
   public init(sessionId: String = "current_course") {
@@ -78,11 +78,11 @@ private func formatEndTime(_ date: Date) -> String {
 
 // MARK: - Live Activity Widget 配置
 
-/// 课程实时活动的 Widget 配置。
+/// 课程实时活动的 Widget 配置组件。
 ///
-/// 包含锁屏横幅与灵动岛（展开、紧凑左、紧凑右、最小化）的界面定义。
+/// 定义锁屏横幅与灵动岛（展开、紧凑与最小化）展示形态。
 /// 倒计时采用 SwiftUI 的 `Text(timerInterval:countsDown:)`，
-/// 由系统按时钟自更新，无需频繁触发原生通信或后台唤醒。
+/// 由系统运行时自动驱动倒计时刷新，避免通过前后台通信触发高频更新。
 @available(iOS 16.1, *)
 public struct CourseLiveActivity: Widget {
   public let kind: String = "CourseLiveActivity"

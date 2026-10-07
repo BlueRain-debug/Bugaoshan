@@ -2,51 +2,48 @@ import 'package:bugaoshan/models/reminder_plan.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// 排期计划的投递通道。把「原生怎么排」与「计划怎么算」隔开，
-/// 使 [ReminderService] 可以对着一个可替换的接口测试。
+/// 排期计划投递传输层接口。
+///
+/// 解耦排期计算与平台原生调度，使 [ReminderService] 依赖抽象接口以便于测试与多平台适配。
 abstract class ReminderTransport {
-  /// 全量替换为 [plan]（I2）：计划里没有的 id 必须被撤销。
+  /// 执行计划全量同步：原生端全量覆盖现有计划，撤销在新计划中不存在的通知 ID。
   Future<void> syncPlan(ReminderPlan plan);
 
-  /// 撤销全部已排期提醒（I4：总开关关闭时调用）。
+  /// 撤销所有已挂起的排期提醒（在提醒主开关关闭时调用）。
   Future<void> cancelAll();
 
-  /// 请求系统通知权限，返回是否已获得。
+  /// 请求系统通知权限，返回授权结果。
   ///
-  /// [provisional] 为 true 时走「安静投递」——不弹授权框，通知只进通知中心
-  /// （仅 iOS 支持，Android 忽略该参数）。用于「先让用户看到价值再要授权」的场景。
+  /// [provisional] 为 true 时请求临时静默通知权限（Provisional Authorization，不触发系统弹窗，
+  /// 通知仅进入通知中心；仅 iOS 支持，Android 忽略该参数）。
   Future<bool> requestAuthorization({bool provisional = false});
 
-  /// 查询当前授权状态。返回值与原生状态字符串一一对应
-  /// （`authorized` / `provisional` / `denied` / `notDetermined` / `unknown`）。
+  /// 查询当前系统通知授权状态。返回值与原生平台状态枚举对应
+  /// （`authorized`、`provisional`、`denied`、`notDetermined`、`unknown`）。
   Future<String> getPermissionStatus();
 
-  /// 系统当前实际登记的提醒条数。
+  /// 获取原生系统当前实际注册的待投递通知数量。
   ///
-  /// 与下发的 `plan.reminders.length` 之差就是被系统丢掉的部分（未授权、超上限、
-  /// 时刻已过）。排期类问题几乎都出在这个差值上，所以它必须可观测。
+  /// 与下发计划条数的差异可用于度量被系统丢弃或已过期的通知数量，提供排期可观测性。
   Future<int> getPendingCount();
 
-  /// 打开本应用的系统通知设置页。
+  /// 跳转当前应用的系统通知设置页面。
   ///
-  /// 用途：权限被拒后系统不再弹授权框，唯一出路是让用户自己去设置里开。
-  /// 返回是否成功跳转。
+  /// 用于系统权限被拒绝后引导用户手动开启授权。返回是否成功唤起设置界面。
   Future<bool> openNotificationSettings();
 
-  /// 平台允许的待投递条数上限，`null` 表示不限制。
+  /// 当前平台支持的最大待投递通知数量上限，`null` 表示无硬性限制。
   ///
-  /// 这不是「优化」而是正确性所需：iOS / macOS 的 `UNUserNotificationCenter`
-  /// 只保留每个应用最近的 64 条待投递通知，超出部分由系统按**未定义顺序**丢弃。
-  /// 若不先把上限交给 [ReminderPlanBuilder]，被丢的是哪几条无法预料，用户看到的是
-  /// 「有的课提醒了、有的没提醒」——而 `droppedCount` 也永远是 0，排期状态面板
-  /// 会显示「已排期 70 条」而系统只收下 64 条，两句话自相矛盾。
+  /// iOS / macOS 的 `UNUserNotificationCenter` 限制每个应用最多挂起 64 条待投递通知，
+  /// 超额项将被系统按未定义顺序丢弃。将容量配额前置注入排期构建阶段，
+  /// 保证在 Dart 侧按时间升序显式截断，并准确记录 [ReminderPlan.droppedCount]。
   int? get pendingLimit;
 }
 
-/// 跨平台的 MethodChannel 实现。
+/// 基于 MethodChannel 的跨平台通知投递实现。
 ///
-/// 平台差异只体现在方法名上，Dart 侧不判断「当前能不能投递」——原生侧不支持时
-/// 应回一个 `UNSUPPORTED_PLATFORM` 错误，由这里统一收敛成 no-op 并记日志。
+/// 平台能力由原生宿主返回错误码裁决，未支持平台返回 `UNSUPPORTED_PLATFORM` 错误，
+/// 本层统一转换为 [ReminderTransportUnavailable] 异常。
 class MethodChannelReminderTransport implements ReminderTransport {
   static const MethodChannel _channel = MethodChannel('bugaoshan/reminder');
 
@@ -83,10 +80,10 @@ class MethodChannelReminderTransport implements ReminderTransport {
     }
   }
 
-  /// 原生侧在尚未接线或平台不支持时返回的错误码。
+  /// 原生端未实现通道或平台不支持时返回的错误码。
   static const String unsupportedPlatformCode = 'UNSUPPORTED_PLATFORM';
 
-  /// 用户尚未授予通知权限时返回的错误码。
+  /// 原生端未获得通知权限时返回的错误码。
   static const String notAuthorizedCode = 'NOT_AUTHORIZED';
 
   @override
@@ -116,8 +113,7 @@ class MethodChannelReminderTransport implements ReminderTransport {
     }
   }
 
-  /// 原生状态无法取得时的兜底值。不假设已授权——假设已授权会让设置页
-  /// 显示「已开启」而实际不投递。
+  /// 无法获取原生授权状态时的回退值。默认不假定已授权，防止界面显示开启但实际无法投递。
   static const String permissionUnknown = 'unknown';
 
   @override
@@ -146,8 +142,8 @@ class MethodChannelReminderTransport implements ReminderTransport {
     }
   }
 
-  /// iOS 与 macOS 共用 `UNUserNotificationCenter`，因此同受 64 条上限约束；
-  /// Android 走 `AlarmManager`，没有这条限制（其自身上限远高于本方案的排期量级）。
+  /// iOS 与 macOS 基于 `UNUserNotificationCenter`，受系统 64 条待投递上限约束；
+  /// Android 等其他平台采用独立调度机制，不受此硬性配额限制。
   @override
   int? get pendingLimit => switch (defaultTargetPlatform) {
     TargetPlatform.iOS ||
@@ -156,10 +152,9 @@ class MethodChannelReminderTransport implements ReminderTransport {
   };
 }
 
-/// 用户尚未授予通知权限。
+/// 系统通知权限缺失异常。
 ///
-/// 这是用户可处理的状态，不是程序缺陷：设置页应据此显示「去授权」入口，
-/// 日志记 warn 而非 error——否则未授权期间每次重排都会刷一条错误日志。
+/// 标识未获得系统通知权限。属于常规业务引导状态，调用方应引导用户授权并避免记录为错误日志。
 class ReminderPermissionDenied implements Exception {
   const ReminderPermissionDenied();
 
@@ -167,10 +162,9 @@ class ReminderPermissionDenied implements Exception {
   String toString() => '尚未获得通知权限';
 }
 
-/// 原生侧尚未提供投递能力（或该平台不支持）。
+/// 原生通道未就绪或当前平台不支持通知投递异常。
 ///
-/// 与「真正的投递失败」区分开：这不是用户能处理的错误，设置页不该据此报警，
-/// 但开发者需要能看到——调用方应记 warn 而非 error，且不清空已排期状态。
+/// 标识平台能力缺失或处于开发过渡期。调用方应将其作为平台降级处理，不中断业务流程。
 class ReminderTransportUnavailable implements Exception {
   const ReminderTransportUnavailable();
 
@@ -178,10 +172,9 @@ class ReminderTransportUnavailable implements Exception {
   String toString() => '原生侧未提供提醒投递能力（尚未接线或平台不支持）';
 }
 
-/// 未实现的平台（Windows / Linux / Web，以及原生尚未接线的阶段）使用的空实现。
+/// 无操作的空实现（用于桌面端、Web 端或尚未接入原生调度的环境）。
 ///
-/// 刻意返回成功而不是抛异常：Dart 侧的排期逻辑应当在所有平台都能跑通并留下
-/// 可观测的 [ReminderService.lastPlan]，只是不产生系统通知。
+/// 保证跨平台排期逻辑与状态可观测性正常运行，但不向系统投递物理通知。
 class NoopReminderTransport implements ReminderTransport {
   const NoopReminderTransport();
 
@@ -204,15 +197,14 @@ class NoopReminderTransport implements ReminderTransport {
   @override
   Future<bool> openNotificationSettings() async => false;
 
-  /// 无投递能力即无上限：截断只会让 `droppedCount` 显示一个不存在的丢失量。
+  /// 无原生投递能力时不设上限，避免产生虚假的截断计数。
   @override
   int? get pendingLimit => null;
 }
 
-/// 按当前平台选择实现。
+/// 根据运行平台构造对应的 [ReminderTransport] 实例。
 ///
-/// 平台判断集中在这里，Dart 侧的排期与设置逻辑不再散落 `if (Platform.isX)`。
-/// Windows / Linux 暂无原生投递实现（见 issue #358 的平台范围决策）。
+/// 集中平台判定逻辑，收敛平台差异分支。
 ReminderTransport createReminderTransport() {
   if (kIsWeb) return const NoopReminderTransport();
   switch (defaultTargetPlatform) {

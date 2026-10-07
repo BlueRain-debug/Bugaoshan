@@ -422,8 +422,7 @@ void _configureAsyncDependencies() {
     return service;
   });
 
-  // 本地提醒排期协调器。挂在 CourseProvider / AppConfigProvider 之后注册，
-  // 因为它同时监听两者（课表决定内容、设置决定时机）。
+  // 本地提醒排期服务：依赖 CourseProvider 与 AppConfigProvider，负责排期计算与原生同步。
   getIt.registerSingletonAsync<ReminderService>(() async {
     await getIt.isReady<CourseProvider>();
     await getIt.isReady<AppConfigProvider>();
@@ -436,10 +435,8 @@ void _configureAsyncDependencies() {
     return service;
   });
 
-  // Live Activity（灵动岛）协调器。仅在 iOS 上真的会下发：其他平台的
-  // LiveActivityService 会把能力探测收敛成 false，协调器随即停用。
-  // 不在这里 await start()：它要读课表，而课表在冷启动时可能还没加载完，
-  // 阻塞启动只是把等待换了个位置，协调器自己会随课表变更重算。
+  // 实时活动（Live Activity）协调器：仅在 iOS 平台执行物理调度，其他平台完成能力探测后自动停用。
+  // 异步触发 start() 而不阻塞启动流程，其内部监听课表状态并在异步就绪后自动对齐。
   getIt.registerSingletonAsync<LiveActivityCoordinator>(() async {
     await getIt.isReady<CourseProvider>();
     final coordinator = LiveActivityCoordinator(

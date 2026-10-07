@@ -10,12 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// [ReminderService] 的协调语义测试：监听、去抖、短路、全量清空、失败重试。
+/// [ReminderService] 排期生命周期与协调逻辑单元测试。
 ///
-/// 这里不重复验证排期口径（那属于 `reminder_plan_test.dart`），只验证
-/// 「什么时候会重排」与「重排失败后系统处于什么状态」——这两件事出问题
-/// 时用户在锁屏上看到的症状完全一样（没有提醒），但修法完全不同。
-/// 记录每一次投递，供断言「是否真的重排了」。
+/// 覆盖数据源监听变更、防抖合并、哈希短路、全量重置与异常重试等核心状态流转。
 class RecordingTransport implements ReminderTransport {
   final List<ReminderPlan> synced = [];
   int cancelAllCount = 0;
@@ -57,16 +54,12 @@ class RecordingTransport implements ReminderTransport {
   @override
   Future<bool> openNotificationSettings() async => !unavailable;
 
-  /// 默认不限条数，需要验证裁剪的用例自行设置。
+  /// 默认不限制投递配额，特定截断测试用例按需配置。
   @override
   int? pendingLimit;
 }
 
-/// 内存版课表数据源。
-///
-/// 复用 `course_provider_test.dart` 的做法：只覆盖 [CourseProvider] 实际会读的
-/// 同步 getter 与写方法，避免在单测里初始化真实 SQLite（那需要 path_provider
-/// 等平台插件）。
+/// 内存测试桩数据源，模拟 [DatabaseService] 核心接口以避免测试对原生平台存储插件的依赖。
 class _FakeDatabase extends DatabaseService {
   _FakeDatabase({ScheduleConfig? config}) : _config = config;
 
@@ -153,7 +146,7 @@ void main() {
     ],
   );
 
-  /// 建立一套「已有一门周二课」的上下文。
+  /// 初始化测试环境：配置基准课表（周二单课程）与提醒测试服务。
   Future<void> setUpService({bool enabled = true}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -170,7 +163,7 @@ void main() {
       courseProvider: courseProvider,
       appConfig: appConfig,
       transport: transport,
-      // 测试里把去抖压到 0，避免依赖真实计时。
+      // 测试环境将防抖延迟设为 0，避免引入真实时钟等待。
       debounceDuration: Duration.zero,
     );
   }
@@ -205,7 +198,7 @@ void main() {
       await service.reschedule(force: true);
       await service.reschedule(force: true);
 
-      // planId 相同 → 只在第一次投递
+      // planId 未变触发短路，仅首轮执行物理同步
       expect(transport.synced.length, firstCount);
     });
 
@@ -255,12 +248,9 @@ void main() {
       await service.start();
       final before = transport.synced.length;
 
-      // 刻意避开「今天就是周三」的干扰：周三 08:45 的提醒在当天下课后
-      // 就会被 isAfter(now) 排除，而下周三又超出 7 天窗口——这条用例曾在
-      // 周三下午起持续失败，原因正是断言依赖了当天时钟。
+      // 选取周五课程以避开测试运行当天时钟漂移导致的已过期过滤或窗口溢出问题。
       await courseProvider.addCourse(course(name: '大学物理', dayOfWeek: 5));
-      // 去抖为 0 时监听器排下 Timer(Duration.zero)，但 _runOnce 内部还有
-      // 若干 await；多泵几轮，不依赖「一次让出恰好跑完」的时序假设。
+      // 多轮刷新微任务与事件队列，确保异步调用链全部执行完毕。
       await pumpEventQueue();
       await Future<void>.delayed(Duration.zero);
       await pumpEventQueue();
@@ -278,7 +268,7 @@ void main() {
       expect(service.lastError.value, isNotNull);
       expect(transport.synced, isEmpty);
 
-      // 失败不推进 _lastPushedPlanId：恢复后同一份计划应被重新投递
+      // 同步失败时不记录 _lastPushedPlanId，恢复后确保重新尝试同步当前计划
       transport.failWith = null;
       await service.reschedule(force: true);
       expect(transport.synced, hasLength(1));
@@ -290,7 +280,7 @@ void main() {
       transport.unavailable = true;
       await service.reschedule(force: true);
 
-      // 用户无法处理这种状态，设置页不应据此报警
+      // 通道未就绪属于降级状态，不记录 lastError
       expect(service.lastError.value, isNull);
       expect(service.lastPlan.value, isNotNull);
       expect(service.needsPermission.value, isFalse);
@@ -304,7 +294,7 @@ void main() {
       expect(service.needsPermission.value, isTrue);
       expect(service.lastError.value, isNull);
 
-      // 授权后重排应清掉标记
+      // 权限授予后重新排期并清除权限缺失标记
       transport.denied = false;
       await service.onPermissionGranted();
       expect(service.needsPermission.value, isFalse);
@@ -327,15 +317,13 @@ void main() {
 
       await service.fireProbe(title: '探针', body: '15 秒后');
 
-      // 下发是全量替换：探针计划若只含探针一条，课表提醒会被原生按前缀全部撤销，
-      // 用户点一次探针就丢掉接下来一周的课前提醒。
+      // 原生采用全量替换策略：探针计划必须合并常规提醒，防止存量排期被全量撤销。
       final probePlan = transport.synced.last;
       expect(
         probePlan.reminders.where((r) => r.id.startsWith('probe:')),
         hasLength(1),
       );
-      // 与 before 比对时排除已过期的条目：`fireProbe` 用真实时钟重建计划，
-      // 而 before 是同一秒内算出的，两者对「已过期」的判定应当一致。
+      // 比对时过滤已过期项，验证未来待触发项在探针下发时得到完整保留。
       final stillUpcoming = before.reminders.where(
         (r) => r.fireAt.isAfter(DateTime.now()),
       );
@@ -353,8 +341,7 @@ void main() {
       await service.fireProbe(title: '探针', body: '15 秒后');
       final afterProbe = transport.synced.length;
 
-      // 探针计划与真实计划的 planId 不同，若沿用旧的短路键，这一次重排会被判成
-      // 「计划没变」而跳过，探针一旦被下一轮重排挤掉就再也补不回来。
+      // 发送探针后需重置短路哈希，确保后续重排能恢复标准计划。
       await service.reschedule(force: true);
 
       expect(transport.synced, hasLength(afterProbe + 1));
@@ -366,8 +353,7 @@ void main() {
 
     test('平台上限在 Dart 侧裁剪，而不是交给系统丢', () async {
       await setUpService();
-      // 周二到周日各排一门：无论今天星期几，7 天窗口内都必然有多条提醒，
-      // 用例因此不依赖执行日期。
+      // 分散配置周二至周日多门课程，消除测试对当前执行日期的隐式依赖。
       for (var weekday = 2; weekday <= 7; weekday++) {
         await courseProvider.addCourse(
           course(name: '课$weekday', dayOfWeek: weekday),
@@ -379,8 +365,7 @@ void main() {
 
       final plan = transport.synced.last;
       expect(plan.reminders, hasLength(3));
-      // 被裁条数必须记进计划：否则设置页会一边显示「已排期 N 条」一边在系统里
-      // 查到更少，用户读到的两句自相矛盾。
+      // 截断项数量记录于 droppedCount，保证排期状态统计的一致性。
       expect(plan.droppedCount, greaterThan(0));
     });
   });

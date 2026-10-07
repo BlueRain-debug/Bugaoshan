@@ -1,28 +1,26 @@
 import Foundation
 import UserNotifications
 
-/// 本地提醒的原生投递端。
+/// 本地提醒原生平台投递实现。
 ///
-/// 与 Dart 侧的契约（见 `lib/services/reminder/`）：原生层不持有任何业务规则，
-/// 只保证「在 `fireAtMillis` 附近投递一次」。
+/// 与 Dart 层排期契约：原生宿主不包含业务规则，仅负责在指定时间戳执行本地通知调度。
 ///
-/// - 收到 `syncPlan`：先撤销上一批（按标识前缀），再登记这一批。计划里没有的
-///   条目因此自然消失，无需 Dart 侧做增量 diff。
-/// - 收到 `cancelAll`：撤销全部并清掉落盘的计划。
+/// 调度行为：
+/// - `syncPlan`：按标识前缀撤销所有存量待投递项并全量注册新计划，未包含在计划内的项自动失效；
+/// - `cancelAll`：撤销全部挂起通知并清理持久化缓存。
 ///
-/// 计划本身落盘到 App Group，供排查与「已排期 N 条」的展示；它**不是**投递的
-/// 依据——投递由系统按已登记的 UNNotificationRequest 完成。iOS 没有
-/// `BOOT_COMPLETED` 的等价物，重启后系统会保留已登记的通知，因此不需要
-/// Android 那样的重建链路。
+/// 计划数据持久化至 App Group UserDefaults 仅供排查与状态展示；
+/// 物理投递完全依赖 UNUserNotificationCenter 注册的 UNNotificationRequest。
+/// iOS 系统在设备重启后自动保留已注册的通知请求，无需原生重启恢复广播。
 final class ReminderChannel: NSObject {
   static let channelName = "bugaoshan/reminder"
 
-  /// 通知标识前缀。撤销时按前缀筛选，避免误删应用内其它来源的通知。
+  /// 通知唯一标识前缀。用于按命名空间筛选并撤销通知，避免误删宿主内其他业务通知。
   private static let identifierPrefix = "bugaoshan.reminder."
   private static let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan"
   private static let storedPlanKey = "bugaoshan.reminder.plan"
 
-  /// 与 Dart 侧 `ReminderPlan.schema` 对齐；不认识的版本直接拒绝。
+  /// 协议版本号，与 Dart 层 ReminderPlan.schema 对齐；未知版本将直接拒绝处理。
   private static let supportedSchema = 1
 
   private let center = UNUserNotificationCenter.current()
@@ -49,8 +47,7 @@ final class ReminderChannel: NSObject {
       case "getPermissionStatus":
         self.getPermissionStatus(result: result)
       case "getPendingCount":
-        // 暴露系统实际登记数：Dart 侧只知道「我下发了 N 条」，不知道系统收下了几条
-        // （超上限、时刻已过、未授权都会被系统丢弃）。排期类问题几乎都出在这个差值上。
+        // 返回系统当前实际挂起的通知数量，供 Dart 层计算实际登记量与截断差值。
         self.getPendingCount(result: result)
       case "openNotificationSettings":
         self.openNotificationSettings(result: result)
@@ -80,7 +77,7 @@ final class ReminderChannel: NSObject {
         settings.authorizationStatus == .provisional ||
         settings.authorizationStatus == .ephemeral
       else {
-        // 未授权时不登记：登记了也不会显示，反而让「已排期 N 条」误导用户。
+        // 未授权状态下终止登记，直接返回 NOT_AUTHORIZED 错误。
         result(FlutterError(
           code: "NOT_AUTHORIZED",
           message: "Notification authorization not granted",
@@ -89,7 +86,7 @@ final class ReminderChannel: NSObject {
         return
       }
 
-      // 全量替换：先撤销上一批，再登记新的一批。
+      // 执行全量替换：先撤销历史挂起项，再注册新计划项。
       self.center.getPendingNotificationRequests { pending in
         let stale = pending
           .map(\.identifier)
@@ -113,7 +110,7 @@ final class ReminderChannel: NSObject {
       return
     }
 
-    // 计数用闭包，避免 DispatchGroup 里对可变状态的竞态。
+    // 使用锁保护并发写入的完成计数与成功计数。
     var added = 0
     let lock = NSLock()
 
@@ -130,7 +127,7 @@ final class ReminderChannel: NSObject {
         continue
       }
 
-      // 已过去的时刻不再登记（Dart 侧已过滤，这里再兜一层防止时钟漂移）。
+      // 过滤已过期的触发时间点，防止因时钟漂移向系统注册无效通知。
       let fireDate = Date(timeIntervalSince1970: fireAtMillis.doubleValue / 1000.0)
       guard fireDate.timeIntervalSinceNow > 0 else {
         lock.lock()
@@ -144,11 +141,9 @@ final class ReminderChannel: NSObject {
       let content = UNMutableNotificationContent()
       content.title = (reminder["title"] as? String) ?? ""
       content.body = (reminder["body"] as? String) ?? ""
-      // 授权时请求了 [.alert, .sound, .badge]，但通知内容不显式带 sound 就是静默
-      // 投递——锁屏上有横幅、不发声、不震动。课前提醒靠的就是这一下提示音，
-      // 静默投递等于功能失效。
+      // 显式指定 sound 为 default，确保在锁屏等场景下按声音与震动强提醒，避免降级为静默通知。
       content.sound = .default
-      // 同一天同一门课的多条提前量提醒归入同一线程，锁屏上折叠展示。
+      // 按 collapseKey 划分 threadIdentifier，将同一课程的多次提前提醒折叠归并。
       let collapseKey = reminder["collapseKey"] as? String
       if let collapseKey, !collapseKey.isEmpty {
         content.threadIdentifier = collapseKey
@@ -195,8 +190,7 @@ final class ReminderChannel: NSObject {
   // MARK: - 授权
 
   private func requestAuthorization(provisional: Bool, result: @escaping FlutterResult) {
-    // provisional 选项不弹授权框，直接把通知投递到通知中心（安静投递）。
-    // 只有明确要「先静默试用」时才用；默认仍走标准弹窗。
+    // provisional 选项请求临时静默通知权限（Provisional Authorization），通知仅进入通知中心且不触发弹窗与声音。
     let options: UNAuthorizationOptions = provisional
       ? [.alert, .sound, .badge, .provisional]
       : [.alert, .sound, .badge]
@@ -232,10 +226,9 @@ final class ReminderChannel: NSObject {
 
   // MARK: - 落盘（仅供排查与展示）
 
-  /// 系统当前实际登记的本应用提醒条数。
+  /// 查询系统当前处于挂起状态的提醒数量。
   ///
-  /// 与 Dart 侧的 `plan.reminders.length` 之差即「被系统丢弃的条数」——
-  /// 未授权、超过 64 条上限、时刻已过都会体现为这个差值。
+  /// 用于 Dart 层对比下发数量与系统挂起数量，评估系统截断或过滤情况。
   private func getPendingCount(result: @escaping FlutterResult) {
     center.getPendingNotificationRequests { pending in
       let count = pending
@@ -248,10 +241,9 @@ final class ReminderChannel: NSObject {
 
   // MARK: - 设置跳转
 
-  /// 打开本应用的系统设置页。
+  /// 跳转应用对应的系统设置界面。
   ///
-  /// iOS 没有「直接跳到通知子页」的公开 API，`openSettingsURLString` 落在应用
-  /// 自己的设置页，通知开关就在首屏，是实际可用的最短路径。
+  /// 利用 UIApplication.openSettingsURLString 引导用户手动调整通知权限。
   private func openNotificationSettings(result: @escaping FlutterResult) {
     guard let url = URL(string: UIApplication.openSettingsURLString) else {
       result(false)

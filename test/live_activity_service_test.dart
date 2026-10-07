@@ -205,7 +205,7 @@ void main() {
         ),
         throwsA(isA<LiveActivityUnsupportedException>()),
       );
-      // end 在非 iOS 下安全静默
+      // 验证 end() 在非 iOS 平台执行安全静默回退
       await service.end();
       expect(log, isEmpty);
     });

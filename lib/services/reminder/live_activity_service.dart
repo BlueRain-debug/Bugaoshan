@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-// MARK: - 异常体系定义
+// 异常体系定义
 
-/// 实时活动相关的基类异常。
+/// 实时活动（Live Activity）基础异常类。
 sealed class LiveActivityException implements Exception {
   const LiveActivityException(this.message);
 
@@ -13,33 +13,33 @@ sealed class LiveActivityException implements Exception {
   String toString() => message;
 }
 
-/// 当前系统或设备不支持实时活动（非 iOS 平台、版本低于 iOS 16.1 等）。
+/// 运行环境不支持实时活动异常（非 iOS 平台或系统版本低于 iOS 16.1）。
 class LiveActivityUnsupportedException extends LiveActivityException {
   const LiveActivityUnsupportedException([
     super.message = '当前系统或设备不支持实时活动（需 iOS 16.1+）',
   ]);
 }
 
-/// 用户在系统设置中禁用了实时活动权限。
+/// 用户未授予实时活动权限异常。
 class LiveActivityNotAuthorizedException extends LiveActivityException {
   const LiveActivityNotAuthorizedException([
     super.message = '用户未在系统设置中开启实时活动权限',
   ]);
 }
 
-/// 尝试在后台启动实时活动（违反系统必须在前台调用的硬约束）。
+/// 非前台调用异常（系统约束实时活动仅允许在应用处于前台活跃状态时启动）。
 class LiveActivityForegroundRequiredException extends LiveActivityException {
   const LiveActivityForegroundRequiredException([
     super.message = '实时活动只能在应用处于前台活跃状态时启动',
   ]);
 }
 
-/// 当前没有活跃的实时活动可更新。
+/// 无活跃实时活动会话异常。
 class LiveActivityNoActiveSessionException extends LiveActivityException {
   const LiveActivityNoActiveSessionException([super.message = '当前没有活跃中的实时活动']);
 }
 
-/// 原生操作执行失败（如系统抛错）。
+/// 原生层实时活动操作失败异常。
 class LiveActivityOperationException extends LiveActivityException {
   const LiveActivityOperationException(
     super.message, {
@@ -59,14 +59,14 @@ class LiveActivityOperationException extends LiveActivityException {
   }
 }
 
-// MARK: - 服务实现
+// 服务实现
 
-/// 灵动岛与锁屏 Live Activity 服务。
+/// 锁屏与灵动岛实时活动（Live Activity）通信服务。
 ///
-/// 遵循设计约束（详见 issue #358）：
-/// - 纯通信服务，无持久化依赖，可独立单测与构造；
-/// - 失败时区分「不支持」「未授权」「非前台」「无活跃活动」「操作失败」，不吞异常；
-/// - 倒计时依赖系统自带的自更新视图，无需频繁下发 `update`。
+/// 架构设计说明：
+/// - 无状态通信服务：不直接依赖持久化存储，支持独立依赖注入与单元测试；
+/// - 精确异常分类：细化并透出平台未支持、权限受限、非前台状态、无活跃会话及原生执行失败等异常类型；
+/// - 视图自刷新机制：倒计时展示依赖系统级时间区间渲染，无需高频主动下发状态更新。
 class LiveActivityService {
   LiveActivityService({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('bugaoshan/live_activity');
@@ -75,7 +75,7 @@ class LiveActivityService {
 
   bool get _isIos => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-  /// 检测当前设备与系统是否支持并启用了实时活动（iOS 16.1+ 且开关打开）。
+  /// 检查当前设备与系统是否支持且已启用实时活动（需要 iOS 16.1 及以上且系统设置权限已开启）。
   Future<bool> isSupported() async {
     if (!_isIos) return false;
     try {
@@ -88,22 +88,22 @@ class LiveActivityService {
     }
   }
 
-  /// 在前台启动一节课程的 Live Activity。
+  /// 在应用处于前台状态时启动课程的实时活动。
   ///
-  /// - [courseName] 当前课程名
-  /// - [location] 教室位置
-  /// - [endAt] 下课时间
-  /// - [startAt] 上课时间（默认当前时刻）
-  /// - [nextCourseName] 下一节课程名（若有）
-  /// - [nextLocation] 下一节课教室（若有）
+  /// - [courseName]：当前课程名称。
+  /// - [location]：授课地点。
+  /// - [endAt]：课程结束时间。
+  /// - [startAt]：课程开始时间，为空时默认为当前时刻。
+  /// - [nextCourseName]：后续关联课程名称（可选）。
+  /// - [nextLocation]：后续关联课程地点（可选）。
   ///
-  /// 成功时返回原生返回的 Activity ID。
+  /// 成功时返回原生层生成的 Activity 唯一标识。
   ///
-  /// 抛出：
-  /// - [LiveActivityUnsupportedException] 平台不支持
-  /// - [LiveActivityForegroundRequiredException] 应用不在前台
-  /// - [LiveActivityNotAuthorizedException] 用户在系统设置关闭权限
-  /// - [LiveActivityOperationException] 原生层创建失败
+  /// 抛出异常：
+  /// - [LiveActivityUnsupportedException]：平台或系统版本不支持。
+  /// - [LiveActivityForegroundRequiredException]：应用未处于前台活跃状态。
+  /// - [LiveActivityNotAuthorizedException]：系统设置中未开启权限。
+  /// - [LiveActivityOperationException]：原生层会话启动失败。
   Future<String?> start({
     required String courseName,
     required String location,
@@ -150,12 +150,12 @@ class LiveActivityService {
     }
   }
 
-  /// 更新进行中的 Live Activity 状态。
+  /// 更新进行中的实时活动状态。
   ///
-  /// 抛出：
-  /// - [LiveActivityUnsupportedException] 平台不支持
-  /// - [LiveActivityNoActiveSessionException] 无活跃活动可更新
-  /// - [LiveActivityOperationException] 原生更新失败
+  /// 抛出异常：
+  /// - [LiveActivityUnsupportedException]：平台不支持。
+  /// - [LiveActivityNoActiveSessionException]：当前不存在活跃会话。
+  /// - [LiveActivityOperationException]：原生层更新失败。
   Future<void> update({
     String? courseName,
     String? location,
@@ -206,7 +206,7 @@ class LiveActivityService {
     try {
       await _channel.invokeMethod<void>('end');
     } on MissingPluginException {
-      // 结束时若通道未接线，作为安全兜底静默处理
+      // 原生通道缺失时执行安全回退，不阻断主流程。
     } on PlatformException catch (e) {
       if (e.code == 'UNSUPPORTED_PLATFORM') return;
       throw LiveActivityOperationException(

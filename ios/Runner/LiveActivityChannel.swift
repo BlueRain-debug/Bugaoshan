@@ -3,13 +3,13 @@ import Flutter
 import Foundation
 import UIKit
 
-/// 灵动岛 / Live Activity 的原生通信通道。
+/// 灵动岛与锁屏实时活动（Live Activity）MethodChannel 原生实现。
 ///
-/// 与 Dart 侧的契约（见 `lib/services/reminder/live_activity_service.dart`）：
-/// - Live Activity 依托 iOS 16.1+ 的 ActivityKit 框架；
-/// - 系统硬约束：必须在应用处于前台活跃状态（`UIApplication.shared.applicationState == .active`）时调用 `start`；
-/// - 倒计时在小组件侧通过 `Text(timerInterval:countsDown:)` 自更新，无需原生轮询或频繁 `update`；
-/// - 课程切换或下课时通过 `update` / `end` 进行生命周期管理。
+/// 与 Dart 层接口契约：
+/// - 依赖 iOS 16.1 及以上版本的 ActivityKit 框架；
+/// - 前台约束：调用 `start` 时宿主应用必须处于前台活跃状态（`UIApplication.shared.applicationState == .active`）；
+/// - 系统级渲染：倒计时展示在 WidgetExtension 侧通过 `Text(timerInterval:countsDown:)` 自动渲染，原生宿主不维持高频 update；
+/// - 生命周期管理：课程状态变更与下课时分别调用 `update` 与 `end` 对齐会话状态。
 final class LiveActivityChannel: NSObject {
   static let channelName = "bugaoshan/live_activity"
 
@@ -87,7 +87,7 @@ final class LiveActivityChannel: NSObject {
 
   @available(iOS 16.1, *)
   private func isSupported(result: @escaping FlutterResult) {
-    // ActivityAuthorizationInfo 反映系统全局开关及用户是否在设置中为本应用开启了实时活动。
+    // 读取系统级与应用级实时活动授权状态。
     let areActivitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
     result(areActivitiesEnabled)
   }
@@ -96,8 +96,8 @@ final class LiveActivityChannel: NSObject {
 
   @available(iOS 16.1, *)
   private func start(arguments: [String: Any], result: @escaping FlutterResult) {
-    // 硬约束校验：iOS 要求 Live Activity 只能由处于前台活跃状态的应用启动。
-    // 在后台调用会直接被系统底层拒绝，因此提早给出明确错误码以便 Dart 侧感知。
+    // 状态前置校验：ActivityKit 限制实时活动仅能在应用处于前台活跃状态时启动。
+    // 在非活跃状态下直接返回 NOT_IN_FOREGROUND 错误码。
     guard UIApplication.shared.applicationState == .active else {
       result(
         FlutterError(
@@ -109,7 +109,7 @@ final class LiveActivityChannel: NSObject {
       return
     }
 
-    // 检查用户是否在系统设置中允许了实时活动。
+    // 校验用户是否在系统设置中启用了实时活动权限。
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
       result(
         FlutterError(
@@ -148,7 +148,7 @@ final class LiveActivityChannel: NSObject {
     let nextCourseName = arguments["nextCourseName"] as? String
     let nextLocation = arguments["nextLocation"] as? String
 
-    // 单活动策略：清理之前遗留的课程实时活动，避免灵动岛或锁屏同时出现多个课程卡片。
+    // 单一活动策略：启动前清理历史会话，确保同一时刻仅维持唯一的课程实时活动。
     cleanExistingActivities()
 
     let attributes = CourseLiveActivityAttributes(sessionId: "current_course")
@@ -202,7 +202,7 @@ final class LiveActivityChannel: NSObject {
       return
     }
 
-    // 局部更新：以已有状态为基准合并新入参。
+    // 增量合并：以既有状态为基准合并入参字段。
     let currentState: CourseLiveActivityAttributes.ContentState
     if #available(iOS 16.2, *) {
       currentState = activity.content.state

@@ -8,16 +8,18 @@ import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:flutter/foundation.dart';
 
-/// 排期协调器：把课表与设置的变化翻译成「重新算一份计划并下发给原生」。
+/// 提醒排期协调服务。
 ///
-/// 设计约束（详见 issue #358 的 I1–I4）：
-/// - 本类与原生之间只有一条通路 [ReminderTransport]，原生不做任何业务推断；
-/// - 每次下发都是全量替换，不做增量 diff——增量在「课程被删/改周次」时极易漏撤销；
-/// - 计划内容哈希不变时短路，避免每次前台恢复都惊动系统调度器。
+/// 监听课表数据与用户提醒配置的变更，重新计算排期计划并同步至原生宿主。
 ///
-/// 之所以监听 `CourseProvider` 的 ValueNotifier 而不是复用
-/// `CourseProvider.onCoursesChanged`：后者是单值回调，已被 `WidgetUpdateService`
-/// 占用（见 injector.dart），再赋一次会静默把桌面小组件的刷新顶掉。
+/// 架构约束：
+/// - 单向通道：本服务与原生平台仅通过 [ReminderTransport] 交互，原生层不包含业务推断逻辑；
+/// - 全量覆盖：每次同步均执行全量替换策略，避免增量 diff 在课程删除或周次调整时产生残留通知；
+/// - 哈希短路：计划特征哈希未变化时直接短路返回，避免前台唤醒等高频事件触发冗余系统排期调度。
+///
+/// 依赖设计：
+/// 监听 [CourseProvider] 的 ValueNotifier 字段而非复用 [CourseProvider.onCoursesChanged]，
+/// 是由于后者为单一回调，已在依赖注入层由桌面小组件更新服务占用，二次赋值会导致小组件数据同步失效。
 class ReminderService {
   ReminderService({
     required CourseProvider courseProvider,
@@ -35,21 +37,21 @@ class ReminderService {
   final ReminderTransport _transport;
   final Duration _debounceDuration;
 
-  /// 最近一次成功下发的计划，按 planId 短路用。
+  /// 最近一次成功同步的计划哈希标识，用于短路重复下发。
   String? _lastPushedPlanId;
 
-  /// 最近一次下发的计划，供设置页展示「已排期 N 条」。
+  /// 最近一次下发的排期计划，供设置界面展示当前排期状态。
   final ValueNotifier<ReminderPlan?> lastPlan = ValueNotifier<ReminderPlan?>(
     null,
   );
 
-  /// 排期失败原因。设置页据此给出可操作的提示，而不是静默失败。
+  /// 排期同步异常信息。供设置界面呈现错误原因与引导操作。
   final ValueNotifier<String?> lastError = ValueNotifier<String?>(null);
 
-  /// 用户尚未授予通知权限（或授权被撤销）。
+  /// 通知权限缺失状态（包含未授权与权限被撤销）。
   ///
-  /// 与 [lastError] 分开：这是用户可处理的状态，设置页应显示「去授权」，
-  /// 而不是把它当成故障报错。授权后调用 [onPermissionGranted] 立即重排。
+  /// 与 [lastError] 状态解耦：权限缺失属于常规交互状态而非系统故障，
+  /// 用于驱动设置界面的授权引导。授权完成时调用 [onPermissionGranted] 触发重新排期。
   final ValueNotifier<bool> needsPermission = ValueNotifier<bool>(false);
 
   Timer? _debounceTimer;
@@ -57,11 +59,10 @@ class ReminderService {
   bool _needsRunAgain = false;
   bool _disposed = false;
 
-  /// 挂监听并做一次初始排期。
+  /// 注册数据源监听并触发初始排期同步。
   ///
-  /// 注册时课表可能尚未加载完（`CourseProvider` 的加载是异步的），此时会先下发
-  /// 一份空计划；加载完成会触发监听器重排，`planId` 随之改变并被重新下发。
-  /// 这个过程自洽，不需要额外的启动时序协调。
+  /// 注册期间若课表数据处于异步加载中，初始流程将先同步空计划；
+  /// 课表加载完成后触发监听回调更新 `planId` 并同步完整排期，实现自协调的时序同步。
   Future<void> start() async {
     if (_disposed) return;
     _courseProvider.courses.addListener(_onSourceChanged);
@@ -71,14 +72,13 @@ class ReminderService {
     _appConfig.reminderQuietStart.addListener(_onSourceChanged);
     _appConfig.reminderQuietEnd.addListener(_onSourceChanged);
     _appConfig.reminderWindowDays.addListener(_onSourceChanged);
-    // 隐私开关变化会改变通知正文（锁屏上同样可见），必须重排。
+    // 隐私配置变更会影响通知文本的脱敏展示，需要重新构建排期计划。
     _appConfig.showLocation.addListener(_onSourceChanged);
     _appConfig.showTeacherName.addListener(_onSourceChanged);
     await reschedule(force: true);
   }
 
-  /// 幂等：重复调用（例如调用方显式释放后又走了一次统一清理）不会再碰已释放的
-  /// notifier，否则会抛 `was used after being disposed`。
+  /// 释放服务资源并解绑监听。具备幂等性，避免对已释放的 Notifier 执行重复销毁。
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -99,12 +99,11 @@ class ReminderService {
   }
 
   void _onSourceChanged() {
-    // 用户手动改设置时希望立刻看到效果；程序性变更（导入课表）则会连续触发，
-    // 由 debounce 合并成一次。
+    // 防抖合并连续触发的数据变更（如批量导入课表），保证设置修改及时生效并减少调度开销。
     unawaited(reschedule());
   }
 
-  /// 重算并下发。同一时刻只跑一次，期间到达的请求合并成一次补跑。
+  /// 重新计算并同步排期计划。执行过程具备单飞互斥机制，期间到达的请求将在当前任务完成后合并补跑。
   Future<void> reschedule({bool force = false}) async {
     if (_disposed) return;
     _debounceTimer?.cancel();
@@ -118,8 +117,7 @@ class ReminderService {
   Future<void> _runOnce() async {
     if (_disposed) return;
     if (_inFlight) {
-      // 正在跑的那一轮结束后补跑：丢掉这次请求会让「导入课表」这类连续变更的
-      // 最后一拍永久失联。
+      // 当前任务执行中标记补跑，避免丢弃在异步间隙内发生的最后一次数据变更。
       _needsRunAgain = true;
       return;
     }
@@ -128,24 +126,22 @@ class ReminderService {
       do {
         _needsRunAgain = false;
         await _pushOnce();
-        // 第一轮执行期间又来了变更，补一轮；补跑期间再来就继续循环。
+        // 循环处理执行期间积压的数据变更，直至无待处理请求。
       } while (_needsRunAgain && !_disposed);
     } finally {
       _inFlight = false;
     }
   }
 
-  /// 释放本对象的生命周期内不允许重入的写入。
+  /// 校验当前实例是否允许写入状态。
   ///
-  /// [dispose] 可能在一次 `await` 期间发生，此时 `_runOnce` 的 `finally` 已无法
-  /// 阻止循环（`_disposed` 已为 true，但当前这一轮还在跑），`_pushOnce` 恢复执行后
-  /// 会往已 dispose 的 ValueNotifier 上写并抛 `was used after being disposed`。
+  /// 防止在异步执行间隙触发 [dispose] 后，后续逻辑继续更新已销毁的 [ValueNotifier] 引发异常。
   bool get _canWrite => !_disposed;
 
   Future<void> _pushOnce() async {
     final plan = buildPlan(now: DateTime.now());
 
-    // 总开关关闭：清空而非保留。用户关掉提醒后锁屏上还冒出旧提醒是最糟的体验。
+    // 提醒开关关闭时撤销全部待投递通知，防止残留通知继续触发。
     if (!_appConfig.reminderEnabled.value) {
       try {
         await _transport.cancelAll();
@@ -186,10 +182,10 @@ class ReminderService {
         );
       }
     } catch (e, stack) {
-      // 失败时不更新 _lastPushedPlanId，下次触发会重试同一份计划。
+      // 同步失败时不更新 _lastPushedPlanId，确保后续触发能够重试当前计划。
       //
-      // 「未授权」「原生尚未接线」与「真正投递失败」要分开：前两者是用户/开发期
-      // 常态，记 warn 且不污染 lastError，否则设置页会对用户无能为力的原因报警。
+      // 区分权限缺失、通道不可用与系统投递异常：前两者属于预期交互或平台降级状态，
+      // 仅记录警告日志，避免将预期状态标记为 lastError。
       if (!_canWrite) return;
       if (e is ReminderPermissionDenied) {
         AppLog.w('ReminderService', 'syncPlan 跳过：$e');
@@ -207,27 +203,25 @@ class ReminderService {
     }
   }
 
-  /// 按当前课表与设置构建计划。抽成公开方法便于设置页预览与单测。
+  /// 基于当前课表与配置构建排期计划。公开此方法供设置页预览与单元测试调用。
   ///
-  /// [now] 可注入以便测试；生产调用一律用系统时钟。
+  /// [now]：基准时间注入参数，单元测试可指定时间，生产调用使用当前时钟。
   ReminderPlan buildPlan({required DateTime now}) => ReminderPlanBuilder.build(
     courses: _courseProvider.courses.value,
     config: _courseProvider.scheduleConfig.value,
     settings: _appConfig.reminderSettings,
     now: now,
-    // 平台上限必须在这里就交给构建器：交给原生去丢的话，被丢的是哪几条由系统
-    // 按未定义顺序决定，`droppedCount` 也永远是 0——设置页会一边显示「已排期
-    // 70 条」一边在系统里只有 64 条。
+    // 在计划构建阶段应用系统容量截断，避免由系统按未定义顺序丢弃通知，
+    // 同时保证 droppedCount 精确反映截断数量。
     maxReminders: _transport.pendingLimit,
   );
 
-  /// 供设置页在用户授权后立即重排（授权状态变化不在监听列表里）。
+  /// 通知权限授予后的回调入口，用于强制触发即时排期同步。
   Future<void> onPermissionGranted() => reschedule(force: true);
 
-  /// 请求通知权限并在获得后立即重排。
+  /// 请求通知权限并在获取成功后执行排期同步。
   ///
-  /// 返回是否已获得。调用方负责在 false 时给出「去系统设置」的引导——
-  /// 被拒绝后系统不会再弹第二次，重复请求只会静默返回 false。
+  /// 返回授权结果布尔值。若权限已被系统持久化拒绝，调用方应引导用户跳转系统设置界面。
   Future<bool> requestPermission({bool provisional = false}) async {
     try {
       final granted = await _transport.requestAuthorization(
@@ -246,8 +240,7 @@ class ReminderService {
     }
   }
 
-  /// 查询系统授权状态：`authorized` / `provisional` / `denied` /
-  /// `notDetermined` / `unknown`。
+  /// 查询当前系统的通知授权状态（如 authorized、provisional、denied、notDetermined、unknown）。
   Future<String> permissionStatus() async {
     try {
       return await _transport.getPermissionStatus();
@@ -256,8 +249,7 @@ class ReminderService {
     }
   }
 
-  /// 系统实际登记的提醒条数。与 `lastPlan.value.reminders.length` 的差值
-  /// 即被系统丢弃的条数。
+  /// 获取原生系统当前实际挂起的通知数量。
   Future<int> pendingCount() async {
     try {
       return await _transport.getPendingCount();
@@ -266,7 +258,7 @@ class ReminderService {
     }
   }
 
-  /// 打开系统通知设置页。权限被拒后系统不再弹框，这是唯一的出路。
+  /// 跳转当前应用的系统通知设置界面，用于引导用户手动授予权限。
   Future<bool> openNotificationSettings() async {
     try {
       return await _transport.openNotificationSettings();
@@ -275,21 +267,18 @@ class ReminderService {
     }
   }
 
-  /// 走真实链路排一条 [delay] 之后触发的探针通知，用于端到端验证宿主投递。
+  /// 通过真实同步链路调度一条在 [delay] 后触发的探针通知，用于端到端验证宿主投递能力。
   ///
-  /// 本地提醒是典型的「失败起来和没做一样」的功能：Dart 算错、未授权、系统超限、
-  /// 原生未接线，四种症状都是「没有提醒」。这条探针把前两类和「确实投不出去」
-  /// 区分开——它必然在几秒内触发，用户锁屏就能看到结果。
+  /// 探针通知在短延迟后触发，用于验证原生通道与系统通知调度是否正常工作，
+  /// 以隔离权限缺失、平台上限截断与宿主未接入等不同故障原因。
   ///
-  /// 两个必须守住的点：
+  /// 关键约束：
+  /// 1. 探针计划必须合并当前排期中的真实提醒：由于原生层采用全量替换策略，
+  ///    仅下发探针会导致既有课表排期被全量撤销；
+  /// 2. 必须重置 [_lastPushedPlanId]：探针同步后重置短路哈希，
+  ///    确保后续数据变更触发重排时能正确覆盖探针并重新同步标准计划。
   ///
-  /// 1. **探针计划必须包含真实提醒**。下发是全量替换（I2），只发探针会把课表提醒
-  ///    全部撤销，用户点一次探针就丢掉了接下来一周的课前提醒。
-  /// 2. **必须清掉 [_lastPushedPlanId]**。真实提醒此刻已在系统里，若沿用旧的短路
-  ///    键，Dart 会认为「这份计划已经下发过」而不再重发，一旦下一轮重排把探针挤掉，
-  ///    真实提醒就再也回不来了。
-  ///
-  /// 返回是否成功交给原生登记。
+  /// 返回原生层是否成功接收并登记排期。
   Future<bool> fireProbe({
     Duration delay = const Duration(seconds: 15),
     required String title,
@@ -309,8 +298,7 @@ class ReminderService {
       collapseKey: 'probe',
     );
 
-    // 与 buildPlan 走同一套排序 / 截断 / 哈希规则，避免探针与真实提醒在
-    // 「谁被裁剪」上出现两套口径。
+    // 与 buildPlan 保持一致的排序、截断与哈希规则，确保探针与常规排期的截断标准一致。
     final plan = ReminderPlanBuilder.compose(
       reminders: [...base.reminders, probe],
       generatedAt: now,
@@ -320,8 +308,7 @@ class ReminderService {
       maxReminders: _transport.pendingLimit,
     );
 
-    // 先让路：即使下一行抛异常，下一次重排也会把真实计划重新算一遍并下发，
-    // 而不是被短路键挡住。
+    // 先行重置短路标识：即使后续下发异常，下一次重排也能重新构建并下发计划，避免被历史哈希短路。
     _lastPushedPlanId = null;
 
     await _transport.syncPlan(plan);

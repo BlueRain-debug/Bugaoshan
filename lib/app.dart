@@ -52,18 +52,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 回到前台时重排：授权状态可能在系统设置里被改动，计划窗口也可能已经走完。
-    // 这两件事都没有别的通知渠道，只能靠前台恢复这个时机兜住。
+    // 应用恢复前台时重新触发排期：处理系统设置中的权限变更以及覆盖时间窗口滚动的更新场景。
     if (state != AppLifecycleState.resumed) return;
-    // 必须判断「就绪」而不是「已注册」：`registerSingletonAsync` 在工厂函数返回前
-    // 就已完成注册，此时 `getIt<ReminderService>()` 会抛
-    // `StateError: ReminderService is not ready yet`。启动瞬间的 resumed 回调
-    // （例如从后台冷启动）正好落在这个窗口里。
+    // 校验异步单例就绪状态（isReadySync）：避免在冷启动或注册未完成的异步间隙中直接调用
+    // `getIt<ReminderService>()` 引发 StateError。
     if (getIt.isReadySync<ReminderService>()) {
       unawaited(getIt<ReminderService>().reschedule());
     }
-    // Live Activity 只能在前台开启，前台恢复是它最重要的触发时机；课间切到
-    // 下一节课也靠这一次对账补上。
+    // 实时活动必须在前台启动，前台唤醒是核心触发节点；同时用于对齐课间与下一节课程的状态转换。
     if (getIt.isReadySync<LiveActivityCoordinator>()) {
       unawaited(getIt<LiveActivityCoordinator>().tick());
     }

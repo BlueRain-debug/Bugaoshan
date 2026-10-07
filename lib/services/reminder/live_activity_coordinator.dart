@@ -7,20 +7,21 @@ import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/semester_week.dart';
 import 'package:flutter/material.dart';
 
-/// 「当前正在上的课」的判定结果。抽成独立类型便于单测，也避免协调器把
-/// 「算哪节课」与「什么时候开/关 Activity」两件事混在一处。
+/// 当前进行中课程与后续课程解析结果快照。
+///
+/// 封装课程解析状态以解耦业务计算与活动生命周期调度，并支持独立单元测试。
 @immutable
 class LiveCourseSnapshot {
-  /// 正在上的课，没有则为 null。
+  /// 当前进行中的课程，无进行中课程时为 null。
   final Course? current;
 
-  /// 本节课的下课时刻。
+  /// 当前课程结束时刻。
   final DateTime? endAt;
 
-  /// 下一节课（按开始时刻取最近的一节），没有则为 null。
+  /// 当天后续最近的一节课程，无后续课程时为 null。
   final Course? next;
 
-  /// 下一节课的开始时刻。
+  /// 下一节课程开始时刻。
   final DateTime? nextStartAt;
 
   const LiveCourseSnapshot({
@@ -35,11 +36,10 @@ class LiveCourseSnapshot {
   bool get hasCurrent => current != null;
 }
 
-/// 从课表算「此刻在上什么课」。纯函数：不读时钟（`now` 由调用方注入）、
-/// 不碰存储、不抛异常。
+/// 当前课程状态解析器。纯函数设计：无时钟依赖（基准时间 [now] 显式注入）、不访问存储且不抛出异常。
 ///
-/// 与 `ReminderPlanBuilder` 共用同一套周次口径（ADR-0006 周日成行）与
-/// `Course.isActiveInWeek`，不另立一份判断——两份口径漂移正是 ADR-0008 要避免的事。
+/// 遵循与 [ReminderPlanBuilder] 一致的周次判定规则（校历周日成行口径）与
+/// [Course.isActiveInWeek] 活跃性判定，保证业务计算口径统一。
 class LiveCourseResolver {
   const LiveCourseResolver._();
 
@@ -75,8 +75,8 @@ class LiveCourseResolver {
       final start = _startAt(config, course, today)!;
       final end = _endAt(config, course, today);
       if (end == null) continue;
-      // 半开区间 [start, end)：下课瞬间即视为已结束，避免 Live Activity 在
-      // 下课铃响后还挂着「后下课 0:00」。
+      // 采用左闭右开区间 [start, end) 进行匹配：到达下课时刻即视为已结束，
+      // 避免实时活动在下课后短暂残留为剩余 0:00 的结束倒计时。
       if (!now.isBefore(start) && now.isBefore(end)) {
         current = course;
         endAt = end;
@@ -137,16 +137,16 @@ class LiveCourseResolver {
   }
 }
 
-/// 把「此刻在上什么课」翻译成 Live Activity 的 start / update / end。
+/// 课程实时活动（Live Activity）生命周期协调器。
 ///
-/// 三条平台约束决定了本类的形态：
+/// 负责将当前课程快照转换为实时活动的 start、update 与 end 操作。
 ///
-/// 1. **只能在应用处于前台时启动**（ActivityKit 硬约束）。因此它由前台恢复与
-///    课表变更驱动，而不是后台定时任务——iOS 上不存在可靠的后台定时能力。
-/// 2. **应用进程不在时无法开启**。用户如果在没打开过应用的情况下直接去上课，
-///    不会自动出现灵动岛；这是方案已知的限制，不是缺陷。
-/// 3. **倒计时由系统渲染**，所以本类只在「课程切换」这类状态真正变化时才下发给
-///    原生，不做分钟级心跳。
+/// 平台约束与调度策略：
+/// 1. 前台启动约束（ActivityKit 系统限制）：实时活动仅允许在应用处于前台活跃状态时启动，
+///    因此生命周期由前台唤醒事件与课表数据变更驱动，而非后台定时任务；
+/// 2. 进程依赖约束：未启动过应用时系统无法自动激活活动；
+/// 3. 系统级倒计时渲染：剩余时间倒计时由系统组件基于时间区间独立渲染，
+///    本服务仅在课程发生切换或状态实质性变更时触发同步，不维持分钟级更新心跳。
 class LiveActivityCoordinator {
   LiveActivityCoordinator({
     required CourseProvider courseProvider,
@@ -164,18 +164,17 @@ class LiveActivityCoordinator {
   bool _running = false;
   bool _disposed = false;
 
-  /// 当前已下发的课程名。用它判断「是否需要 update」，而不是每次都下发——
-  /// 每次前台恢复都对 Activity 调一次 update 是没必要的系统开销。
+  /// 当前处于活跃状态的活动课程名称。用于判断是否需要执行 update，
+  /// 避免前台恢复事件高频调用 update 产生冗余系统开销。
   String? _activeCourseName;
 
-  /// 当前会话是否可用。不可用（非 iOS、系统关闭实时活动）时不再重试，
-  /// 否则每次前台恢复都会撞一次 `UNSUPPORTED_PLATFORM` 并刷日志。
+  /// 当前运行环境是否可用。在非 iOS 环境或用户关闭实时活动后标记为不可用，
+  /// 避免后续重复触发通道调用并输出冗余日志。
   bool _available = true;
 
   bool get isActive => _activeCourseName != null;
 
-  /// 启动轮询。仅应在 iOS 上调用：其他平台的 [LiveActivityService] 会直接抛
-  /// [LiveActivityUnsupportedException]，本类会把它收敛成「不可用」并停手。
+  /// 启动协调器调度。在非 iOS 平台时将捕获 [LiveActivityUnsupportedException] 并自动禁用后续调度。
   Future<void> start() async {
     if (_disposed || _running) return;
     _running = true;
@@ -186,8 +185,8 @@ class LiveActivityCoordinator {
     }
     _courseProvider.courses.addListener(_onSourceChanged);
     _courseProvider.scheduleConfig.addListener(_onSourceChanged);
-    // 轮询的用途是「下课时自动收尾」。课程切换由课表变更与前台恢复覆盖，
-    // 但没有任何事件会在课间自然到达，只能靠定时器兜住。
+    // 定时轮询用于在应用处于前台时兜底监测课程结束并结束活动；
+    // 课程切换与前台唤醒由各自的数据与生命周期监听覆盖。
     _timer = Timer.periodic(_pollInterval, (_) => unawaited(tick()));
     await tick();
   }
@@ -206,7 +205,7 @@ class LiveActivityCoordinator {
 
   void _onSourceChanged() => unawaited(tick());
 
-  /// 按当前时刻对账一次：该开的开、该改的改、该关的关。
+  /// 根据当前时间评估课程状态，执行活动启动、更新或结束的生命周期对齐。
   Future<void> tick() async {
     if (_disposed || !_available) return;
 
@@ -219,7 +218,7 @@ class LiveActivityCoordinator {
     try {
       final current = snapshot.current;
       if (current == null) {
-        // 课间或当天已无课：结束会话。下一次 tick 若进入下一节课会重新开启。
+        // 无进行中课程（课间或当日课程已结束）：结束当前会话。后续调度匹配到新课程时将重新启动。
         if (_activeCourseName != null) await _end();
         return;
       }
@@ -238,8 +237,7 @@ class LiveActivityCoordinator {
               : next!.location,
         );
       } else {
-        // 连堂课（同一门课换节次）或相邻两节课之间切换：复用同一条 Activity，
-        // 换内容比「关掉再开」体面——后者会在锁屏上闪一次空白。
+        // 连续课程或相邻课程切换时复用既有活动会话执行 update，避免重新创建导致锁屏与灵动岛界面闪烁。
         await _service.update(
           courseName: current.name,
           location: current.location,
@@ -255,16 +253,14 @@ class LiveActivityCoordinator {
       AppLog.d('LiveActivity', '设备不支持，停止后续尝试：$e');
       _available = false;
     } on LiveActivityNotAuthorizedException catch (e) {
-      // 用户在系统设置里关掉了实时活动。这是用户可处理的状态，不是故障；
-      // 每次前台恢复都重试一次是合理的（用户可能刚刚打开）。
+      // 用户在系统设置中禁用了实时活动权限。结束当前会话并静默处理，后续前台唤醒时可继续检测权限恢复。
       AppLog.d('LiveActivity', '用户未开启实时活动：$e');
       await _end(swallowErrors: true);
     } on LiveActivityForegroundRequiredException catch (e) {
-      // 前台恢复与课表变更都在前台发生，理论上到不了这里；真到了也不该刷错误日志。
+      // 应用非前台活跃状态，跳过本次调度。
       AppLog.d('LiveActivity', '非前台，跳过本轮：$e');
     } on LiveActivityNoActiveSessionException {
-      // Dart 以为有会话、原生没有了（例如用户在系统里关掉）。对齐状态，
-      // 下一轮重新 start。
+      // 原生端活跃会话已不存在（如被用户手动滑动移除），重置本地状态以供后续周期重新启动。
       _activeCourseName = null;
     } catch (e) {
       AppLog.w('LiveActivity', '同步实时活动失败：$e');

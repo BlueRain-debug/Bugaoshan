@@ -3,14 +3,18 @@ import 'package:bugaoshan/models/reminder_plan.dart';
 import 'package:bugaoshan/utils/semester_week.dart';
 import 'package:flutter/material.dart';
 
-/// 提醒文案生成。抽出来是为了让 [ReminderPlanBuilder] 保持纯函数、可单测——
-/// 真实实现依赖 `AppLocalizations`，测试用 [DefaultReminderNarrator] 或桩。
+/// 提醒通知文本生成接口。
+///
+/// 解耦文案构建以保证 [ReminderPlanBuilder] 维持无副作用纯函数特性。
+/// 生产环境注入基于 `AppLocalizations` 的本地化实现，测试环境可使用 [DefaultReminderNarrator] 或测试桩。
 abstract class ReminderNarrator {
-  /// 通知标题，通常是课程名。
+  /// 生成通知标题，默认使用课程名称。
   String titleFor(Course course);
 
-  /// 通知正文。是否包含地点 / 教师由 [withLocation] / [withTeacher] 决定，
-  /// 二者必须与隐私开关同源——锁屏通知同样受「隐藏教师姓名」约束。
+  /// 生成通知正文内容。
+  ///
+  /// 地点与教师字段受 [withLocation] 与 [withTeacher] 控制，
+  /// 配置源须与应用全局隐私设置保持一致，确保系统锁屏等外部展示遵循隐私限制。
   String bodyFor({
     required Course course,
     required TimeSlot slot,
@@ -19,7 +23,7 @@ abstract class ReminderNarrator {
   });
 }
 
-/// 无本地化依赖的中文实现。生产环境应传入基于 `AppLocalizations` 的实现。
+/// 默认中文文案生成器，不依赖应用本地化上下文。生产环境应注入基于 `AppLocalizations` 的实现。
 class DefaultReminderNarrator implements ReminderNarrator {
   const DefaultReminderNarrator();
 
@@ -48,29 +52,27 @@ class DefaultReminderNarrator implements ReminderNarrator {
       '${time.minute.toString().padLeft(2, '0')}';
 }
 
-/// 把课表展开成绝对时刻的排期计划。
+/// 将课表数据展开计算为具有绝对时间戳的提醒排期计划。
 ///
-/// 纯函数：不读时钟、不碰存储、不抛异常。同一份输入恒得同一份输出，
-/// 因此可以完整单测——这正是「业务逻辑收归 Dart」的意义所在。
+/// 本类为纯函数设计：无外部时钟依赖、不访问持久化存储且不抛出异常。
+/// 给定相同输入保证生成确定性输出，便于单元测试验证。
 ///
-/// 展开口径（任一环节偏离都会导致提醒错位或漏发）：
-/// - 教学周与自然日的映射一律走 [courseWeekOf] / 周日成行口径，禁止自算 7 天块；
-/// - 某门课在第 W 周是否上课一律走 [Course.isActiveInWeek]（离散周次 `customWeeks`
-///   的成员判断不受起止周约束，自己写区间判断会漏算）；
-/// - 节次到时刻的换算取 `config.timeSlots[section - 1]`。
+/// 时间与周次展开规范：
+/// - 教学周与自然日的映射遵循 [courseWeekOf]（校历周日成行规则），禁止使用固定的 7 天周期换算；
+/// - 课程在指定周次的活跃性判断统一调用 [Course.isActiveInWeek]，覆盖离散周次 `customWeeks` 的判定逻辑；
+/// - 节次与具体时刻的映射读取 [ScheduleConfig.timeSlots]。
 ///
-/// 刻意不使用 `selectVisibleCoursesForDay`：它默认把未来周次的占位课程也塞进
-/// 结果，用于提醒会在非上课周误报。
+/// 注：不调用 `selectVisibleCoursesForDay`，避免其包含未来周次占位课程而在非活跃周次产生误触发。
 class ReminderPlanBuilder {
   const ReminderPlanBuilder._();
 
-  /// 构建排期计划。
+  /// 构建提醒排期计划。
   ///
-  /// - [now] 必须由调用方注入，构建器自身不读系统时钟。
-  /// - [maxReminders] 非空时按触发时刻升序截断（近处优先），被丢弃的条数记入
-  ///   [ReminderPlan.droppedCount]。iOS 需传
+  /// - [now]：基准时间，由调用方显式注入以避免隐式时钟依赖。
+  /// - [maxReminders]：非空时按触发时间升序保留最近项，超出上限被截断的数量记录于
+  ///   [ReminderPlan.droppedCount]。iOS 平台需传入
   ///   [ReminderSettings.iosPendingNotificationLimit]。
-  /// - [config] 为 null（无课表）时返回空计划，而不是抛异常。
+  /// - [config] 为 null（未配置课表）时返回空排期计划，不抛出异常。
   static ReminderPlan build({
     required List<Course> courses,
     required ScheduleConfig? config,
@@ -105,11 +107,11 @@ class ReminderPlanBuilder {
       )) {
         continue;
       }
-      // 放假后 courseWeekOf 会继续返回大于总周数的值，这里显式裁掉。
+      // 假期阶段 courseWeekOf 返回值超出总周数，超出范围的日期直接跳过。
       final week = courseWeekOf(semesterStart, day);
       if (week > config.totalWeeks) continue;
 
-      final dayOfWeek = day.weekday; // 1=Mon..7=Sun，与 Course.dayOfWeek 同域
+      final dayOfWeek = day.weekday; // 1=周一 .. 7=周日，与 Course.dayOfWeek 取值范围一致
       for (final course in courses) {
         if (course.dayOfWeek != dayOfWeek) continue;
         if (!course.isActiveInWeek(week)) continue;
@@ -146,12 +148,11 @@ class ReminderPlanBuilder {
               withLocation: settings.includeLocation,
               withTeacher: settings.includeTeacher,
             ),
-            // 折叠键按「课程 + 上课日」分组：折叠的语义是「同一门课的多条提前量
-            // 归入一条会话」，而不是「同一天的所有课归入一条」。只用日期会把
-            // 同日不同课程的通知合并进同一条锁屏会话。
+            // 聚合折叠键按「课程 + 日期」维度划分：仅将同一课程同日的多个提前提醒聚合，
+            // 避免仅按日期聚合导致当日不同课程的通知合并在同一通知组中。
             collapseKey: 'course:${_courseKey(course)}:${_yyyymmdd(day)}',
           );
-          // 同一门课在库里可能存在多条记录（不同周段展开），同 id 覆盖即可。
+          // 数据库中同课程可能按周段分拆为多条记录，相同唯一标识的项执行覆盖去重。
           byId[item.id] = item;
         }
       }
@@ -167,11 +168,11 @@ class ReminderPlanBuilder {
     );
   }
 
-  /// 用给定的提醒集合组装计划。[build] 与本方法共用同一套
-  /// 「排序 → 截断 → 哈希」规则，因此任何进入系统的计划都满足 I2 的全量替换语义。
+  /// 基于指定的提醒集合组装排期计划。[build] 与本方法共享相同的
+  /// 「时间排序 -> 容量截断 -> 特征哈希」管线，确保生成的计划均满足全量替换契约。
   ///
-  /// 单独暴露是为了让「在既有计划上追加一条提醒」也能走同一条路径：追加后的集合
-  /// 仍以全量替换方式下发，原计划中的提醒不会被撤销。
+  /// 此方法公开用于支持增量提醒合成：在既有计划基础上追加新条目后，
+  /// 统一以全量覆盖方式同步至原生宿主，避免误撤销历史排期。
   static ReminderPlan compose({
     required Iterable<ReminderItem> reminders,
     required DateTime generatedAt,
@@ -182,15 +183,12 @@ class ReminderPlanBuilder {
   }) {
     final all = reminders.toList()
       ..sort((a, b) {
-        // 同一时刻按 id 定序：排序不稳定会让同一份内容产生不同的 planId，
-        // 每次重排都被判成「计划变了」而下发。
+        // 触发时间相同时按 ID 二次排序，保证排序稳定性，避免相同数据集计算出不同的 planId。
         final byTime = a.fireAt.compareTo(b.fireAt);
         return byTime != 0 ? byTime : a.id.compareTo(b.id);
       });
 
-    // 负数上限视为「不限制」而不是直接参与截断：`sublist(0, -1)` 会抛
-    // RangeError，而本文件的契约是纯函数不抛异常（与 `semester_week.dart`
-    // 同一约定）。调用方传 -1 想表达「不限」是常见笔误，这里兜住。
+    // 非正数容量视为不设上限，避免负数索引导致 RangeError。保持纯函数异常安全约定。
     final limit = maxReminders != null && maxReminders > 0
         ? maxReminders
         : null;
@@ -218,10 +216,10 @@ class ReminderPlanBuilder {
     return config.timeSlots[section - 1];
   }
 
-  /// 提醒 id：课程名 + 上课日 + 起始节次 + 提前量。
+  /// 生成提醒唯一标识：课程名 + 日期 + 起始节次 + 提前量。
   ///
-  /// 用内容而非 [Course.id] 作为身份——课程 id 由微秒时间戳生成，重新导入课表后
-  /// 会全部改变，会让「同一节课」在重排时被判成新提醒并重复投递。
+  /// 基于业务属性生成确定性标识，而不依赖 [Course.id]。
+  /// 因 [Course.id] 重新导入课表时会重新生成，使用动态 ID 会导致相同课程在重排时被误判为新通知而重复投递。
   static String _reminderId(
     Course course,
     DateTime day,
@@ -234,13 +232,13 @@ class ReminderPlanBuilder {
       '${day.month.toString().padLeft(2, '0')}'
       '${day.day.toString().padLeft(2, '0')}';
 
-  /// 折叠键里的课程身份，沿用提醒 id 的口径。
+  /// 聚合折叠键中的课程标识，遵循提醒 ID 命名规则。
   static String _courseKey(Course course) => course.name;
 
-  /// 计划哈希 = 「全部提醒内容 + 排期窗口」。
+  /// 计算计划特征哈希（包含提醒内容与有效时间窗口）。
   ///
-  /// 窗口也参与哈希：同一批提醒但窗口推进了一天，应被当作新计划下发，
-  /// 否则原生侧会拿旧 `windowEnd` 提前停止投递。
+  /// 时间窗口纳入哈希计算：当提醒列表未变但覆盖时间窗口滚动推移时，
+  /// 必须下发新计划以更新原生端的有效截止时间 windowEnd，防止原生端提前停止投递。
   static String _planId(
     List<ReminderItem> reminders,
     DateTime windowEnd,

@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:bugaoshan/utils/json_utils.dart';
 import 'package:flutter/material.dart';
 
-/// 提醒类型。新增类型时在 [ReminderKind.fromWire] 同步登记，原生侧只做透传。
+/// 提醒业务类型。新增类型时须在 [ReminderKind.fromWire] 注册映射，原生宿主仅负责透传。
 enum ReminderKind {
-  /// 课前提醒：由课表的「星期 + 节次 + 周次」展开得到。
+  /// 课前提醒：基于课程周次、星期与节次换算的时间展开生成。
   courseStart('course_start');
 
   const ReminderKind(this.wire);
 
-  /// 跨 MethodChannel 的稳定标识，不要改（原生侧可能按其分流渠道）。
+  /// 跨 MethodChannel 传输的持久化标识。原生宿主根据此字段进行通知渠道路由。
   final String wire;
 
   static ReminderKind? fromWire(String? value) {
@@ -21,24 +21,24 @@ enum ReminderKind {
   }
 }
 
-/// 单条提醒。字段即原生侧投递所需的全部信息——原生不做任何业务推断。
+/// 单条提醒实体，包含原生端完成本地投递所需的全部上下文数据。原生层不执行业务推断。
 @immutable
 class ReminderItem {
-  /// 稳定且可推导的标识：同一门课、同一天、同一节次、同一提前量恒等。
+  /// 确定性唯一标识。由课程标识、日期、节次与提前量组合生成。
   ///
-  /// 全量覆盖式重排时，新计划里不存在的 id 会被原生撤销，因此 id 的稳定性
-  /// 直接决定「改了课表后旧提醒是否残留」。
+  /// 原生层采用全量替换策略同步排期，旧计划中存在但新计划中缺失的 ID 会被直接撤销。
+  /// ID 的幂等性保证课表变更或重复排期时不会产生残留通知。
   final String id;
 
   final ReminderKind kind;
 
-  /// 投递时刻（设备本地墙钟语义）。由 Dart 算好，原生不参与换算。
+  /// 触发时间（设备本地墙上时钟语义）。由 Dart 层预先计算，原生端不参与时区换算。
   final DateTime fireAt;
 
   final String title;
   final String body;
 
-  /// 同组提醒的折叠键：同一天同一门课的多条提前量提醒可折叠展示。
+  /// 通知聚合折叠标识。用于将同日同课程的不同提前量通知聚拢展示。
   final String collapseKey;
 
   const ReminderItem({
@@ -54,15 +54,15 @@ class ReminderItem {
     'id': id,
     'kind': kind.wire,
     'fireAt': _iso8601Local(fireAt),
-    // epoch 毫秒是原生侧排期实际使用的值；ISO 串仅用于日志与 Dev 页排查。
+    // epoch 毫秒用于原生平台实际排期触发；ISO 8601 字符串仅供日志追踪与调试排查。
     'fireAtMillis': fireAt.millisecondsSinceEpoch,
     'title': title,
     'body': body,
     'collapseKey': collapseKey,
   };
 
-  /// 解析单条提醒。脏数据（缺 id / 时刻不可解析 / 类型未知）返回 null，
-  /// 由调用方跳过该条而不是整批失败。
+  /// 从序列化数据反序列化单条提醒。非法数据（缺失 ID、触发时刻无法解析或类型未定义）返回 null，
+  /// 允许调用方单条忽略，避免导致批量解析整体中断。
   static ReminderItem? fromJson(Object? raw) {
     if (raw is! Map) return null;
     final json = raw.cast<String, Object?>();
@@ -81,28 +81,28 @@ class ReminderItem {
   }
 }
 
-/// 一批排期计划。原生侧对它的处理必须是**全量替换**（见 I2）。
+/// 提醒排期计划数据集。原生端接收后执行全量覆盖替换。
 @immutable
 class ReminderPlan {
-  /// 契约版本。原生侧据此判断能否解析；不认识的版本应拒绝而非猜测。
+  /// 协议版本号。原生端据此校验兼容性；遇到未知版本将拒绝执行。
   static const int schema = 1;
 
-  /// 计划内容哈希（不含 [generatedAt]）。相同哈希可短路，避免无谓的重排。
+  /// 计划内容特征哈希（排除 [generatedAt]）。哈希一致时直接短路跳过原生层重复重排。
   final String planId;
 
   final DateTime generatedAt;
 
-  /// 计划覆盖的时间窗。窗口结束后原生侧应停止投递并等待下次下发。
+  /// 当前计划覆盖的有效时间窗口。原生端超出此窗口范围后将等待新计划下发。
   final DateTime windowStart;
   final DateTime windowEnd;
 
-  /// 原生侧应使用的通知渠道标识。
+  /// 原生平台对应的通知渠道（Notification Channel / Category）标识符。
   final String channel;
 
   final List<ReminderItem> reminders;
 
-  /// 因平台待投递上限被裁掉的条数。非 0 时设置页与日志都应把它显式暴露出来，
-  /// 否则「少了几条提醒」在用户看来与「功能坏了」没有区别。
+  /// 因系统待投递通知上限而截断的提醒数量。非零时在设置界面与日志中显式暴露，
+  /// 用于排查通知因容量限制丢失的问题。
   final int droppedCount;
 
   const ReminderPlan({
@@ -130,10 +130,10 @@ class ReminderPlan {
     'droppedCount': droppedCount,
   };
 
-  /// 传给 MethodChannel 的载荷。
+  /// 生成通过 MethodChannel 传输的原生载荷。
   ///
-  /// 与 [toJson] 的差别：移除 ISO 时刻串，只保留 epoch 毫秒——跨 channel 传
-  /// epoch 整数可完全绕开时区解析分歧。Dev 页需要可读时刻时用 [toJson]。
+  /// 相比 [toJson]，此处移除 ISO 8601 字符串并仅保留 epoch 毫秒时间戳，
+  /// 规避跨平台序列化与反序列化时的时区歧义。调试界面展示可读时间时使用 [toJson]。
   Map<String, Object?> toChannelPayload() => {
     'schema': schema,
     'planId': planId,
@@ -188,25 +188,25 @@ class ReminderPlan {
   }
 }
 
-/// 提醒设置。由调用方从 AppConfigProvider 取出后传入构建器，使构建器保持纯函数。
+/// 提醒配置参数。由调用方从 AppConfigProvider 获取并传入，保证计划构建器维持纯函数设计。
 @immutable
 class ReminderSettings {
-  /// 课前提醒总开关。
+  /// 课前提醒主开关。
   final bool courseReminderEnabled;
 
-  /// 提前量（分钟），可多选。去重升序后生效。
+  /// 提前提醒时间列表（单位：分钟）。生效时将去重并按升序排列。
   final List<int> leadMinutes;
 
-  /// 免打扰时段（含首尾）。为空表示不启用。
+  /// 免打扰时间段（闭区间）。为 null 表示未启用。
   ///
-  /// 落入该时段的提醒会被**丢弃**而非延后——一门 08:00 的课在 23:00 提醒没有意义。
+  /// 触发时间落入该区间的提醒将被直接丢弃而非延迟投递，避免在静音时段外产生失效的过期提醒。
   final TimeOfDay? quietStart;
   final TimeOfDay? quietEnd;
 
-  /// 排期窗口长度（天）。窗口越长提醒越不易漏，但会更快触及 iOS 的待投递上限。
+  /// 排期计算向前覆盖的时间窗口天数。增加天数可延长单次排期的覆盖时长，但会提高触及平台待投递上限的概率。
   final int windowDays;
 
-  /// 提醒正文是否包含上课地点 / 教师。应与隐私开关同源，锁屏通知同样受其约束。
+  /// 提醒文案是否包含教室地点与授课教师。与全局隐私设置关联，用于锁屏等外部界面的敏感信息控制。
   final bool includeLocation;
   final bool includeTeacher;
 
@@ -220,16 +220,16 @@ class ReminderSettings {
     this.includeTeacher = true,
   });
 
-  /// 默认排期窗口。
+  /// 默认排期覆盖天数。
   ///
-  /// iOS 只保留每个应用最近的 64 条待投递本地通知。按每天 4~6 节课、每个提前量
-  /// 一条估算，7 天约 28~42 条；再多一个提前量就会翻倍并逼近上限。
+  /// iOS 系统单个应用待投递本地通知上限为 64 条。按常规日课程量（4~6 节）与单提醒量估算，
+  /// 7 天周期约占用 28~42 条配额；配置多个提前量时将成倍增加配额消耗并接近系统上限。
   static const int defaultWindowDays = 7;
 
-  /// iOS 待投递上限，`ReminderPlanBuilder` 据此裁剪。
+  /// iOS 系统待投递通知上限配额，ReminderPlanBuilder 据此执行截断。
   static const int iosPendingNotificationLimit = 64;
 
-  /// 规范化后的提前量：去重、只保留正数、升序。
+  /// 归一化后的提前时间列表：过滤非正数、去重并升序排列。
   List<int> get normalizedLeadMinutes {
     final set = <int>{};
     for (final lead in leadMinutes) {
@@ -239,7 +239,7 @@ class ReminderSettings {
     return list;
   }
 
-  /// [time] 是否落在免打扰时段内。支持跨午夜（如 22:00–07:00）。
+  /// 判定指定时间 [time] 是否处于免打扰区间内，支持跨午夜时段判定（例如 22:00 至次日 07:00）。
   bool isQuiet(TimeOfDay time) {
     final start = quietStart;
     final end = quietEnd;
@@ -253,10 +253,10 @@ class ReminderSettings {
   }
 }
 
-/// `yyyy-MM-ddTHH:mm:ss±HH:MM`。
+/// 格式化为携带时区偏移的 ISO 8601 时间字符串（`yyyy-MM-ddTHH:mm:ss±HH:MM`）。
 ///
-/// 刻意不用 `DateTime.toIso8601String()`：它对本地时间不写偏移量，原生侧解析时
-/// 会按设备当前时区重新解释，跨时区场景下产生偏移。这里显式带上偏移。
+/// 不使用 [DateTime.toIso8601String] 是由于其对本地时间省略时区偏移，
+/// 原生端解析时可能因时区推断不一致产生偏差。此处显式序列化时区偏移量。
 String _iso8601Local(DateTime time) {
   final local = time.isUtc ? time.toLocal() : time;
   final offset = local.timeZoneOffset;
@@ -279,7 +279,7 @@ DateTime? _parseDate(Object? value) {
   return DateTime.tryParse(text)?.toLocal();
 }
 
-/// 从 channel 载荷解析触发时刻：优先 epoch 毫秒，回退 ISO 串。
+/// 从通道载荷解析触发时间戳：优先读取 epoch 毫秒，缺失时回退解析 ISO 8601 字符串。
 DateTime? _parseFireAt(Map<String, Object?> json) {
   final millis = json['fireAtMillis'];
   if (millis is num) {
@@ -288,10 +288,10 @@ DateTime? _parseFireAt(Map<String, Object?> json) {
   return _parseDate(json['fireAt']);
 }
 
-/// 计划内容的稳定哈希（FNV-1a 32 位）。
+/// 计算计划内容的确定性哈希（32 位 FNV-1a）。
 ///
-/// 不用 `Object.hashCode`：它在不同进程/运行间不保证一致，而原生侧要用这个值
-/// 判断「计划是否变化」，跨进程不稳定会让短路判断失效。
+/// 不使用 [Object.hashCode] 是因为其不具备跨进程与跨运行时的持久一致性。
+/// 原生端依赖此哈希对比计划是否变更以执行短路逻辑，需保证一致的哈希输出。
 String planContentHash(List<ReminderItem> reminders) {
   const int offsetBasis = 0x811c9dc5;
   const int prime = 0x01000193;
@@ -301,8 +301,7 @@ String planContentHash(List<ReminderItem> reminders) {
       hash ^= unit;
       hash = (hash * prime) & 0xFFFFFFFF;
     }
-    // 字段之间必须补分隔符：否则 id='ab'+title='c' 与 id='a'+title='bc'
-    // 会混出同一串字节，两个内容不同的计划被判成同一个，原生侧直接短路。
+    // 字段间插入定界符，避免相邻字段边界重叠产生哈希碰撞（如 id='ab'+title='c' 与 id='a'+title='bc'）。
     hash ^= 0x1f;
     hash = (hash * prime) & 0xFFFFFFFF;
   }
@@ -314,7 +313,7 @@ String planContentHash(List<ReminderItem> reminders) {
     mix(item.title);
     mix(item.body);
     mix(item.collapseKey);
-    // 条目之间用另一个分隔符，避免 ['a',''] 与 ['a'] 混淆。
+    // 条目间插入终止符，避免条目边界混淆（如空字段引起的边界歧义）。
     mix('\u0000');
   }
   return hash.toRadixString(16).padLeft(8, '0');
