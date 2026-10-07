@@ -10,7 +10,6 @@ import io.github.the_brotherhood_of_scu.bugaoshan.channels.DynamicIconHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.IcsImportHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.NotificationPermissionHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.WidgetPinHandler
-import io.github.the_brotherhood_of_scu.bugaoshan.reminder.ReminderChannel
 import io.github.the_brotherhood_of_scu.bugaoshan.update.DownloadNotificationService
 import io.github.the_brotherhood_of_scu.bugaoshan.update.DownloadNotificationServiceHolder
 import io.github.the_brotherhood_of_scu.bugaoshan.widget.WidgetAlarmManager
@@ -33,7 +32,6 @@ class MainActivity : FlutterActivity() {
     private lateinit var batteryOptimization: BatteryOptimizationHandler
     private lateinit var apkInstaller: ApkInstaller
     private lateinit var widgetPin: WidgetPinHandler
-    private lateinit var reminderChannel: ReminderChannel
     private var downloadNotification: DownloadNotificationService? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -59,10 +57,6 @@ class MainActivity : FlutterActivity() {
         registerUpdateChannel(flutterEngine)
         registerDownloadCancelEventChannel(flutterEngine)
         registerDynamicIconChannel(flutterEngine)
-
-        // Local reminder channel
-        reminderChannel = ReminderChannel(this)
-        reminderChannel.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onDestroy() {
@@ -80,9 +74,6 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         notificationPermission.consumePermissionResult(requestCode, grantResults)
-        if (::reminderChannel.isInitialized) {
-            reminderChannel.consumePermissionResult(requestCode, grantResults)
-        }
     }
 
     /** `bugaoshan/update` — 多功能 channel:APK 安装、widget 更新、ICS 导入、widget pin、电池优化、下载通知。 */
