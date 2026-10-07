@@ -251,9 +251,15 @@ void main() {
       await service.start();
       final before = transport.synced.length;
 
-      await courseProvider.addCourse(course(name: '大学物理', dayOfWeek: 3));
-      // 去抖为 0，让监听器排下的定时器跑完
+      // 刻意避开「今天就是周三」的干扰：周三 08:45 的提醒在当天下课后
+      // 就会被 isAfter(now) 排除，而下周三又超出 7 天窗口——这条用例曾在
+      // 周三下午起持续失败，原因正是断言依赖了当天时钟。
+      await courseProvider.addCourse(course(name: '大学物理', dayOfWeek: 5));
+      // 去抖为 0 时监听器排下 Timer(Duration.zero)，但 _runOnce 内部还有
+      // 若干 await；多泵几轮，不依赖「一次让出恰好跑完」的时序假设。
+      await pumpEventQueue();
       await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
 
       expect(transport.synced.length, greaterThan(before));
     });
