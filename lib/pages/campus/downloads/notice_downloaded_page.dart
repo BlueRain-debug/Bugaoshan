@@ -1,4 +1,6 @@
+import 'package:bugaoshan/utils/open_link.dart';
 import 'dart:async';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'dart:io';
 
 import 'package:bugaoshan/injection/injector.dart';
@@ -7,9 +9,7 @@ import 'package:bugaoshan/services/download_manager.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
@@ -132,23 +132,27 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
   /// 改为复制绝对路径，用户可自行到文件管理器/ADB 取。
   Future<void> _openFolder() async {
     final l10n = AppLocalizations.of(context)!;
-    final dir = await _attachmentsDir(_currentDir);
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-
-    if (Platform.isAndroid) {
-      await Clipboard.setData(ClipboardData(text: dir.path));
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(dir.path)));
-      return;
-    }
-
     try {
-      await launchUrl(Uri.file(dir.path));
-    } catch (e) {
+      final dir = await _attachmentsDir(_currentDir);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      if (Platform.isAndroid) {
+        await Clipboard.setData(ClipboardData(text: dir.path));
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(dir.path)));
+        return;
+      }
+      await openUri(Uri.file(dir.path));
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        'NoticeDownloadedPage',
+        '_openFolder 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -405,7 +409,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  void _openFile(File file) => OpenFilex.open(file.path);
+  void _openFile(File file) => openDownloadedFile(file.path);
 
   void _shareFile(File file) => shareSingleFile(file.path, context: context);
 
