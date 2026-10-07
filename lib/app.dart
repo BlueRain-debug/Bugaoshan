@@ -11,6 +11,7 @@ import 'package:bugaoshan/pages/wizard/eula_gate_page.dart';
 import 'package:bugaoshan/pages/wizard/wizard_page.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/services/background_cache_service.dart';
+import 'package:bugaoshan/services/reminder/live_activity_coordinator.dart';
 import 'package:bugaoshan/services/reminder/reminder_service.dart';
 import 'package:bugaoshan/theme.dart';
 import 'package:bugaoshan/widgets/common/session_expired_listener.dart';
@@ -58,8 +59,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // 就已完成注册，此时 `getIt<ReminderService>()` 会抛
     // `StateError: ReminderService is not ready yet`。启动瞬间的 resumed 回调
     // （例如从后台冷启动）正好落在这个窗口里。
-    if (!getIt.isReadySync<ReminderService>()) return;
-    unawaited(getIt<ReminderService>().reschedule());
+    if (getIt.isReadySync<ReminderService>()) {
+      unawaited(getIt<ReminderService>().reschedule());
+    }
+    // Live Activity 只能在前台开启，前台恢复是它最重要的触发时机；课间切到
+    // 下一节课也靠这一次对账补上。
+    if (getIt.isReadySync<LiveActivityCoordinator>()) {
+      unawaited(getIt<LiveActivityCoordinator>().tick());
+    }
   }
 
   @override

@@ -53,6 +53,7 @@ import 'package:bugaoshan/services/background_cache_service.dart';
 import 'package:bugaoshan/services/database_service.dart';
 import 'package:bugaoshan/services/download_manager.dart';
 import 'package:bugaoshan/services/exit_service.dart';
+import 'package:bugaoshan/services/reminder/live_activity_coordinator.dart';
 import 'package:bugaoshan/services/reminder/reminder_service.dart';
 import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:bugaoshan/services/update_service.dart';
@@ -433,6 +434,19 @@ void _configureAsyncDependencies() {
     );
     await service.start();
     return service;
+  });
+
+  // Live Activity（灵动岛）协调器。仅在 iOS 上真的会下发：其他平台的
+  // LiveActivityService 会把能力探测收敛成 false，协调器随即停用。
+  // 不在这里 await start()：它要读课表，而课表在冷启动时可能还没加载完，
+  // 阻塞启动只是把等待换了个位置，协调器自己会随课表变更重算。
+  getIt.registerSingletonAsync<LiveActivityCoordinator>(() async {
+    await getIt.isReady<CourseProvider>();
+    final coordinator = LiveActivityCoordinator(
+      courseProvider: getIt<CourseProvider>(),
+    );
+    unawaited(coordinator.start());
+    return coordinator;
   });
 
   // ── Logout cleanup listener ──────────────────────────────────────
