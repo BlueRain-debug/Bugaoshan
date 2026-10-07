@@ -19,4 +19,7 @@
     <string name="download_notification_channel_name">Bugaoshan downloads</string>
     <string name="download_notification_channel_desc">App update download progress</string>
     <string name="download_notification_cancel">Cancel</string>
+    <!-- 课程提醒通知 -->
+    <string name="reminder_notification_channel_name">Course Reminders</string>
+    <string name="reminder_notification_channel_desc">Reminders before class starts</string>
 </resources>
