@@ -11,6 +11,7 @@ import WidgetKit
     private let eventStore = EKEventStore()
     private let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan"
     private let reminderChannel = ReminderChannel()
+    private let liveActivityChannel = LiveActivityChannel()
 
     override func application(
         _ application: UIApplication,
@@ -40,6 +41,7 @@ import WidgetKit
         let messenger = engineBridge.applicationRegistrar.messenger()
         registerBugaoshanMethodChannel(messenger: messenger)
         reminderChannel.register(messenger: messenger)
+        liveActivityChannel.register(messenger: messenger)
     }
 
     private func registerBugaoshanMethodChannel(messenger: FlutterBinaryMessenger) {
