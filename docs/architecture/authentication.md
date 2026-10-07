@@ -499,23 +499,14 @@ L3 ScuAuth
   身份标识覆盖 camelCase、snake_case 与中文「学号」标签三种写法，
   但**不**脱敏 `account` / `id` / `sid` 等语义模糊的键——过度脱敏会抹掉排障信息。
 - 仅 debug 构建同步输出控制台日志。
-- **文件落盘为可选项，当前默认关闭**：开启后 warn / error 写入
-  `<getLogBaseDir()>/Bugaoshan/logs/`，按 2 MB × 3 份自动轮转；
-  debug / info 仅在内存。关闭时同时删除既有日志文件。
-  开发者页面可查看、过滤、清空和导出脱敏日志，自动落盘的文件与手动导出
-  位于同一目录，「打开文件夹」可一次看全。
-- **已知缺陷**：轮转在同步突发写入下会丢条目（`log()` 同步而 `_rotate()` 异步，
-  实测 400 条紧凑写入仅落盘 30 条），而崩溃现场正是日志最密集的时刻。
-  修法是改为单写入队列并经真机验证，故在此之前默认不开启。
-- 全局异常由 `lib/utils/app_error_reporter.dart` 的 `setupGlobalErrorHandlers()` 接管，
-  在 `main()` 中 binding 就绪后立即安装，覆盖 `FlutterError.onError`、
-  `PlatformDispatcher.instance.onError` 与 isolate 错误监听。
-  `PlatformDispatcher` 处理器返回 `true` 以免引擎直接杀进程——进程被杀则内存日志随之消失。
-  启动失败亦经 `AppLog.e('Startup', …)` 记录（此前仅 `debugPrint`，release 包不可见）。
+- **文件落盘默认开启**：warn / error 写入 `<getLogBaseDir()>/Bugaoshan/logs/`，按 2 MB × 3 份自动轮转；debug / info 仅在内存。设置页与开发者页面共用落盘开关。
+- 日志由单个异步写入队列串行落盘，避免同步记录与异步轮转争抢文件。队列有容量上限，溢出计入 `droppedWriteLines`。
+- 开发者页面可查看、过滤、清空和导出脱敏日志；导出快照与自动落盘文件位于同一目录，关闭落盘开关只删除轮转文件，保留手动导出的快照。
+- 全局异常由 [`setupGlobalErrorHandlers()`](../../lib/utils/app_error_reporter.dart) 接管，在 binding 就绪后立即安装，覆盖框架异常、未捕获异步异常与当前 isolate 的错误监听，保留此前的处理器。启动失败亦经 `AppLog.e` 记录。
 
-「清除所有数据」按钮会同时删除落盘日志文件，与隐私政策 / EULA 的说明一致。
+认证记录使用 `authentication` 分类，业务记录使用 `business` 分类；异常和堆栈也在存储前脱敏。两类共享缓冲以保留请求与认证恢复的时间顺序。错误覆盖与查看方式见[运行日志架构](logging.md)。
 
-新增日志时仍应避免主动拼入敏感值。脱敏器是最后一道保护，不是记录凭据的许可。
+「清除所有数据」会删除落盘日志文件，与隐私政策 / EULA 的说明一致。新增日志时仍应避免主动拼入敏感值。脱敏器是最后一道保护，不是记录凭据的许可。
 
 ## 13. 依赖注入与生命周期
 
