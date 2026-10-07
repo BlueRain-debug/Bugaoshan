@@ -29,7 +29,7 @@ class LogTile extends StatelessWidget {
                 last.tag,
               );
         return ListTile(
-          leading: const Icon(Icons.key),
+          leading: const Icon(Icons.receipt_long),
           title: Text(localizations.viewAppLog),
           subtitle: Text(
             subtitle,

@@ -1,16 +1,16 @@
 import 'package:bugaoshan/injection/injector.dart';
-import 'package:bugaoshan/pages/dev/auth_log/auth_log_viewer_page.dart';
+import 'package:bugaoshan/pages/dev/logs/log_viewer_page.dart';
 import 'package:bugaoshan/utils/app_log.dart';
-import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  late AuthLogger logger;
+  late AppLogger logger;
   setUp(() async {
     await getIt.reset();
-    logger = AuthLogger();
-    getIt.registerSingleton<AuthLogger>(logger);
+    logger = AppLogger();
+    getIt.registerSingleton<AppLogger>(logger);
   });
   tearDown(() async => getIt.reset());
 
@@ -23,7 +23,7 @@ void main() {
       error: StateError('失败详情'),
       stackTrace: StackTrace.fromString('test stack'),
     );
-    await tester.pumpWidget(const MaterialApp(home: AuthLogViewerPage()));
+    await tester.pumpWidget(const MaterialApp(home: LogViewerPage()));
     await tester.tap(find.text('业务错误'));
     await tester.pump();
     expect(find.text('业务失败'), findsOneWidget);
@@ -39,7 +39,7 @@ void main() {
   });
 
   testWidgets('新 tag 实时更新，缓冲清空不会造成下拉框异常', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: AuthLogViewerPage()));
+    await tester.pumpWidget(const MaterialApp(home: LogViewerPage()));
     AppLog.e('NewTag', '新错误');
     await tester.pump();
     expect(find.text('新错误'), findsOneWidget);

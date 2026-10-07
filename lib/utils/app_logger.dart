@@ -115,19 +115,19 @@ class LogEntry {
 /// 防止日志被分享到 issue 或支持工单时泄露凭据。
 class LogRedactor {
   static final RegExp _accessTokenJson = RegExp(
-    r'("(?:access_?token|refresh_?token|token(?:key)?|cookie|authorization|userinfo|ticket)"\s*:\s*)"[^"]*"',
+    r'("(?:access_?token|refresh_?token|reset_?token|sToken|token(?:key)?|cookie|authorization|userinfo|ticket|jsessionid|sessionid)"\s*:\s*)"[^"]*"',
     caseSensitive: false,
   );
   static final RegExp _passwordJson = RegExp(
-    r'("password"\s*:\s*)"[^"]*"',
+    r'("(?:password|pwd|new_?password|confirm_?password)"\s*:\s*)"[^"]*"',
     caseSensitive: false,
   );
   static final RegExp _bearerHeader = RegExp(
-    r'(Bearer\s+)[A-Za-z0-9._\-]+',
+    r'''(Bearer\s+)[^\s,"']+''',
     caseSensitive: false,
   );
   static final RegExp _oauthCode = RegExp(
-    r'([?&](?:code|access_?token|refresh_?token|token(?:key)?|password|userinfo|ticket)=)([^&\s"]+)',
+    r'([?&](?:code|access_?token|refresh_?token|reset_?token|sToken|token(?:key)?|password|pwd|userinfo|ticket|jsessionid|sessionid)=)([^&\s"]+)',
     caseSensitive: false,
   );
 
@@ -142,7 +142,7 @@ class LogRedactor {
   /// 这两个由 [_bearerHeader] 等专门规则处理，若在此一并匹配会先吃掉
   /// `Authorization: Bearer xxx` 的前缀，导致 Bearer 规则失效。
   static final RegExp _credentialLabel = RegExp(
-    r"""\b((?:access_?token|refresh_?token|token(?:key)?|password|passwd|pwd|secret)\s*[=:]\s*)([^\s,;"'\]\}]+)""",
+    r"""\b((?:access_?token|refresh_?token|reset_?token|sToken|token(?:key)?|ticket|password|passwd|pwd|new_?password|confirm_?password|secret)\s*[=:]\s*)([^\s,;"'\]\}]+)""",
     caseSensitive: false,
   );
   static final RegExp _principalLabel = RegExp(
@@ -385,7 +385,13 @@ class AppLogger extends ChangeNotifier {
       tag: tag,
       message: LogRedactor.apply(message),
       category: category,
-      error: error == null ? null : LogRedactor.apply(error.toString()),
+      error: error == null
+          ? null
+          : LogRedactor.apply(
+              error is FormatException
+                  ? 'FormatException: ${error.message} (offset=${error.offset})'
+                  : error.toString(),
+            ),
       stackTrace: stackTrace == null
           ? null
           : LogRedactor.apply(stackTrace.toString()),
@@ -425,12 +431,58 @@ class AppLogger extends ChangeNotifier {
   ///
   /// [w] / [e] 接受 [error] 与 [stackTrace]——排障时最常被记录的就是这两项，
   /// 让它们成为一等参数比让每个 catch 块自己拼字符串更可靠。
-  void d(String tag, String message) => log(LogLevel.debug, tag, message);
-  void i(String tag, String message) => log(LogLevel.info, tag, message);
-  void w(String tag, String message, {Object? error, Object? stackTrace}) =>
-      log(LogLevel.warn, tag, message, error: error, stackTrace: stackTrace);
-  void e(String tag, String message, {Object? error, Object? stackTrace}) =>
-      log(LogLevel.error, tag, message, error: error, stackTrace: stackTrace);
+  void d(
+    String tag,
+    String message, {
+    LogCategory category = LogCategory.authentication,
+  }) => log(LogLevel.debug, tag, message, category: category);
+  void i(
+    String tag,
+    String message, {
+    LogCategory category = LogCategory.authentication,
+  }) => log(LogLevel.info, tag, message, category: category);
+  void w(
+    String tag,
+    String message, {
+    Object? error,
+    Object? stackTrace,
+    LogCategory category = LogCategory.authentication,
+  }) => log(
+    LogLevel.warn,
+    tag,
+    message,
+    error: error,
+    stackTrace: stackTrace,
+    category: category,
+  );
+  void e(
+    String tag,
+    String message, {
+    Object? error,
+    Object? stackTrace,
+    LogCategory category = LogCategory.authentication,
+  }) => log(
+    LogLevel.error,
+    tag,
+    message,
+    error: error,
+    stackTrace: stackTrace,
+    category: category,
+  );
+
+  /// 记录认证操作的最终异常，并保留原异常传播。
+  Future<T> guard<T>(
+    String tag,
+    String operation,
+    Future<T> Function() action,
+  ) async {
+    try {
+      return await action();
+    } catch (error, stackTrace) {
+      e(tag, '$operation 失败', error: error, stackTrace: stackTrace);
+      rethrow;
+    }
+  }
 
   /// 清空当前缓冲（不影响文件落盘的历史记录）。
   void clear() {
@@ -480,7 +532,13 @@ class AppLogger extends ChangeNotifier {
       // 误以为日志已被保留，而崩溃现场恰恰因此丢失。
       _fileSinkHealthy = false;
       _fileSinkError = err.toString();
-      w('AppLogger', '开启日志落盘失败', error: err, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '开启日志落盘失败',
+        error: err,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
       _notify();
       if (kDebugMode) {
         // ignore: avoid_print
@@ -532,7 +590,13 @@ class AppLogger extends ChangeNotifier {
       if (_closingSink) return;
       _fileSinkHealthy = false;
       _fileSinkError = error.toString();
-      w('AppLogger', '日志文件写入失败', error: error, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '日志文件写入失败',
+        error: error,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
       _recoverSink(error);
     });
   }
@@ -580,7 +644,13 @@ class AppLogger extends ChangeNotifier {
       // 目录可能仍不可写（磁盘满时不缺权限，缺的是空间）；
       // 保留 unhealthy 状态，下一条日志会再次触发恢复尝试。
       _fileSinkHealthy = false;
-      w('AppLogger', '重建日志文件失败', error: err, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '重建日志文件失败',
+        error: err,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
     }
   }
 
@@ -645,7 +715,13 @@ class AppLogger extends ChangeNotifier {
     } catch (err, stackTrace) {
       // 写盘失败（如磁盘满）在此暴露；注意 IOSink 的异步错误另由
       // [_watchSinkFailure] 兜住，两条路径都要留痕，不能只在 debug 打印。
-      w('AppLogger', '日志落盘失败', error: err, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '日志落盘失败',
+        error: err,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
       if (kDebugMode) {
         // ignore: avoid_print
         print('AppLogger: drain failed: $err');
@@ -806,12 +882,24 @@ class AppLogger extends ChangeNotifier {
     try {
       await sink?.flush();
     } catch (err, stackTrace) {
-      w('AppLogger', '刷新日志文件失败', error: err, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '刷新日志文件失败',
+        error: err,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
     }
     try {
       await sink?.close();
     } catch (err, stackTrace) {
-      w('AppLogger', '关闭日志文件失败', error: err, stackTrace: stackTrace);
+      e(
+        'AppLogger',
+        '关闭日志文件失败',
+        error: err,
+        stackTrace: stackTrace,
+        category: LogCategory.business,
+      );
     }
     _closingSink = false;
     _fileSink = null;

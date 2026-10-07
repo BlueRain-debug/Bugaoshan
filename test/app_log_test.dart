@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/injection/injector.dart';
@@ -54,6 +56,49 @@ void main() {
     expect(logger.entries.single.message, '加载 失败');
   });
 
+  test('解析异常不导出原响应正文', () {
+    final logger = AppLogger();
+    logger.e(
+      'Parse',
+      '解析失败',
+      error: const FormatException(
+        'invalid JSON',
+        'private response payload',
+        3,
+      ),
+    );
+    expect(logger.exportToText(), contains('invalid JSON'));
+    expect(logger.exportToText(), isNot(contains('private response payload')));
+  });
+
+  test('无法开启文件输出时错误仍记录到内存', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'bugaoshan-logger-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = await File(
+      '${directory.path}/not-a-directory',
+    ).writeAsString('test');
+    final logger = AppLogger();
+    await logger.enableFileSink(overridePath: file.path);
+    expect(logger.fileSinkEnabled, isFalse);
+    expect(logger.entries.single.category, LogCategory.business);
+    expect(logger.entries.single.level, LogLevel.error);
+    expect(logger.entries.single.stackTrace, isNotEmpty);
+    logger.dispose();
+  });
+
+  test('认证操作 guard 记录后保持原异常传播', () async {
+    final logger = AppLogger();
+    final failure = StateError('login failed');
+    await expectLater(
+      logger.guard<void>('Auth', '登录', () async => throw failure),
+      throwsA(same(failure)),
+    );
+    expect(logger.entries.single.category, LogCategory.authentication);
+    expect(logger.entries.single.stackTrace, isNotEmpty);
+  });
+
   test('早期日志可被 DI 沿用，缓冲区按容量淘汰旧记录', () {
     AppLog.bootstrapLogger.clear();
     AppLog.e('Startup', 'early failure');
@@ -65,5 +110,48 @@ void main() {
     logger.i('Test', '2');
     logger.i('Test', '3');
     expect(logger.entries.map((entry) => entry.message), ['2', '3']);
+  });
+
+  group('LogRedactor', () {
+    test('脱敏日志中的账号和用户标识', () {
+      final redacted = LogRedactor.apply(
+        'login user=202612345678 userId=ccyl-user-42 username=alice',
+      );
+
+      expect(redacted, isNot(contains('202612345678')));
+      expect(redacted, isNot(contains('ccyl-user-42')));
+      expect(redacted, isNot(contains('alice')));
+      expect(redacted, contains('user=<redacted>'));
+      expect(redacted, contains('userId=<redacted>'));
+      expect(redacted, contains('username=<redacted>'));
+    });
+
+    test('保留原有凭据脱敏行为', () {
+      final redacted = LogRedactor.apply(
+        'Authorization: Bearer secret.token "password":"plain"',
+      );
+
+      expect(redacted, contains('Bearer <redacted>'));
+      expect(redacted, contains('"password":"<redacted>"'));
+      expect(redacted, isNot(contains('secret.token')));
+      expect(redacted, isNot(contains('plain')));
+    });
+
+    test('脱敏重置凭据、会话参数和非 JWT Bearer token', () {
+      final redacted = LogRedactor.apply(
+        'https://example.test/?sToken=reset-secret&jsessionid=session-secret '
+        'Authorization: Bearer opaque+token/with=padding '
+        '"newPassword":"new-secret" token=raw-secret',
+      );
+      for (final secret in [
+        'reset-secret',
+        'session-secret',
+        'opaque+token/with=padding',
+        'new-secret',
+        'raw-secret',
+      ]) {
+        expect(redacted, isNot(contains(secret)));
+      }
+    });
   });
 }

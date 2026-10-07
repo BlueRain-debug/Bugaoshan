@@ -20,9 +20,7 @@ Future<void> main() async {
     await _initializeApp();
     runApp(MyApp());
   } catch (error, stackTrace) {
-    AppLog.e('Startup', formatExceptionForLog(error, stackTrace));
-    // release 包里 debugPrint 不输出，此处若不落盘则崩溃现场无处可查。
-    debugPrint('Startup error: $error\n$stackTrace');
+    AppLog.e('Startup', '应用启动失败', error: error, stackTrace: stackTrace);
     runApp(StartupErrorApp(errorMessage: stackTrace.toString()));
   }
 }

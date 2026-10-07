@@ -1,16 +1,14 @@
-import 'dart:ui';
-
 import 'package:bugaoshan/injection/injector.dart';
-import 'package:bugaoshan/utils/app_error_handlers.dart';
-import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/app_error_reporter.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('全局记录框架和异步异常，同时保留原有处理器', () async {
     await getIt.reset();
-    final logger = AuthLogger();
-    getIt.registerSingleton<AuthLogger>(logger);
+    final logger = AppLogger();
+    getIt.registerSingleton<AppLogger>(logger);
     final flutterHandler = FlutterError.onError;
     final asyncHandler = PlatformDispatcher.instance.onError;
     var flutterCalls = 0;
@@ -25,7 +23,7 @@ void main() {
       asyncCalls++;
       return true;
     };
-    AppErrorHandlers.install();
+    setupGlobalErrorHandlers();
     FlutterError.onError!(
       FlutterErrorDetails(
         exception: StateError('framework'),
@@ -41,11 +39,13 @@ void main() {
     );
     expect(flutterCalls, 1);
     expect(asyncCalls, 1);
-    expect(logger.entries.map((entry) => entry.tag), ['Flutter', 'Async']);
+    expect(logger.entries.map((entry) => entry.tag), [
+      'FlutterError',
+      'PlatformDispatcher',
+    ]);
     expect(
       logger.entries.every(
-        (entry) =>
-            entry.level == AuthLogLevel.error && entry.stackTrace != null,
+        (entry) => entry.level == LogLevel.error && entry.stackTrace != null,
       ),
       isTrue,
     );
