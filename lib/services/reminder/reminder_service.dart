@@ -61,8 +61,8 @@ class ReminderService {
 
   /// 注册数据源监听并触发初始排期同步。
   ///
-  /// 注册期间若课表数据处于异步加载中，初始流程将先同步空计划；
-  /// 课表加载完成后触发监听回调更新 `planId` 并同步完整排期，实现自协调的时序同步。
+  /// 注册时课表可能仍在异步加载：首轮同步的是一份空计划，待课表加载完成后再由
+  /// 监听回调触发一次，补齐完整排期。因此这里无需等待数据就绪。
   Future<void> start() async {
     if (_disposed) return;
     _courseProvider.courses.addListener(_onSourceChanged);
@@ -78,7 +78,7 @@ class ReminderService {
     await reschedule(force: true);
   }
 
-  /// 释放服务资源并解绑监听。具备幂等性，避免对已释放的 Notifier 执行重复销毁。
+  /// 释放服务资源并解绑监听。重复调用无副作用。
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -103,7 +103,8 @@ class ReminderService {
     unawaited(reschedule());
   }
 
-  /// 重新计算并同步排期计划。执行过程具备单飞互斥机制，期间到达的请求将在当前任务完成后合并补跑。
+  /// 重新计算并同步排期计划。同一时刻只允许一次同步在执行，期间到达的请求
+  /// 不排队、只标记，待当前同步结束后合并为一次补跑。
   Future<void> reschedule({bool force = false}) async {
     if (_disposed) return;
     _debounceTimer?.cancel();

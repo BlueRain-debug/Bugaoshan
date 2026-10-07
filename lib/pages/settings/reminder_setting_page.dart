@@ -63,7 +63,8 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   }
 
   Future<void> _refreshStatus() async {
-    // 强制执行同步以确保排期任务立即落盘，防止直接查询 pendingCount 时读取到上一批次的旧数据。
+    // 先强制重排再查询：否则 pendingCount 读到的是上一轮同步的结果，
+    // 用户刚改完设置、返回本页时看到的仍是改动前的状态。
     await _service.reschedule(force: true);
     final status = await _service.permissionStatus();
     final pending = await _service.pendingCount();
