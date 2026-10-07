@@ -144,6 +144,10 @@ final class ReminderChannel: NSObject {
       let content = UNMutableNotificationContent()
       content.title = (reminder["title"] as? String) ?? ""
       content.body = (reminder["body"] as? String) ?? ""
+      // 授权时请求了 [.alert, .sound, .badge]，但通知内容不显式带 sound 就是静默
+      // 投递——锁屏上有横幅、不发声、不震动。课前提醒靠的就是这一下提示音，
+      // 静默投递等于功能失效。
+      content.sound = .default
       // 同一天同一门课的多条提前量提醒归入同一线程，锁屏上折叠展示。
       let collapseKey = reminder["collapseKey"] as? String
       if let collapseKey, !collapseKey.isEmpty {

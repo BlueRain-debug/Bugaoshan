@@ -56,6 +56,10 @@ class RecordingTransport implements ReminderTransport {
 
   @override
   Future<bool> openNotificationSettings() async => !unavailable;
+
+  /// 默认不限条数，需要验证裁剪的用例自行设置。
+  @override
+  int? pendingLimit;
 }
 
 /// 内存版课表数据源。
@@ -314,6 +318,70 @@ void main() {
 
       expect(transport.synced, isEmpty);
       expect(transport.cancelAllCount, 0);
+    });
+
+    test('fireProbe 不撤销既有课表提醒', () async {
+      await setUpService();
+      await service.reschedule(force: true);
+      final before = transport.synced.last;
+
+      await service.fireProbe(title: '探针', body: '15 秒后');
+
+      // 下发是全量替换：探针计划若只含探针一条，课表提醒会被原生按前缀全部撤销，
+      // 用户点一次探针就丢掉接下来一周的课前提醒。
+      final probePlan = transport.synced.last;
+      expect(
+        probePlan.reminders.where((r) => r.id.startsWith('probe:')),
+        hasLength(1),
+      );
+      // 与 before 比对时排除已过期的条目：`fireProbe` 用真实时钟重建计划，
+      // 而 before 是同一秒内算出的，两者对「已过期」的判定应当一致。
+      final stillUpcoming = before.reminders.where(
+        (r) => r.fireAt.isAfter(DateTime.now()),
+      );
+      expect(
+        probePlan.reminders
+            .where((r) => !r.id.startsWith('probe:'))
+            .map((r) => r.id),
+        containsAll(stillUpcoming.map((r) => r.id)),
+      );
+    });
+
+    test('fireProbe 之后重排不会被短路键挡住', () async {
+      await setUpService();
+      await service.reschedule(force: true);
+      await service.fireProbe(title: '探针', body: '15 秒后');
+      final afterProbe = transport.synced.length;
+
+      // 探针计划与真实计划的 planId 不同，若沿用旧的短路键，这一次重排会被判成
+      // 「计划没变」而跳过，探针一旦被下一轮重排挤掉就再也补不回来。
+      await service.reschedule(force: true);
+
+      expect(transport.synced, hasLength(afterProbe + 1));
+      expect(
+        transport.synced.last.reminders.where((r) => r.id.startsWith('probe:')),
+        isEmpty,
+      );
+    });
+
+    test('平台上限在 Dart 侧裁剪，而不是交给系统丢', () async {
+      await setUpService();
+      // 周二到周日各排一门：无论今天星期几，7 天窗口内都必然有多条提醒，
+      // 用例因此不依赖执行日期。
+      for (var weekday = 2; weekday <= 7; weekday++) {
+        await courseProvider.addCourse(
+          course(name: '课$weekday', dayOfWeek: weekday),
+        );
+      }
+      transport.pendingLimit = 3;
+
+      await service.reschedule(force: true);
+
+      final plan = transport.synced.last;
+      expect(plan.reminders, hasLength(3));
+      // 被裁条数必须记进计划：否则设置页会一边显示「已排期 N 条」一边在系统里
+      // 查到更少，用户读到的两句自相矛盾。
+      expect(plan.droppedCount, greaterThan(0));
     });
   });
 

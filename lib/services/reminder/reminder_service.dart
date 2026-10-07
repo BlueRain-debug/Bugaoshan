@@ -118,6 +118,8 @@ class ReminderService {
   Future<void> _runOnce() async {
     if (_disposed) return;
     if (_inFlight) {
+      // 正在跑的那一轮结束后补跑：丢掉这次请求会让「导入课表」这类连续变更的
+      // 最后一拍永久失联。
       _needsRunAgain = true;
       return;
     }
@@ -133,6 +135,13 @@ class ReminderService {
     }
   }
 
+  /// 释放本对象的生命周期内不允许重入的写入。
+  ///
+  /// [dispose] 可能在一次 `await` 期间发生，此时 `_runOnce` 的 `finally` 已无法
+  /// 阻止循环（`_disposed` 已为 true，但当前这一轮还在跑），`_pushOnce` 恢复执行后
+  /// 会往已 dispose 的 ValueNotifier 上写并抛 `was used after being disposed`。
+  bool get _canWrite => !_disposed;
+
   Future<void> _pushOnce() async {
     final plan = buildPlan(now: DateTime.now());
 
@@ -140,10 +149,12 @@ class ReminderService {
     if (!_appConfig.reminderEnabled.value) {
       try {
         await _transport.cancelAll();
+        if (!_canWrite) return;
         lastPlan.value = plan;
         lastError.value = null;
         _lastPushedPlanId = plan.planId;
       } catch (e, stack) {
+        if (!_canWrite) return;
         if (e is ReminderTransportUnavailable) {
           AppLog.w('ReminderService', 'cancelAll 跳过：$e');
           lastPlan.value = plan;
@@ -156,12 +167,14 @@ class ReminderService {
     }
 
     if (plan.planId == _lastPushedPlanId) {
+      if (!_canWrite) return;
       lastPlan.value = plan;
       return;
     }
 
     try {
       await _transport.syncPlan(plan);
+      if (!_canWrite) return;
       _lastPushedPlanId = plan.planId;
       lastPlan.value = plan;
       lastError.value = null;
@@ -177,6 +190,7 @@ class ReminderService {
       //
       // 「未授权」「原生尚未接线」与「真正投递失败」要分开：前两者是用户/开发期
       // 常态，记 warn 且不污染 lastError，否则设置页会对用户无能为力的原因报警。
+      if (!_canWrite) return;
       if (e is ReminderPermissionDenied) {
         AppLog.w('ReminderService', 'syncPlan 跳过：$e');
         lastPlan.value = plan;
@@ -201,6 +215,10 @@ class ReminderService {
     config: _courseProvider.scheduleConfig.value,
     settings: _appConfig.reminderSettings,
     now: now,
+    // 平台上限必须在这里就交给构建器：交给原生去丢的话，被丢的是哪几条由系统
+    // 按未定义顺序决定，`droppedCount` 也永远是 0——设置页会一边显示「已排期
+    // 70 条」一边在系统里只有 64 条。
+    maxReminders: _transport.pendingLimit,
   );
 
   /// 供设置页在用户授权后立即重排（授权状态变化不在监听列表里）。
@@ -263,31 +281,54 @@ class ReminderService {
   /// 原生未接线，四种症状都是「没有提醒」。这条探针把前两类和「确实投不出去」
   /// 区分开——它必然在几秒内触发，用户锁屏就能看到结果。
   ///
+  /// 两个必须守住的点：
+  ///
+  /// 1. **探针计划必须包含真实提醒**。下发是全量替换（I2），只发探针会把课表提醒
+  ///    全部撤销，用户点一次探针就丢掉了接下来一周的课前提醒。
+  /// 2. **必须清掉 [_lastPushedPlanId]**。真实提醒此刻已在系统里，若沿用旧的短路
+  ///    键，Dart 会认为「这份计划已经下发过」而不再重发，一旦下一轮重排把探针挤掉，
+  ///    真实提醒就再也回不来了。
+  ///
   /// 返回是否成功交给原生登记。
   Future<bool> fireProbe({
     Duration delay = const Duration(seconds: 15),
     required String title,
     required String body,
   }) async {
+    if (_disposed) return false;
     final now = DateTime.now();
-    final plan = ReminderPlan(
-      planId: 'probe-${now.millisecondsSinceEpoch}',
-      generatedAt: now,
-      windowStart: now,
-      windowEnd: now.add(delay).add(const Duration(minutes: 1)),
-      channel: ReminderPlanBuilder.defaultChannel,
-      reminders: [
-        ReminderItem(
-          id: 'probe:${now.millisecondsSinceEpoch}',
-          kind: ReminderKind.courseStart,
-          fireAt: now.add(delay),
-          title: title,
-          body: body,
-          collapseKey: 'probe',
-        ),
-      ],
+    final fireAt = now.add(delay);
+    final base = buildPlan(now: now);
+
+    final probe = ReminderItem(
+      id: 'probe:${now.millisecondsSinceEpoch}',
+      kind: ReminderKind.courseStart,
+      fireAt: fireAt,
+      title: title,
+      body: body,
+      collapseKey: 'probe',
     );
+
+    // 与 buildPlan 走同一套排序 / 截断 / 哈希规则，避免探针与真实提醒在
+    // 「谁被裁剪」上出现两套口径。
+    final plan = ReminderPlanBuilder.compose(
+      reminders: [...base.reminders, probe],
+      generatedAt: now,
+      windowStart: base.windowStart,
+      windowEnd: fireAt.isAfter(base.windowEnd) ? fireAt : base.windowEnd,
+      channel: base.channel,
+      maxReminders: _transport.pendingLimit,
+    );
+
+    // 先让路：即使下一行抛异常，下一次重排也会把真实计划重新算一遍并下发，
+    // 而不是被短路键挡住。
+    _lastPushedPlanId = null;
+
     await _transport.syncPlan(plan);
+    if (_canWrite) {
+      lastPlan.value = plan;
+      lastError.value = null;
+    }
     return true;
   }
 }

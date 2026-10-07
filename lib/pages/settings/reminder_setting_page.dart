@@ -23,7 +23,8 @@ class ReminderSettingPage extends StatefulWidget {
   State<ReminderSettingPage> createState() => _ReminderSettingPageState();
 }
 
-class _ReminderSettingPageState extends State<ReminderSettingPage> {
+class _ReminderSettingPageState extends State<ReminderSettingPage>
+    with WidgetsBindingObserver {
   final _appConfig = getIt<AppConfigProvider>();
   final _service = getIt<ReminderService>();
 
@@ -33,6 +34,13 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
   int? _pendingCount;
   bool _refreshing = false;
 
+  /// 关掉免打扰时记住的时刻，重新打开时还原。
+  ///
+  /// 不记的话「关掉又打开」会把用户设过的 22:30–06:30 悄悄换成 23:00–07:00——
+  /// 一个看起来无害、但确实改动了用户数据的开关。
+  TimeOfDay? _lastQuietStart;
+  TimeOfDay? _lastQuietEnd;
+
   /// 多选提前量的候选项。取值依据：5 分钟适合教学楼就在隔壁的场景，
   /// 60 分钟适合需要跨校区通勤的场景；中间三档覆盖大多数情况。
   static const List<int> _leadChoices = [5, 10, 15, 30, 60];
@@ -40,15 +48,30 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _lastQuietStart = _appConfig.reminderQuietStart.value;
+    _lastQuietEnd = _appConfig.reminderQuietEnd.value;
     unawaited(_refreshStatus());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 失败路径需要用户去系统设置里改，而系统设置是另一个应用：本页重新可见时
+    // 必须重查，否则用户授权完回来看到的还是那张「未授权」卡片。
+    if (state == AppLifecycleState.resumed) unawaited(_refreshStatus());
+  }
+
   Future<void> _refreshStatus() async {
+    // 排期是 debounce 后异步完成的，立刻查 pendingCount 只会拿到上一批的条数，
+    // 界面上就会出现「已排期 15 条 / 系统已登记 0 条」。给一次机会让下发先落地。
+    await _service.reschedule(force: true);
     final status = await _service.permissionStatus();
     final pending = await _service.pendingCount();
     if (!mounted) return;
@@ -129,7 +152,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
   Future<void> _refreshPlan() async {
     setState(() => _refreshing = true);
     try {
-      await _service.reschedule(force: true);
+      // _refreshStatus 内部已包含一次强制重排，不必在这里重复调用。
       await _refreshStatus();
     } finally {
       if (mounted) setState(() => _refreshing = false);
@@ -176,18 +199,18 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
   Widget _buildPermissionCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final denied = _permissionStatus == 'denied';
+    // 用中性容器 + 错误色图标/按钮，而不是 errorContainer 实底：
+    // 后者在深色主题下是一大块高饱和红，视觉重量远超它承载的信息量
+    // （这只是「还没授权」，不是出错）。
+    final accent = theme.colorScheme.error;
     return StyledCard(
-      backgroundColor: theme.colorScheme.errorContainer,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.notifications_off_outlined,
-              size: 20,
-              color: theme.colorScheme.onErrorContainer,
-            ),
+            Icon(Icons.notifications_off_outlined, size: 20, color: accent),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -197,7 +220,6 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
                     l10n.reminderPermissionTitle,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onErrorContainer,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -206,7 +228,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
                         ? l10n.reminderPermissionDeniedHint
                         : l10n.reminderPermissionNotDeterminedHint,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onErrorContainer,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -390,12 +412,26 @@ class _ReminderSettingPageState extends State<ReminderSettingPage> {
                                   ),
                                   value: enabled,
                                   onChanged: (on) {
-                                    _appConfig.reminderQuietStart.value = on
-                                        ? const TimeOfDay(hour: 23, minute: 0)
-                                        : null;
-                                    _appConfig.reminderQuietEnd.value = on
-                                        ? const TimeOfDay(hour: 7, minute: 0)
-                                        : null;
+                                    if (on) {
+                                      // 还原上次的值；首次打开时才落到默认时段。
+                                      final start =
+                                          _lastQuietStart ??
+                                          const TimeOfDay(hour: 23, minute: 0);
+                                      final end =
+                                          _lastQuietEnd ??
+                                          const TimeOfDay(hour: 7, minute: 0);
+                                      _lastQuietStart = start;
+                                      _lastQuietEnd = end;
+                                      _appConfig.reminderQuietStart.value =
+                                          start;
+                                      _appConfig.reminderQuietEnd.value = end;
+                                    } else {
+                                      _lastQuietStart = start;
+                                      _lastQuietEnd = end;
+                                      _appConfig.reminderQuietStart.value =
+                                          null;
+                                      _appConfig.reminderQuietEnd.value = null;
+                                    }
                                   },
                                 ),
                                 if (enabled) ...[

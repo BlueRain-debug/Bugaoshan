@@ -85,13 +85,12 @@ class ReminderPlanBuilder {
     final windowEnd = firstDay.add(Duration(days: settings.windowDays));
 
     if (config == null || !settings.courseReminderEnabled || courses.isEmpty) {
-      return ReminderPlan(
-        planId: _planId(const [], windowEnd, channel),
+      return compose(
+        reminders: const [],
         generatedAt: generatedAt,
         windowStart: firstDay,
         windowEnd: windowEnd,
         channel: channel,
-        reminders: const [],
       );
     }
 
@@ -158,8 +157,33 @@ class ReminderPlanBuilder {
       }
     }
 
-    final all = byId.values.toList()
+    return compose(
+      reminders: byId.values,
+      generatedAt: generatedAt,
+      windowStart: firstDay,
+      windowEnd: windowEnd,
+      channel: channel,
+      maxReminders: maxReminders,
+    );
+  }
+
+  /// 用给定的提醒集合组装计划。[build] 与本方法共用同一套
+  /// 「排序 → 截断 → 哈希」规则，因此任何进入系统的计划都满足 I2 的全量替换语义。
+  ///
+  /// 单独暴露是为了让「在既有计划上追加一条提醒」也能走同一条路径：追加后的集合
+  /// 仍以全量替换方式下发，原计划中的提醒不会被撤销。
+  static ReminderPlan compose({
+    required Iterable<ReminderItem> reminders,
+    required DateTime generatedAt,
+    required DateTime windowStart,
+    required DateTime windowEnd,
+    String channel = defaultChannel,
+    int? maxReminders,
+  }) {
+    final all = reminders.toList()
       ..sort((a, b) {
+        // 同一时刻按 id 定序：排序不稳定会让同一份内容产生不同的 planId，
+        // 每次重排都被判成「计划变了」而下发。
         final byTime = a.fireAt.compareTo(b.fireAt);
         return byTime != 0 ? byTime : a.id.compareTo(b.id);
       });
@@ -178,7 +202,7 @@ class ReminderPlanBuilder {
     return ReminderPlan(
       planId: _planId(kept, windowEnd, channel),
       generatedAt: generatedAt,
-      windowStart: firstDay,
+      windowStart: windowStart,
       windowEnd: windowEnd,
       channel: channel,
       reminders: kept,

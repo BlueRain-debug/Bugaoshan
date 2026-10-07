@@ -32,6 +32,15 @@ abstract class ReminderTransport {
   /// 用途：权限被拒后系统不再弹授权框，唯一出路是让用户自己去设置里开。
   /// 返回是否成功跳转。
   Future<bool> openNotificationSettings();
+
+  /// 平台允许的待投递条数上限，`null` 表示不限制。
+  ///
+  /// 这不是「优化」而是正确性所需：iOS / macOS 的 `UNUserNotificationCenter`
+  /// 只保留每个应用最近的 64 条待投递通知，超出部分由系统按**未定义顺序**丢弃。
+  /// 若不先把上限交给 [ReminderPlanBuilder]，被丢的是哪几条无法预料，用户看到的是
+  /// 「有的课提醒了、有的没提醒」——而 `droppedCount` 也永远是 0，排期状态面板
+  /// 会显示「已排期 70 条」而系统只收下 64 条，两句话自相矛盾。
+  int? get pendingLimit;
 }
 
 /// 跨平台的 MethodChannel 实现。
@@ -136,6 +145,15 @@ class MethodChannelReminderTransport implements ReminderTransport {
       return false;
     }
   }
+
+  /// iOS 与 macOS 共用 `UNUserNotificationCenter`，因此同受 64 条上限约束；
+  /// Android 走 `AlarmManager`，没有这条限制（其自身上限远高于本方案的排期量级）。
+  @override
+  int? get pendingLimit => switch (defaultTargetPlatform) {
+    TargetPlatform.iOS ||
+    TargetPlatform.macOS => ReminderSettings.iosPendingNotificationLimit,
+    _ => null,
+  };
 }
 
 /// 用户尚未授予通知权限。
@@ -185,6 +203,10 @@ class NoopReminderTransport implements ReminderTransport {
 
   @override
   Future<bool> openNotificationSettings() async => false;
+
+  /// 无投递能力即无上限：截断只会让 `droppedCount` 显示一个不存在的丢失量。
+  @override
+  int? get pendingLimit => null;
 }
 
 /// 按当前平台选择实现。

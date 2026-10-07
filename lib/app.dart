@@ -54,7 +54,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // 回到前台时重排：授权状态可能在系统设置里被改动，计划窗口也可能已经走完。
     // 这两件事都没有别的通知渠道，只能靠前台恢复这个时机兜住。
     if (state != AppLifecycleState.resumed) return;
-    if (!getIt.isRegistered<ReminderService>()) return;
+    // 必须判断「就绪」而不是「已注册」：`registerSingletonAsync` 在工厂函数返回前
+    // 就已完成注册，此时 `getIt<ReminderService>()` 会抛
+    // `StateError: ReminderService is not ready yet`。启动瞬间的 resumed 回调
+    // （例如从后台冷启动）正好落在这个窗口里。
+    if (!getIt.isReadySync<ReminderService>()) return;
     unawaited(getIt<ReminderService>().reschedule());
   }
 
