@@ -15,7 +15,8 @@ class LiveCourseSnapshot {
   /// 当前进行中的课程，无进行中课程时为 null。
   final Course? current;
 
-  /// 当前课程结束时刻。
+  /// 当前课程的上课时刻与下课时刻。
+  final DateTime? startAt;
   final DateTime? endAt;
 
   /// 当天后续最近的一节课程，无后续课程时为 null。
@@ -24,11 +25,20 @@ class LiveCourseSnapshot {
   /// 下一节课程开始时刻。
   final DateTime? nextStartAt;
 
+  /// 当前课程会话的稳定标识，[current] 为 null 时为 null。
+  ///
+  /// 用于判断两次解析结果是否指向同一节课。课程名不足以承担这一判断：同一天
+  /// 两节同名的课（如两节「体育」）名称相同但起止节次不同。若仅按名称比对，
+  /// 第二节不会触发状态下发，倒计时将停留在第一节的结束时刻。
+  final String? sessionKey;
+
   const LiveCourseSnapshot({
     this.current,
+    this.startAt,
     this.endAt,
     this.next,
     this.nextStartAt,
+    this.sessionKey,
   });
 
   static const LiveCourseSnapshot empty = LiveCourseSnapshot();
@@ -70,6 +80,7 @@ class LiveCourseResolver {
     if (todayCourses.isEmpty) return LiveCourseSnapshot.empty;
 
     Course? current;
+    DateTime? currentStartAt;
     DateTime? endAt;
     for (final course in todayCourses) {
       final start = _startAt(config, course, today)!;
@@ -79,6 +90,7 @@ class LiveCourseResolver {
       // 避免实时活动在下课后短暂残留为剩余 0:00 的结束倒计时。
       if (!now.isBefore(start) && now.isBefore(end)) {
         current = course;
+        currentStartAt = start;
         endAt = end;
         break;
       }
@@ -95,11 +107,29 @@ class LiveCourseResolver {
       }
     }
 
+    // 「下节」只保留在当前课程结束之后才开始的课。开始时刻落在当前课程区间内的课
+    // （课表冲突，或同一门课被录入成多条重叠记录）不构成「下节」：它与下课倒计时
+    // 互相矛盾，界面会同时显示「距下课 20 分钟」与「下一节已开始」。
+    if (current != null &&
+        nextStartAt != null &&
+        !nextStartAt.isAfter(endAt!)) {
+      next = null;
+      nextStartAt = null;
+    }
+
+    // 同一天内可能存在内容相同的多条记录（如按周段拆分录入）。以课程名与起止节次
+    // 组合成会话标识，保证同一节课的判定稳定，同时能区分起止节次不同的同名课程。
+    final sessionKey = current == null
+        ? null
+        : '${current.name}|${current.startSection}-${current.endSection}';
+
     return LiveCourseSnapshot(
       current: current,
+      startAt: currentStartAt,
       endAt: endAt,
       next: next,
       nextStartAt: nextStartAt,
+      sessionKey: sessionKey,
     );
   }
 
@@ -164,15 +194,15 @@ class LiveActivityCoordinator {
   bool _running = false;
   bool _disposed = false;
 
-  /// 当前处于活跃状态的活动课程名称。用于判断是否需要执行 update，
-  /// 避免前台恢复事件高频调用 update 产生冗余系统开销。
-  String? _activeCourseName;
+  /// 当前活跃会话的标识（[LiveCourseSnapshot.sessionKey]）。用于判断是否需要下发
+  /// 状态更新，避免前台恢复事件重复调用原生 update 产生无谓的系统开销。
+  String? _activeSessionKey;
 
   /// 当前运行环境是否可用。在非 iOS 环境或用户关闭实时活动后标记为不可用，
   /// 避免后续重复触发通道调用并输出冗余日志。
   bool _available = true;
 
-  bool get isActive => _activeCourseName != null;
+  bool get isActive => _activeSessionKey != null;
 
   /// 启动协调器调度。在非 iOS 平台时将捕获 [LiveActivityUnsupportedException] 并自动禁用后续调度。
   Future<void> start() async {
@@ -185,8 +215,8 @@ class LiveActivityCoordinator {
     }
     _courseProvider.courses.addListener(_onSourceChanged);
     _courseProvider.scheduleConfig.addListener(_onSourceChanged);
-    // 定时轮询用于在应用处于前台时兜底监测课程结束并结束活动；
-    // 课程切换与前台唤醒由各自的数据与生命周期监听覆盖。
+    // 定时轮询仅用于在应用处于前台时发现课程结束并结束活动；
+    // 课程切换由课表数据监听覆盖，应用恢复前台由生命周期监听覆盖。
     _timer = Timer.periodic(_pollInterval, (_) => unawaited(tick()));
     await tick();
   }
@@ -219,17 +249,18 @@ class LiveActivityCoordinator {
       final current = snapshot.current;
       if (current == null) {
         // 无进行中课程（课间或当日课程已结束）：结束当前会话。后续调度匹配到新课程时将重新启动。
-        if (_activeCourseName != null) await _end();
+        if (_activeSessionKey != null) await _end();
         return;
       }
 
-      if (_activeCourseName == current.name) return;
+      if (_activeSessionKey == snapshot.sessionKey) return;
 
       final next = snapshot.next;
-      if (_activeCourseName == null) {
+      if (_activeSessionKey == null) {
         await _service.start(
           courseName: current.name,
           location: current.location,
+          startAt: snapshot.startAt,
           endAt: snapshot.endAt!,
           nextCourseName: next?.name,
           nextLocation: (next?.location.isEmpty ?? true)
@@ -237,10 +268,11 @@ class LiveActivityCoordinator {
               : next!.location,
         );
       } else {
-        // 连续课程或相邻课程切换时复用既有活动会话执行 update，避免重新创建导致锁屏与灵动岛界面闪烁。
+        // 课程切换时复用既有会话下发更新，而非重建会话，避免锁屏与灵动岛界面出现闪烁。
         await _service.update(
           courseName: current.name,
           location: current.location,
+          startAt: snapshot.startAt,
           endAt: snapshot.endAt,
           nextCourseName: next?.name,
           nextLocation: (next?.location.isEmpty ?? true)
@@ -248,27 +280,28 @@ class LiveActivityCoordinator {
               : next!.location,
         );
       }
-      _activeCourseName = current.name;
+      _activeSessionKey = snapshot.sessionKey;
     } on LiveActivityUnsupportedException catch (e) {
       AppLog.d('LiveActivity', '设备不支持，停止后续尝试：$e');
       _available = false;
     } on LiveActivityNotAuthorizedException catch (e) {
-      // 用户在系统设置中禁用了实时活动权限。结束当前会话并静默处理，后续前台唤醒时可继续检测权限恢复。
+      // 用户在系统设置中关闭了实时活动权限。结束当前会话但不记为错误，
+      // 后续前台唤醒时重新检测，权限恢复后即可继续下发。
       AppLog.d('LiveActivity', '用户未开启实时活动：$e');
       await _end(swallowErrors: true);
     } on LiveActivityForegroundRequiredException catch (e) {
-      // 应用非前台活跃状态，跳过本次调度。
+      // 应用非前台活跃状态，跳过本轮调度。
       AppLog.d('LiveActivity', '非前台，跳过本轮：$e');
     } on LiveActivityNoActiveSessionException {
-      // 原生端活跃会话已不存在（如被用户手动滑动移除），重置本地状态以供后续周期重新启动。
-      _activeCourseName = null;
+      // 原生端活跃会话已不存在（如被用户手动划掉），重置本地状态以便下轮重新创建。
+      _activeSessionKey = null;
     } catch (e) {
       AppLog.w('LiveActivity', '同步实时活动失败：$e');
     }
   }
 
   Future<void> _end({bool swallowErrors = false}) async {
-    _activeCourseName = null;
+    _activeSessionKey = null;
     try {
       await _service.end();
     } catch (e) {

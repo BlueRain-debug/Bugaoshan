@@ -3,10 +3,10 @@ import 'package:bugaoshan/services/reminder/live_activity_coordinator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// [LiveCourseResolver] 当前课程解析逻辑单元测试。
+/// [LiveCourseResolver] 课程解析逻辑单元测试。
 ///
-/// 验证进行中课程匹配、下课时刻换算与后序课程推导；
-/// 周次判定规则遵循校历周日成行口径及 [Course.isActiveInWeek] 约定。
+/// 覆盖进行中课程匹配、会话标识生成与后续课程推导。周次判定遵循校历周日成行
+/// 口径及 [Course.isActiveInWeek] 约定，与 [ReminderPlanBuilder] 保持一致。
 void main() {
   /// 测试基准时间：学期起点 2026-08-31（周一，第 1 教学周）；2026-09-01（周二，第 1 教学周）。
   ScheduleConfig schedule({int totalWeeks = 20}) => ScheduleConfig(
@@ -75,7 +75,7 @@ void main() {
         resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 0)).hasCurrent,
         isTrue,
       );
-      // 验证左闭右开区间 [start, end) 语义：到达下课时刻即视为已结束。
+      // 左闭右开区间 [start, end)：到达下课时刻即视为已结束。
       expect(
         resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 45)).hasCurrent,
         isFalse,
@@ -114,7 +114,7 @@ void main() {
         ).hasCurrent,
         isFalse,
       );
-      // 验证离散周次 customWeeks 过滤逻辑：当前周次未命中时不处于活跃状态。
+      // 离散周次 customWeeks：当前周次未命中时不处于活跃状态。
       expect(
         resolve(
           courses: [
@@ -134,7 +134,7 @@ void main() {
         ).hasCurrent,
         isFalse,
       );
-      // 验证假期状态过滤逻辑：教学周超出 totalWeeks 时不匹配课程。
+      // 教学周超出 totalWeeks 时不匹配任何课程。
       expect(
         resolve(
           courses: [course(dayOfWeek: 1)],
@@ -145,7 +145,7 @@ void main() {
     });
 
     test('无课表或无课程时返回空快照而不是抛异常', () {
-      // 显式传入 null 配置验证空课表状态下的异常安全回退。
+      // 空课程列表与 null 配置均返回空快照，不抛异常。
       expect(
         LiveCourseResolver.resolve(
           courses: const [],
@@ -172,6 +172,105 @@ void main() {
         ).hasCurrent,
         isFalse,
       );
+    });
+  });
+
+  group('会话标识', () {
+    test('同名连堂课属于不同会话', () {
+      // 两节同名的课，起止节次不同（8:00-8:45 与 9:00-9:45）。
+      final courses = [
+        course(startSection: 1, endSection: 1),
+        course(startSection: 2, endSection: 2),
+      ];
+
+      final first = resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 20));
+      final second = resolve(
+        courses: courses,
+        now: DateTime(2026, 9, 1, 9, 20),
+      );
+
+      // 标识须能区分这两节，否则第二节不下发新状态，倒计时停留在第一节的终点。
+      expect(first.sessionKey, isNot(second.sessionKey));
+      expect(first.sessionKey, isNotNull);
+    });
+
+    test('同一节课在不同时刻的会话标识稳定', () {
+      final courses = [course()];
+
+      expect(
+        resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 5)).sessionKey,
+        resolve(courses: courses, now: DateTime(2026, 9, 1, 8, 40)).sessionKey,
+      );
+    });
+
+    test('没有进行中课程时没有会话标识', () {
+      expect(
+        resolve(
+          courses: [course()],
+          now: DateTime(2026, 9, 1, 12, 0),
+        ).sessionKey,
+        isNull,
+      );
+    });
+  });
+
+  group('下节课程推导', () {
+    test('课间时给出下一节', () {
+      final snapshot = resolve(
+        courses: [
+          course(startSection: 1, endSection: 1),
+          course(name: '线性代数', startSection: 2, endSection: 2),
+        ],
+        now: DateTime(2026, 9, 1, 8, 50),
+      );
+
+      expect(snapshot.hasCurrent, isFalse);
+      expect(snapshot.next?.name, '线性代数');
+    });
+
+    test('连堂课时不把落在当前课程区间内的课当作「下节」', () {
+      // 当前为第 1~3 节连堂（8:00-10:45）；另一门课于第 2 节（9:00）开始，
+      // 虽晚于 now，但落在当前课程的区间内，与下课倒计时矛盾。
+      final snapshot = resolve(
+        courses: [
+          course(startSection: 1, endSection: 3),
+          course(name: '线性代数', startSection: 2, endSection: 2),
+        ],
+        now: DateTime(2026, 9, 1, 8, 30),
+      );
+
+      expect(snapshot.current?.name, '高等数学');
+      expect(snapshot.endAt, DateTime(2026, 9, 1, 10, 45));
+      expect(snapshot.next, isNull);
+    });
+
+    test('课间里紧接着的那节课仍算「下节」', () {
+      // 第 1 节 8:00-8:45 已下课，第 2 节 9:00 开始：两者区间不重叠。
+      final snapshot = resolve(
+        courses: [
+          course(startSection: 1, endSection: 1),
+          course(name: '线性代数', startSection: 2, endSection: 2),
+        ],
+        now: DateTime(2026, 9, 1, 8, 20),
+      );
+
+      expect(snapshot.current?.name, '高等数学');
+      expect(snapshot.next?.name, '线性代数');
+      expect(snapshot.nextStartAt, DateTime(2026, 9, 1, 9, 0));
+    });
+
+    test('当前课程结束后才开始的课仍算「下节」', () {
+      // 当前课 8:00-9:45（第 1~2 节连堂），下一门 10:00 开始（第 3 节）。
+      final snapshot = resolve(
+        courses: [
+          course(startSection: 1, endSection: 2),
+          course(name: '线性代数', startSection: 3, endSection: 3),
+        ],
+        now: DateTime(2026, 9, 1, 8, 20),
+      );
+
+      expect(snapshot.endAt, DateTime(2026, 9, 1, 9, 45));
+      expect(snapshot.next?.name, '线性代数');
     });
   });
 }
