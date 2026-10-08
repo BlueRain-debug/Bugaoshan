@@ -1,3 +1,4 @@
+import 'package:bugaoshan/widgets/adaptive/adaptive_glass_controls.dart';
 import 'package:bugaoshan/pages/dev/ui/ui_tile.dart';
 import 'package:flutter/material.dart';
 
@@ -86,7 +87,7 @@ class _DevPageState extends State<DevPage> {
       ),
       ListenableBuilder(
         listenable: _appConfig.usePreviewUpdateSource,
-        builder: (BuildContext context, _) => SwitchListTile(
+        builder: (BuildContext context, _) => AdaptiveGlassSwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: Text(localizations.usePreviewUpdateSource),
           subtitle: Text(
@@ -143,7 +144,7 @@ class _DevPageState extends State<DevPage> {
           const Divider(),
           ValueListenableBuilder<bool>(
             valueListenable: _appConfig.forceCaptchaForDownload,
-            builder: (context, value, _) => SwitchListTile(
+            builder: (context, value, _) => AdaptiveGlassSwitchListTile(
               secondary: const Icon(Icons.tab),
               title: Text(localizations.forceCaptchaForDownload),
               subtitle: Text(
