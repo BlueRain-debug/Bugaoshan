@@ -112,12 +112,30 @@ void main() {
   late RecordingTransport transport;
   late ReminderService service;
 
-  DateTime at(int y, int m, int d, [int h = 0, int mi = 0]) =>
-      DateTime(y, m, d, h, mi);
+  /// 本周日（校历口径下教学周的首日）。
+  ///
+  /// 课程用例都以它为学期起点，使「当前时刻落在第 1 教学周内」不随运行日期变化。
+  /// 若把起点固定成某个历史日期，测试在学期结束后运行时会因超出总周数而排不出提醒。
+  DateTime thisSunday() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.subtract(Duration(days: today.weekday % 7));
+  }
 
+  /// 明天零点。
+  ///
+  /// 基准课程排在明天的星期，使其触发时刻必定晚于当前时刻、且必定落在从今天起算的
+  /// 7 天窗口内。若固定成某个星期（如周二），在该星期当天运行时会因触发时刻已过、
+  /// 下一次又要等到窗口之外而被过滤，排期结果随运行日期变化。
+  DateTime tomorrow() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+  }
+
+  /// 构造一门课程，默认排在明天，活跃区间覆盖本教学周。
   Course course({
     String name = '高等数学',
-    int dayOfWeek = 2,
+    int? dayOfWeek,
     int startWeek = 1,
     int endWeek = 20,
     List<int>? customWeeks,
@@ -125,7 +143,8 @@ void main() {
     name: name,
     teacher: '张老师',
     location: '综C407',
-    dayOfWeek: dayOfWeek,
+    dayOfWeek: dayOfWeek ?? tomorrow().weekday,
+    // 学期起点为本教学周首日（周日），故本周即第 1 教学周。
     startWeek: startWeek,
     endWeek: endWeek,
     startSection: 1,
@@ -136,7 +155,7 @@ void main() {
 
   ScheduleConfig schedule() => ScheduleConfig(
     id: 's1',
-    semesterStartDate: at(2026, 8, 31),
+    semesterStartDate: thisSunday(),
     totalWeeks: 20,
     timeSlots: const [
       TimeSlot(
@@ -207,9 +226,11 @@ void main() {
       await service.reschedule(force: true);
       final before = transport.synced.last.planId;
 
+      // 新增一门同样排在明天的课：触发时刻晚于当前时刻，且落在 7 天窗口内，
+      // 因此该用例不受运行日期与时刻影响。
       courseProvider.courses.value = [
         ...courseProvider.courses.value,
-        course(name: '线性代数', dayOfWeek: 4),
+        course(name: '线性代数'),
       ];
       await service.reschedule(force: true);
 
@@ -248,8 +269,8 @@ void main() {
       await service.start();
       final before = transport.synced.length;
 
-      // 选取周五课程以避开测试运行当天时钟漂移导致的已过期过滤或窗口溢出问题。
-      await courseProvider.addCourse(course(name: '大学物理', dayOfWeek: 5));
+      // 新增的课同样排在明天：触发时刻晚于当前时刻且落在窗口内。
+      await courseProvider.addCourse(course(name: '大学物理'));
       // 多轮刷新微任务与事件队列，确保异步调用链全部执行完毕。
       await pumpEventQueue();
       await Future<void>.delayed(Duration.zero);
@@ -375,10 +396,18 @@ void main() {
       await setUpService();
       appConfig.reminderLeadMinutes.value = const [30];
 
-      final plan = service.buildPlan(now: at(2026, 9, 1));
+      // 注入今天零点：基准课程排在明天，触发时刻为明天 09:00 提前 30 分钟，
+      // 既晚于注入时刻又落在 7 天窗口内，断言与运行日期无关。
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final plan = service.buildPlan(now: today);
+      final expected = tomorrow();
 
       expect(plan.reminders, hasLength(1));
-      expect(plan.reminders.single.fireAt, at(2026, 9, 1, 8, 30));
+      expect(
+        plan.reminders.single.fireAt,
+        DateTime(expected.year, expected.month, expected.day, 8, 30),
+      );
     });
   });
 }
