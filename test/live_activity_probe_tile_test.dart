@@ -98,7 +98,7 @@ void main() {
             as Map<Object?, Object?>;
     expect(startArgs['courseName'], '示例课程');
     expect(startArgs['location'], '综C407');
-    expect(startArgs['nextCourseName'], '下节：线性代数');
+    expect(startArgs['nextCourseName'], '线性代数');
     expect(startArgs['startAtMillis'], isA<int>());
     expect(startArgs['endAtMillis'], isA<int>());
 
