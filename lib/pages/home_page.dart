@@ -16,6 +16,9 @@ import 'package:bugaoshan/services/auth/auth_coordinator.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/common/auth_scoped_indexed_stack.dart';
+import 'package:bugaoshan/widgets/navigation/adaptive_home_dock.dart';
+import 'package:bugaoshan/widgets/navigation/home_dock_symbols.dart';
+import 'package:bugaoshan/widgets/navigation/home_dock_insets.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,6 +29,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  bool _nativeDock = false;
 
   @override
   void initState() {
@@ -130,7 +134,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 600;
                     final showRail = isWide && visibleIds.length >= 2;
-                    final showBar = !isWide && visibleIds.length >= 2;
+                    final showBar =
+                        !isWide &&
+                        visibleIds.length >= 2 &&
+                        (!_nativeDock ||
+                            MediaQuery.viewInsetsOf(context).bottom == 0);
+                    final extendBehindDock = showBar && _nativeDock;
                     final pageContent = ListenableBuilder(
                       listenable: Listenable.merge([
                         appConfig.cardSizeAnimationDuration,
@@ -146,11 +155,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           enableAnimation:
                               appConfig.enableDockSwitchAnimation.value,
                           axis: showRail ? Axis.vertical : Axis.horizontal,
-                          pageBuilder: (id) => campusItemConfigById(id).page(),
+                          pageBuilder: _buildDockPage,
                         );
                       },
                     );
                     return Scaffold(
+                      extendBody: extendBehindDock,
                       body: Row(
                         children: [
                           // Rail placeholder: always present, hidden via Offstage
@@ -181,24 +191,42 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             ),
                           ),
                           // Page content: always at index 2
-                          Expanded(child: SafeArea(child: pageContent)),
+                          Expanded(
+                            child: HomeDockBody(
+                              extended: extendBehindDock,
+                              child: pageContent,
+                            ),
+                          ),
                         ],
                       ),
                       bottomNavigationBar: showBar
-                          ? NavigationBar(
-                              selectedIndex: _currentIndex,
-                              onDestinationSelected: (index) {
-                                setState(() => _currentIndex = index);
-                              },
-                              destinations: visibleIds
-                                  .map(
-                                    (id) => _buildBarDestination(
-                                      id,
-                                      hasUpdate,
-                                      l10n,
-                                    ),
-                                  )
-                                  .toList(),
+                          ? ValueListenableBuilder<bool>(
+                              valueListenable:
+                                  appConfig.enableDockSwitchAnimation,
+                              builder: (context, enableAnimation, _) =>
+                                  AdaptiveHomeDock(
+                                    selectedIndex: _currentIndex,
+                                    reduceMotion: !enableAnimation,
+                                    moreLabel: l10n.moreFeaturesTitle,
+                                    cancelLabel: l10n.cancel,
+                                    onNativeModeChanged: (native) {
+                                      if (_nativeDock != native) {
+                                        setState(() => _nativeDock = native);
+                                      }
+                                    },
+                                    onDestinationSelected: (index) {
+                                      setState(() => _currentIndex = index);
+                                    },
+                                    destinations: visibleIds
+                                        .map(
+                                          (id) => _buildDockDestination(
+                                            id,
+                                            hasUpdate,
+                                            l10n,
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
                             )
                           : null,
                     );
@@ -209,6 +237,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           },
         );
       },
+    );
+  }
+
+  Widget _buildDockPage(String id) {
+    final page = campusItemConfigById(id).page();
+    if (id == dockIdCourse || id == dockIdCampus || id == dockIdProfile) {
+      return page;
+    }
+    // 自定义业务入口各有表单/FAB/Scaffold，暂保留完整可操作区域。
+    // 已适配的三张主页把这段空间放到滚动内容末尾，而非裁短 viewport。
+    return Builder(
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: HomeDockInsets.bottomOf(context)),
+        child: page,
+      ),
     );
   }
 
@@ -241,25 +284,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  NavigationDestination _buildBarDestination(
+  HomeDockDestination _buildDockDestination(
     String id,
     bool hasUpdate,
     AppLocalizations l10n,
   ) {
     final config = campusItemConfigById(id);
-    final isProfile = id == dockIdProfile;
-    return NavigationDestination(
-      icon: isProfile
-          ? _buildUpdateBadge(showBadge: hasUpdate, child: Icon(config.icon))
-          : Icon(config.icon),
-      selectedIcon: isProfile
-          ? _buildUpdateBadge(
-              showBadge: hasUpdate,
-              child: Icon(config.selectedIcon),
-            )
-          : Icon(config.selectedIcon),
+    final symbols = homeDockSymbols(id);
+    return HomeDockDestination(
+      id: id,
+      icon: config.icon,
+      selectedIcon: config.selectedIcon,
       label: config.dockLabel(l10n),
-      tooltip: '',
+      symbol: symbols.normal,
+      selectedSymbol: symbols.selected,
+      showBadge: id == dockIdProfile && hasUpdate,
+      badgeLabel: l10n.newVersionAvailable,
     );
   }
 }

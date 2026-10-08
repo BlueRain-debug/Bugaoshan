@@ -1,3 +1,4 @@
+import 'package:bugaoshan/widgets/navigation/home_dock_insets.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/models/course.dart';
@@ -127,6 +128,9 @@ class _CourseGridState extends State<CourseGrid> {
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.vertical,
+                padding: EdgeInsets.only(
+                  bottom: HomeDockInsets.bottomOf(context),
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
