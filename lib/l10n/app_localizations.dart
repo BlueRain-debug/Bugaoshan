@@ -6906,6 +6906,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Plan serialization failed'**
   String get reminderPlanFailed;
+
+  /// No description provided for @liveActivityProbeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Activity probe'**
+  String get liveActivityProbeTitle;
+
+  /// No description provided for @liveActivityProbeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts a Live Activity for a sample course that ends {minutes} minutes from now. Live Activities can only be started while the app is in the foreground.'**
+  String liveActivityProbeSubtitle(Object minutes);
+
+  /// No description provided for @liveActivityProbeRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get liveActivityProbeRunning;
+
+  /// No description provided for @liveActivityProbeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Start sample'**
+  String get liveActivityProbeAction;
+
+  /// No description provided for @liveActivityProbeStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started. Press the Home button — the Dynamic Island should appear.'**
+  String get liveActivityProbeStarted;
+
+  /// No description provided for @liveActivityProbeEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample Live Activity ended'**
+  String get liveActivityProbeEnded;
+
+  /// No description provided for @liveActivityProbeEndAction.
+  ///
+  /// In en, this message translates to:
+  /// **'End sample'**
+  String get liveActivityProbeEndAction;
+
+  /// No description provided for @liveActivityProbeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start'**
+  String get liveActivityProbeFailed;
+
+  /// No description provided for @liveActivityProbeUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This device or system does not support Live Activities (requires iOS 16.1+).'**
+  String get liveActivityProbeUnsupported;
+
+  /// No description provided for @liveActivityProbeNotAuthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Activities are turned off in system settings.'**
+  String get liveActivityProbeNotAuthorized;
+
+  /// No description provided for @liveActivityProbeForegroundRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Activities can only be started while the app is in the foreground.'**
+  String get liveActivityProbeForegroundRequired;
+
+  /// No description provided for @liveActivityProbeSampleCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample Course'**
+  String get liveActivityProbeSampleCourse;
+
+  /// No description provided for @liveActivityProbeSampleLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Building C · Room 407'**
+  String get liveActivityProbeSampleLocation;
+
+  /// No description provided for @liveActivityProbeSampleNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Linear Algebra'**
+  String get liveActivityProbeSampleNext;
+
+  /// No description provided for @liveActivityProbeEndNowAction.
+  ///
+  /// In en, this message translates to:
+  /// **'End now'**
+  String get liveActivityProbeEndNowAction;
+
+  /// No description provided for @liveActivityProbeStatusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Activity status'**
+  String get liveActivityProbeStatusTitle;
+
+  /// No description provided for @liveActivityProbeStatusSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported and enabled'**
+  String get liveActivityProbeStatusSupported;
+
+  /// No description provided for @liveActivityProbeStatusUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported / disabled'**
+  String get liveActivityProbeStatusUnsupported;
+
+  /// No description provided for @liveActivityProbeActive.
+  ///
+  /// In en, this message translates to:
+  /// **'A sample session is running'**
+  String get liveActivityProbeActive;
+
+  /// No description provided for @liveActivityProbeSentEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended'**
+  String get liveActivityProbeSentEnded;
+
+  /// No description provided for @liveActivityProbeNoSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the host (no active session).'**
+  String get liveActivityProbeNoSession;
 }
 
 class _AppLocalizationsDelegate

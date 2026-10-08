@@ -3596,6 +3596,71 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reminderPlanFailed => '计划序列化失败';
+
+  @override
+  String get liveActivityProbeTitle => '灵动岛探针';
+
+  @override
+  String liveActivityProbeSubtitle(Object minutes) {
+    return '为一条 $minutes 分钟后下课的示例课程启动实时活动。实时活动只能在应用处于前台时启动。';
+  }
+
+  @override
+  String get liveActivityProbeRunning => '启动中…';
+
+  @override
+  String get liveActivityProbeAction => '立即触发示例';
+
+  @override
+  String get liveActivityProbeStarted => '已启动。按 Home 键回主屏，灵动岛应当出现。';
+
+  @override
+  String get liveActivityProbeEnded => '示例实时活动已结束';
+
+  @override
+  String get liveActivityProbeEndAction => '结束示例';
+
+  @override
+  String get liveActivityProbeFailed => '启动失败';
+
+  @override
+  String get liveActivityProbeUnsupported => '当前设备或系统不支持实时活动（需 iOS 16.1+）。';
+
+  @override
+  String get liveActivityProbeNotAuthorized => '系统设置中未开启实时活动。';
+
+  @override
+  String get liveActivityProbeForegroundRequired => '实时活动只能在应用处于前台时启动。';
+
+  @override
+  String get liveActivityProbeSampleCourse => '示例课程';
+
+  @override
+  String get liveActivityProbeSampleLocation => '综C407';
+
+  @override
+  String get liveActivityProbeSampleNext => '线性代数';
+
+  @override
+  String get liveActivityProbeEndNowAction => '立即结束';
+
+  @override
+  String get liveActivityProbeStatusTitle => '实时活动状态';
+
+  @override
+  String get liveActivityProbeStatusSupported => '支持且已开启';
+
+  @override
+  String get liveActivityProbeStatusUnsupported => '不支持 / 未开启';
+
+  @override
+  String get liveActivityProbeActive => '示例会话进行中';
+
+  @override
+  String get liveActivityProbeSentEnded => '会话已结束';
+
+  @override
+  String get liveActivityProbeNoSession => '未能连上宿主（无进行中的会话）。';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).

@@ -3718,4 +3718,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reminderPlanFailed => 'Plan serialization failed';
+
+  @override
+  String get liveActivityProbeTitle => 'Live Activity probe';
+
+  @override
+  String liveActivityProbeSubtitle(Object minutes) {
+    return 'Starts a Live Activity for a sample course that ends $minutes minutes from now. Live Activities can only be started while the app is in the foreground.';
+  }
+
+  @override
+  String get liveActivityProbeRunning => 'Starting…';
+
+  @override
+  String get liveActivityProbeAction => 'Start sample';
+
+  @override
+  String get liveActivityProbeStarted =>
+      'Started. Press the Home button — the Dynamic Island should appear.';
+
+  @override
+  String get liveActivityProbeEnded => 'Sample Live Activity ended';
+
+  @override
+  String get liveActivityProbeEndAction => 'End sample';
+
+  @override
+  String get liveActivityProbeFailed => 'Failed to start';
+
+  @override
+  String get liveActivityProbeUnsupported =>
+      'This device or system does not support Live Activities (requires iOS 16.1+).';
+
+  @override
+  String get liveActivityProbeNotAuthorized =>
+      'Live Activities are turned off in system settings.';
+
+  @override
+  String get liveActivityProbeForegroundRequired =>
+      'Live Activities can only be started while the app is in the foreground.';
+
+  @override
+  String get liveActivityProbeSampleCourse => 'Sample Course';
+
+  @override
+  String get liveActivityProbeSampleLocation => 'Building C · Room 407';
+
+  @override
+  String get liveActivityProbeSampleNext => 'Linear Algebra';
+
+  @override
+  String get liveActivityProbeEndNowAction => 'End now';
+
+  @override
+  String get liveActivityProbeStatusTitle => 'Live Activity status';
+
+  @override
+  String get liveActivityProbeStatusSupported => 'Supported and enabled';
+
+  @override
+  String get liveActivityProbeStatusUnsupported => 'Not supported / disabled';
+
+  @override
+  String get liveActivityProbeActive => 'A sample session is running';
+
+  @override
+  String get liveActivityProbeSentEnded => 'Session ended';
+
+  @override
+  String get liveActivityProbeNoSession =>
+      'Could not reach the host (no active session).';
 }

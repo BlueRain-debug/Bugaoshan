@@ -150,6 +150,30 @@ class LiveActivityService {
     }
   }
 
+  /// 启动一条示例实时活动，用于在真机上验证灵动岛与锁屏的渲染形态。
+  ///
+  /// 与 [start] 的差别有两处：课程内容由调用方以示例文案给出，结束时刻按
+  /// [duration] 相对当前时刻推算。因此无需构造课表数据即可触发一条会话。
+  ///
+  /// 启动前先结束既有会话：原生端的 update 采用字段增量合并语义，
+  /// 复用既有会话会使新内容继承上一次的课程字段。
+  Future<String?> startSample({
+    required String courseName,
+    required String location,
+    String? nextCourseName,
+    Duration duration = const Duration(minutes: 60),
+  }) async {
+    final now = DateTime.now();
+    await end();
+    return start(
+      courseName: courseName,
+      location: location,
+      startAt: now,
+      endAt: now.add(duration),
+      nextCourseName: nextCourseName,
+    );
+  }
+
   /// 更新进行中的实时活动状态。
   ///
   /// 抛出异常：
