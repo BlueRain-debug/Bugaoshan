@@ -9,7 +9,7 @@ import WidgetKit
     private let channelName = "bugaoshan/update"
     private let calendarEventIdentifierMapKey = "bugaoshan.calendarEventIdentifiers"
     private let eventStore = EKEventStore()
-    private let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan"
+    private let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan.ios"
     private let reminderChannel = ReminderChannel()
     private let liveActivityChannel = LiveActivityChannel()
 

@@ -4108,7 +4108,7 @@ abstract class AppLocalizations {
   /// No description provided for @eulaAgreeCheckbox.
   ///
   /// In en, this message translates to:
-  /// **'I have read and agree to the User Agreement'**
+  /// **'I have read and agree to the User Agreement and Privacy Policy'**
   String get eulaAgreeCheckbox;
 
   /// No description provided for @eulaAgree.
@@ -7032,6 +7032,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not reach the host (no active session).'**
   String get liveActivityProbeNoSession;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @legalInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal Information'**
+  String get legalInfo;
+
+  /// No description provided for @supportAndHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Support & Help'**
+  String get supportAndHelp;
+
+  /// No description provided for @docLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load document'**
+  String get docLoadFailed;
 }
 
 class _AppLocalizationsDelegate

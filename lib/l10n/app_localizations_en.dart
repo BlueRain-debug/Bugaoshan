@@ -2146,7 +2146,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eulaScrollToBottom => 'Please read the entire agreement first';
 
   @override
-  String get eulaAgreeCheckbox => 'I have read and agree to the User Agreement';
+  String get eulaAgreeCheckbox =>
+      'I have read and agree to the User Agreement and Privacy Policy';
 
   @override
   String get eulaAgree => 'Agree';
@@ -3788,4 +3789,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get liveActivityProbeNoSession =>
       'Could not reach the host (no active session).';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get legalInfo => 'Legal Information';
+
+  @override
+  String get supportAndHelp => 'Support & Help';
+
+  @override
+  String get docLoadFailed => 'Failed to load document';
 }
