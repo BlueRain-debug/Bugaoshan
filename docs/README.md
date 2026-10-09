@@ -14,8 +14,8 @@
 | [通知 WebView 架构](architecture/notice-webview.md) | 三类通知来源、JS bridge、附件下载和平台边界 | 当前实现 |
 | [Linux 分发架构](architecture/linux-distribution.md) | 本地构建、WPE 边界、Flatpak、AUR 和 Debian 状态 | 当前实现 |
 | [iOS 液态玻璃适配](architecture/ios-liquid-glass.md) | UIKit 系统标签栏、原生按钮/开关、Flutter 内容延伸与平台回退 | 模拟器已检查；真机待验收 |
-
 | [iOS TestFlight 分发](architecture/ios-distribution.md) | 本地归档、签名、上传、测试分发和加密问卷 | 当前实现 |
+| [Android 本地提醒](architecture/local-reminder-android.md) | 通知渠道与分组摘要、AlarmManager 排期与合并、精确闹钟降级、开机重建与排期可观测性 | 原生端已合入；真机与厂商 ROM 待验收 |
 | [发布流水线](architecture/release-pipeline.md) | 两级分支流、预览/正式双通道、版本号模型与边界情况 | 当前实现 |
 
 ## 设计决策
