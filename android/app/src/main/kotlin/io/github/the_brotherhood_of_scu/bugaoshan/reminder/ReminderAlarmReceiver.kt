@@ -23,8 +23,9 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         private const val TAG = "ReminderAlarmReceiver"
         // 允许提前 1 分钟内的微小时钟抖动
         private const val CLOCK_SKEW_TOLERANCE_MILLIS = 60_000L
-        // 超过 2 小时的过期条目不再补发（比如关机半天后开机，上完的课不必再提醒）
-        private const val MAX_STALE_TOLERANCE_MILLIS = 2 * 3600_000L
+        // 超过 2 小时的过期条目不再补发（比如关机半天后开机，上完的课不必再提醒）。
+        // 提到 internal：ReminderScheduler 剪枝已投递历史时要用同一个窗口，避免两处口径漂移。
+        internal const val MAX_STALE_TOLERANCE_MILLIS = 2 * 3600_000L
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -64,13 +65,23 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
 
         // 3. 逐条投递通知
         val deliveredBatchIds = mutableListOf<String>()
+        val deliveredItems = mutableListOf<ReminderItemData>()
         for (item in dueReminders) {
             try {
                 ReminderNotification.showReminder(context, item, plan.channel)
                 deliveredBatchIds.add(item.id)
+                deliveredItems.add(item)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to show notification for reminder ${item.id}", e)
             }
+        }
+
+        // 3.5 为本次涉及的分组补发摘要通知（组内实际存活 ≥ 2 条时才发，否则不折叠）。
+        //     只统计成功投递的条目，实际存活数以系统内通知为准。
+        try {
+            ReminderNotification.syncGroupSummaries(context, deliveredItems, plan.channel)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to sync group summaries", e)
         }
 
         // 4. 记录已投递 ID 保证幂等

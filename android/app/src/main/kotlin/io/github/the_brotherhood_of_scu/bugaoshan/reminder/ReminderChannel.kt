@@ -18,15 +18,23 @@ import io.flutter.plugin.common.MethodChannel
 /**
  * 本地提醒的 MethodChannel 处理入口。
  *
- * 与 Dart 侧的契约（见 `lib/services/reminder/reminder_transport.dart`）：
+ * 与 Dart 侧的契约（方法名、参数名、返回结构）：
  * - Channel 名称: `bugaoshan/reminder`
  * - 六个暴露方法:
- *   1. `syncPlan(payload)`: 全量替换排期计划。未授权返回 NOT_AUTHORIZED；不支持的 schema 返回 UNSUPPORTED_SCHEMA。
+ *   1. `syncPlan(payload)`: 全量替换排期计划，返回本次排入的未来提醒**条目数**
+ *      （注意同一时刻的多条提醒只注册 1 个 AlarmManager 闹钟，故该数可能大于闹钟数；
+ *      要看真实闹钟数请用 `getPendingCount`）。未授权返回 NOT_AUTHORIZED；
+ *      不支持的 schema 返回 UNSUPPORTED_SCHEMA；payload 结构破损返回 INVALID_ARGUMENT。
  *   2. `cancelAll()`: 撤销全部排期并清空持久化存储。
  *   3. `requestAuthorization(provisional)`: 请求通知权限，返回是否已获得。
- *   4. `getPermissionStatus()`: 查询当前授权状态（authorized / provisional / denied / notDetermined / unknown）。
+ *   4. `getPermissionStatus()`: 查询当前授权状态，取值仅
+ *      `authorized` / `denied` / `notDetermined` 三种。
  *   5. `getPendingCount()`: 查询当前系统中有效待触发的提醒条数。
  *   6. `openNotificationSettings()`: 跳转到系统通知设置页面。
+ *
+ * ⚠️ **Dart 侧尚未落地**：`lib/services/reminder/reminder_transport.dart` 在本 PR 时点
+ * 仍不存在（父 issue 的 iOS PR 负责），因此该 channel 目前**没有任何 Dart 调用方**，
+ * 属于运行时不可达的死代码。本文档只固定原生侧的契约形状，供 Dart 侧对齐。
  */
 class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCallHandler {
 
@@ -57,11 +65,14 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "syncPlan" -> {
-                val arguments = call.arguments as? Map<String, Any?>
-                if (arguments == null) {
+                // 先收成 Map<*, *> 再按 key 归一，避免对泛型不明的参数直接 `as Map<String, Any?>`
+                // 触发 unchecked cast 告警；同时容忍 Dart 侧传来非 String 的键。
+                val rawArguments = call.arguments as? Map<*, *>
+                if (rawArguments == null) {
                     result.error("INVALID_ARGUMENT", "Plan is required", null)
                     return
                 }
+                val arguments = rawArguments.entries.associate { (key, value) -> key.toString() to value }
                 syncPlan(arguments, result)
             }
             "cancelAll" -> {
@@ -95,6 +106,20 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
         pendingAuthResult?.success(granted)
         pendingAuthResult = null
         return true
+    }
+
+    /**
+     * 切断本实例对宿主 Activity 的引用，由宿主在 `onDestroy` 中调用。
+     *
+     * [pendingAuthResult] 是 [MethodChannel.Result]，其实现绑定到注册本实例的
+     * BinaryMessenger。若在权限弹窗尚未回调时 Activity 被销毁，这个引用将没有清理入口：
+     * Dart 侧 `requestAuthorization` 的 Future 既不会完成、也不会拿到 false 兜底。
+     *
+     * 与 [io.github.the_brotherhood_of_scu.bugaoshan.channels.WidgetPinHandler.release]
+     * 同构——同类 channel 的宿主清理入口保持一致，后续维护成本更低。
+     */
+    fun release() {
+        pendingAuthResult = null
     }
 
     // MARK: - 业务逻辑实现
@@ -155,6 +180,13 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
 
         // 记录曾经发起过权限请求，供 getPermissionStatus 区分 notDetermined 与 denied
         markPermissionRequested()
+
+        // MethodChannel 没有超时兜底：若上一次请求的结果还没回来（并发调用、Activity 重建），
+        // 直接覆盖会让先到的那次 Dart Future 永久挂起。必须先给旧 Result 一个终态。
+        pendingAuthResult?.let { stale ->
+            Log.w(TAG, "Replacing a stale pendingAuthResult from a previous request")
+            stale.success(false)
+        }
         pendingAuthResult = result
 
         try {
@@ -166,39 +198,35 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
         } catch (e: Exception) {
             Log.e(TAG, "Failed to request POST_NOTIFICATIONS", e)
             pendingAuthResult = null
+            // 弹窗根本没弹出来，不能留下「已询问」的痕迹，否则用户永远退回不了 notDetermined。
+            clearPermissionRequested()
             result.success(false)
         }
     }
 
     private fun getPermissionStatus(result: MethodChannel.Result) {
-        val areEnabled = NotificationManagerCompat.from(activity).areNotificationsEnabled()
-        if (!areEnabled) {
-            // 无论是全局关闭还是被撤销，均视为 denied
-            result.success("denied")
-            return
-        }
-
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            result.success("authorized")
+            // Android 13 之前没有 POST_NOTIFICATIONS 运行时权限，通知总开关即授权状态。
+            val enabled = NotificationManagerCompat.from(activity).areNotificationsEnabled()
+            result.success(if (enabled) "authorized" else "denied")
             return
         }
 
+        // Android 13+ 必须先判权限本身：未授予时 areNotificationsEnabled() 恒为 false，
+        // 若像原先那样先看总开关就会把「从未询问」一律误报成 denied，
+        // notDetermined 分支永远走不到，Dart 侧也就无法区分「还没问」与「问了被拒」。
         val granted = ContextCompat.checkSelfPermission(
             activity,
             android.Manifest.permission.POST_NOTIFICATIONS,
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (granted) {
-            result.success("authorized")
-        } else {
-            val hasRequested = hasRequestedPermission()
-            if (!hasRequested) {
-                // 尚未向用户申请过
-                result.success("notDetermined")
-            } else {
-                result.success("denied")
-            }
-        }
+        result.success(
+            when {
+                granted -> "authorized"
+                hasRequestedPermission() -> "denied"
+                else -> "notDetermined"
+            },
+        )
     }
 
     private fun getPendingCount(result: MethodChannel.Result) {
@@ -208,15 +236,9 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
 
     private fun openNotificationSettings(result: MethodChannel.Result) {
         try {
-            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                    putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
-                }
-            } else {
-                Intent("android.settings.APP_NOTIFICATION_SETTINGS").apply {
-                    putExtra("app_package", activity.packageName)
-                    putExtra("app_uid", activity.applicationInfo.uid)
-                }
+            // minSdk 26，ACTION_APP_NOTIFICATION_SETTINGS 必然可用，无需再分 API 26 的旧分支。
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
             }
             activity.startActivity(intent)
             result.success(true)
@@ -253,6 +275,11 @@ class ReminderChannel(private val activity: Activity) : MethodChannel.MethodCall
     private fun markPermissionRequested() {
         val prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_HAS_REQUESTED_PERMISSION, true).apply()
+    }
+
+    private fun clearPermissionRequested() {
+        val prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_HAS_REQUESTED_PERMISSION, false).apply()
     }
 
     private fun hasRequestedPermission(): Boolean {

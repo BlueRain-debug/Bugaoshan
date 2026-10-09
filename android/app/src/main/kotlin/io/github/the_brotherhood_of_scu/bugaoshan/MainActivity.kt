@@ -68,6 +68,9 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         super.onDestroy()
         if (::widgetPin.isInitialized) widgetPin.release()
+        // 权限弹窗未回调时 release()，切断 pendingAuthResult 对本 Activity 的引用，
+        // 否则 Dart 侧 requestAuthorization 的 Future 会一直悬着。
+        if (::reminderChannel.isInitialized) reminderChannel.release()
         downloadNotification?.cancel()
         downloadNotification = null
         DownloadNotificationServiceHolder.service = null

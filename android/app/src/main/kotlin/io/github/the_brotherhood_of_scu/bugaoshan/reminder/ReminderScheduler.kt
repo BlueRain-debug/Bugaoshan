@@ -135,9 +135,18 @@ data class ReminderPlanData(
             val channel = (payload["channel"] as? String) ?: ReminderNotification.DEFAULT_CHANNEL_ID
             val droppedCount = (payload["droppedCount"] as? Number)?.toInt() ?: 0
 
-            @Suppress("UNCHECKED_CAST")
-            val remindersRaw = payload["reminders"] as? List<Map<String, Any?>> ?: emptyList()
-            val list = remindersRaw.mapNotNull { ReminderItemData.fromChannelMap(it) }
+            // reminders 必须真的是数组。此前 `as? List<Map<String, Any?>> ?: emptyList()` 会把
+            // 「reminders 不是数组」静默降级成空计划并回报成功——用户侧表现为提醒凭空消失且无报错。
+            // 这里改为交由调用方返回 INVALID_ARGUMENT。
+            val remindersRaw = payload["reminders"]
+            if (remindersRaw != null && remindersRaw !is List<*>) return null
+            val remindersList: List<*>? = remindersRaw
+
+            val list = remindersList.orEmpty().mapNotNull { element ->
+                // 泛型擦除使 `as? List<Map<...>>` 不做元素检查，逐项再转一次才安全。
+                @Suppress("UNCHECKED_CAST")
+                (element as? Map<String, Any?>)?.let { ReminderItemData.fromChannelMap(it) }
+            }
 
             return ReminderPlanData(
                 schema = schema,
@@ -146,7 +155,8 @@ data class ReminderPlanData(
                 windowStartMillis = windowStartMillis,
                 windowEndMillis = windowEndMillis,
                 channel = channel,
-                droppedCount = droppedCount,
+                // 把原生侧丢弃的条目数也计入，避免该字段只反映 Dart 侧的丢弃。
+                droppedCount = droppedCount + (remindersList?.size ?: 0) - list.size,
                 reminders = list,
             )
         }
@@ -180,9 +190,12 @@ object ReminderScheduler {
     private const val KEY_IS_EXACT_DOWNGRADED = "is_exact_downgraded"
 
     /**
-     * RequestCode 基数。
-     * 0x52450000 ("RE" in ASCII = 1380253696)，与 WidgetAlarmManager (20250101, 20250102)
-     * 完全处于不重叠的数值空间，避免任何误撤销。
+     * RequestCode 基数。取 "RE"（Reminder）的十六进制字面量，纯记忆点用；
+     * 数值 0x52450000 = 1381073696。
+     *
+     * 实际 requestCode 落在 0x52450000..0x5245FFFF（基址 `or` 上时间戳低 16 位），
+     * 与 WidgetAlarmManager 的 20250101 / 20250102（约 2.03e7，即 0x0134FDF5 附近）
+     * 完全不重叠，避免误撤销。
      */
     private const val REQUEST_CODE_BASE = 0x52450000
 
@@ -218,7 +231,8 @@ object ReminderScheduler {
      * 3. 按时刻分组排期（单时刻单闹钟，降低 Doze 消耗并避免挤占）；
      * 4. 写入持久化存储。
      *
-     * @return 实际成功登记的未来提醒条目数
+     * @return 排入未来的提醒**条目数**（含同一时刻被合并成单个闹钟的多条）。
+     *         它不等于实际登记的闹钟数——后者请用 [getPendingCount]。
      */
     fun syncPlan(context: Context, planData: ReminderPlanData): Int {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
@@ -227,7 +241,13 @@ object ReminderScheduler {
                 return 0
             }
 
-        // 1. 全量撤销上一批闹钟
+        // 1. 全量撤销上一批闹钟。
+        //
+        //    注意 cancelAllAlarms 只按 KEY_TIMESTAMPS 撤闹钟、**不清 prefs**（清空由公开的
+        //    cancelAll() 负责），因此「撤旧 → 建新 → 落盘」这个窗口里进程被杀不会丢计划：
+        //    持久化里仍是**旧**计划，reconstructSchedule 会按旧计划重建，Dart 侧下次启动
+        //    重新 syncPlan 即自愈。这个顺序不可调换——若先落盘新计划再撤旧闹钟，
+        //    「已落盘、未注册」这一中途崩溃就会丢掉全部闹钟且没有持久化兜底，反而更糟。
         cancelAllAlarms(context, alarmManager)
 
         val now = System.currentTimeMillis()
@@ -283,12 +303,26 @@ object ReminderScheduler {
             }
         }
 
-        // 3. 持久化存储
+        // 3. 持久化存储。
+        //
+        //    已投递历史用「剪枝」而不是全量清空：全量清空会让 Receiver 的补发窗口
+        //    （ReminderAlarmReceiver.MAX_STALE_TOLERANCE_MILLIS）把刚投递过的提醒再发一遍——
+        //    用户看到横幅 + 震动 + 提示音重复一次；而完全不清空又会让「已从计划移除」或
+        //    「早已超出补发窗口」的 id 无限堆积。剪枝规则：仍在本计划中、且触发时刻仍落在
+        //    补发窗口内的 id 保留已投递标记，其余丢弃。
+        val deliveredBefore = getDeliveredIds(context)
+        val retainedDelivered = deliveredBefore.filterTo(mutableSetOf()) { id ->
+            val item = planData.reminders.firstOrNull { it.id == id }
+            item != null &&
+                item.fireAtMillis > now - ReminderAlarmReceiver.MAX_STALE_TOLERANCE_MILLIS
+        }
+        val prunedCount = deliveredBefore.size - retainedDelivered.size
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putString(KEY_PLAN_JSON, planData.toJsonString())
             .putStringSet(KEY_TIMESTAMPS, scheduledTimestamps)
-            .putStringSet(KEY_DELIVERED_IDS, emptySet()) // 新计划清空已投递历史
+            .putStringSet(KEY_DELIVERED_IDS, retainedDelivered)
             .putBoolean(KEY_IS_EXACT_DOWNGRADED, !canExact)
             .apply()
 
@@ -297,13 +331,19 @@ object ReminderScheduler {
             "Plan synced: planId=${planData.planId}, " +
                 "total=${planData.reminders.size}, " +
                 "futureScheduled=${futureReminders.size}, " +
-                "uniqueAlarms=${scheduledTimestamps.size}",
+                "uniqueAlarms=${scheduledTimestamps.size}, " +
+                "deliveredPruned=$prunedCount",
         )
         return futureReminders.size
     }
 
     /**
      * 取消全部已排期闹钟并清空持久化存储。
+     *
+     * 这里用 [SharedPreferences.Editor.commit] 而非 `apply()`：`apply()` 是异步落盘，
+     * 若在落盘完成前进程被杀，磁盘上仍留着旧计划，开机后 [reconstructSchedule] 会按旧计划
+     * 把用户刚刚取消的闹钟**全部复活**。本方法由用户主动触发、非热路径，同步写盘的代价可接受。
+     * ([syncPlan] 留在主线程的热路径上，仍用 `apply()`——那里由 QueuedWork 在组件停止时兜底。)
      */
     fun cancelAll(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
@@ -311,18 +351,26 @@ object ReminderScheduler {
             cancelAllAlarms(context, alarmManager)
         }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
         Log.i(TAG, "All reminders cancelled and cleared from storage")
     }
 
     /**
      * 查询系统当前有效待触发的条数。
+     *
+     * 以 [KEY_TIMESTAMPS]——即**实际登记进 AlarmManager 的时刻集合**——为准，而不是计划条目数。
+     * [syncPlan] 会把同一时刻的多条提醒**合并成一次闹钟注册**（其日志里的 `uniqueAlarms`
+     * 就是这个数），所以「提醒条数」与「系统闹钟数」在设计上本就是两个不同的量；
+     * 按条目计数会系统性高报——3 条同时刻提醒在系统里只有 1 个闹钟，接口却会返回 3。
+     *
+     * 语义：已登记且尚未到点的闹钟数。
      */
     fun getPendingCount(context: Context): Int {
-        val plan = getStoredPlan(context) ?: return 0
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        val deliveredIds = getDeliveredIds(context)
-        return plan.reminders.count { it.fireAtMillis > now && !deliveredIds.contains(it.id) }
+        return prefs.getStringSet(KEY_TIMESTAMPS, emptySet())
+            .orEmpty()
+            .count { (it.toLongOrNull() ?: 0L) > now }
     }
 
     /**
@@ -401,10 +449,13 @@ object ReminderScheduler {
 
     /**
      * 读取已投递的条目 ID。
+     *
+     * 返回 [Set.toSet] 的防御性拷贝：`getStringSet` 返回的是 SharedPreferences 内部持有的
+     * 集合，调用方一次 add/remove 就会抛 `UnsupportedOperationException`。
      */
     fun getDeliveredIds(context: Context): Set<String> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getStringSet(KEY_DELIVERED_IDS, emptySet()) ?: emptySet()
+        return prefs.getStringSet(KEY_DELIVERED_IDS, emptySet()).orEmpty().toSet()
     }
 
     /**

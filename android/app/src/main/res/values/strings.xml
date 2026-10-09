@@ -22,4 +22,8 @@
     <!-- 课程提醒通知 -->
     <string name="reminder_notification_channel_name">Course Reminders</string>
     <string name="reminder_notification_channel_desc">Reminders before class starts</string>
+    <plurals name="reminder_notification_group_summary">
+        <item quantity="one">%1$d course reminder</item>
+        <item quantity="other">%1$d course reminders</item>
+    </plurals>
 </resources>
