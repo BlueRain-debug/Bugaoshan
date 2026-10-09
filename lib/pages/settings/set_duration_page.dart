@@ -1,3 +1,4 @@
+import 'package:bugaoshan/widgets/adaptive/adaptive_glass_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
@@ -87,7 +88,7 @@ class _SetDurationPageState extends State<SetDurationPage> {
             ValueListenableBuilder<bool>(
               valueListenable: appConfigService.enableDockSwitchAnimation,
               builder: (context, enabled, _) {
-                return SwitchListTile(
+                return AdaptiveGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(appLang.enableDockSwitchAnimation),
                   subtitle: Text(appLang.enableDockSwitchAnimationHint),
@@ -165,13 +166,19 @@ class _SetDurationPageState extends State<SetDurationPage> {
             const SizedBox(height: 16.0),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                ),
+              child: AdaptiveGlassButton(
+                label: appLang.confirmButton,
                 onPressed: _confirmChanges,
-                child: Text(appLang.confirmButton),
+                prominent: true,
+                symbol: 'checkmark',
+                fallback: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  onPressed: _confirmChanges,
+                  child: Text(appLang.confirmButton),
+                ),
               ),
             ),
           ],

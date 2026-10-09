@@ -26,6 +26,8 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* ReminderChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* ReminderChannel.swift */; };
 		E1F2A3B4C5D60718293A4B05 /* LiveActivityChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D60718293A4B04 /* LiveActivityChannel.swift */; };
+		F627A009C48B40519E038204 /* LiquidGlassDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F627A009C48B40519E038205 /* LiquidGlassDock.swift */; };
+		F627A009C48B40519E038206 /* LiquidGlassControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = F627A009C48B40519E038207 /* LiquidGlassControls.swift */; };
 		A6F4B5C83E9D4B6FA8217C10 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D8E9F01234567890ABCDEF /* SceneDelegate.swift */; };
 		B4C25D8A7E6F4A31B09C8D72 /* academic_calendar.json in Resources */ = {isa = PBXBuildFile; fileRef = D9E8F7A6B5C4123098ABCDEF /* academic_calendar.json */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -99,6 +101,8 @@
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* ReminderChannel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReminderChannel.swift; sourceTree = "<group>"; };
 		E1F2A3B4C5D60718293A4B04 /* LiveActivityChannel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LiveActivityChannel.swift; sourceTree = "<group>"; };
+		F627A009C48B40519E038205 /* LiquidGlassDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassDock.swift; sourceTree = "<group>"; };
+		F627A009C48B40519E038207 /* LiquidGlassControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassControls.swift; sourceTree = "<group>"; };
 		C7D8E9F01234567890ABCDEF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		D9E8F7A6B5C4123098ABCDEF /* academic_calendar.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = academic_calendar.json; path = ../assets/academic_calendar.json; sourceTree = SOURCE_ROOT; };
 		798F7789FBBE95BE1ACA94A5 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
@@ -232,6 +236,8 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				A1B2C3D4E5F60718293A4B5C /* ReminderChannel.swift */,
 				E1F2A3B4C5D60718293A4B04 /* LiveActivityChannel.swift */,
+				F627A009C48B40519E038205 /* LiquidGlassDock.swift */,
+				F627A009C48B40519E038207 /* LiquidGlassControls.swift */,
 				C7D8E9F01234567890ABCDEF /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
@@ -511,6 +517,8 @@
 				B2C3D4E5F60718293A4B5C6D /* ReminderChannel.swift in Sources */,
 				E1F2A3B4C5D60718293A4B03 /* CourseLiveActivity.swift in Sources */,
 				E1F2A3B4C5D60718293A4B05 /* LiveActivityChannel.swift in Sources */,
+				F627A009C48B40519E038204 /* LiquidGlassDock.swift in Sources */,
+				F627A009C48B40519E038206 /* LiquidGlassControls.swift in Sources */,
 				A6F4B5C83E9D4B6FA8217C10 /* SceneDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);

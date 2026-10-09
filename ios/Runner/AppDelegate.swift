@@ -38,6 +38,8 @@ import WidgetKit
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        LiquidGlassDockRegistration.register(with: engineBridge.applicationRegistrar)
+        LiquidGlassControlsRegistration.register(with: engineBridge.applicationRegistrar)
         let messenger = engineBridge.applicationRegistrar.messenger()
         registerBugaoshanMethodChannel(messenger: messenger)
         reminderChannel.register(messenger: messenger)
