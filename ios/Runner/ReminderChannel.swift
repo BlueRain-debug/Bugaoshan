@@ -17,7 +17,7 @@ final class ReminderChannel: NSObject {
 
   /// 通知唯一标识前缀。用于按命名空间筛选并撤销通知，避免误删宿主内其他业务通知。
   private static let identifierPrefix = "bugaoshan.reminder."
-  private static let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan"
+  private static let appGroupId = "group.io.github.thebrotherhoodofscu.bugaoshan.ios"
   private static let storedPlanKey = "bugaoshan.reminder.plan"
 
   /// 协议版本号，与 Dart 层 ReminderPlan.schema 对齐；未知版本将直接拒绝处理。

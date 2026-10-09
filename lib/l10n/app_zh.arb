@@ -780,7 +780,7 @@
   "dockLabelDownloads": "附件",
   "eulaTitle": "用户协议",
   "eulaScrollToBottom": "请先阅读完协议内容",
-  "eulaAgreeCheckbox": "我已阅读并同意《用户协议》",
+  "eulaAgreeCheckbox": "我已阅读并同意《用户协议》与《隐私政策》",
   "eulaAgree": "同意",
   "eulaDisagree": "不同意",
   "revokeEula": "撤回用户协议同意",
@@ -1957,5 +1957,9 @@
   "liveActivityProbeStatusUnsupported": "不支持 / 未开启",
   "liveActivityProbeActive": "示例会话进行中",
   "liveActivityProbeSentEnded": "会话已结束",
-  "liveActivityProbeNoSession": "未能连上宿主（无进行中的会话）。"
+  "liveActivityProbeNoSession": "未能连上宿主（无进行中的会话）。",
+  "privacyPolicy": "隐私政策",
+  "legalInfo": "法律信息",
+  "supportAndHelp": "支持与帮助",
+  "docLoadFailed": "文档加载失败"
 }
