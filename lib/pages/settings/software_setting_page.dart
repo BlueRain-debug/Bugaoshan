@@ -161,7 +161,9 @@ class SoftwareSettingPage extends StatelessWidget {
                     // 日志文件也清掉：用户点了「清除所有数据」就应真的全清，
                     // 否则残留日志既不符预期，也与 privacy-policy / EULA 的
                     // 「按数据类型另行删除」说明产生矛盾。
-                    await getIt<AppLogger>().deletePersistedFiles();
+                    await getIt<AppLogger>().deletePersistedFiles(
+                      preserveEnabled: true,
+                    );
                   }
                 },
               ),

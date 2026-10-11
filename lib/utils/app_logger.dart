@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+part 'app_logger_file_sink.dart';
 
 /// 日志级别。
 enum LogLevel { debug, info, warn, error }
@@ -264,7 +267,7 @@ class AppLogger extends ChangeNotifier {
 
   /// 用户**意图**落盘（由 [AppConfigProvider.logPersistenceEnabled] 驱动）。
   ///
-  /// **不等于实际可用**——实际状态见 [fileSinkHealthy] 与
+  /// **不等于实际可用**——实际状态见 [_fileSinkHealthy] 与
   /// [fileSinkUnavailable]。二者必须分开：早期实现只有一个 flag，
   /// 导致「sink 失败」直接把落盘入口一并关掉，从此永久失效且无法自愈
   /// （消费者只在它为真时才运行，等于自己关掉了自己的入口）。
@@ -277,14 +280,6 @@ class AppLogger extends ChangeNotifier {
 
   /// 已连续尝试恢复落盘的次数，达到上限后不再自动重试。
   int _sinkRecoveryAttempts = 0;
-
-  /// 是否正在主动关闭 sink（[disableFileSink] / [_rotate] / [dispose]）。
-  ///
-  /// 关闭期间 [IOSink] 抛出的 `Bad state: StreamSink is bound to a stream`
-  /// 是**预期行为**，不是故障。让 [sink.done] 正常完成即可——否则
-  /// [_watchSinkFailure] 会把它当成写盘失败，进而触发 [_recoverSink]，
-  /// 与正在进行的关闭动作争抢同一个 sink（实测 flush 与 close 连续报错）。
-  bool _closingSink = false;
 
   /// 最近一次落盘故障的原因（用户可读），成功恢复后清空。
   String? _fileSinkError;
@@ -300,11 +295,16 @@ class AppLogger extends ChangeNotifier {
   /// 移植自 PR #369（moranfanhua）的 `_disposed` 守卫。
   bool _disposed = false;
 
-  /// 待落盘的行（由 [_drainQueue] 串行消费）。
-  final List<String> _writeQueue = [];
+  /// 待落盘的记录；序号将快速开关前后的写入划分到对应的文件操作。
+  final List<({int sequence, String line})> _writeQueue = [];
+  int _writeSequence = 0;
+  _LogWriteBatch? _pendingDrain;
 
-  /// 是否有消费者正在运行。保证任一时刻只有一个 Future 在改文件。
-  bool _draining = false;
+  /// 开关、写入、轮转、清理和导出共用一条串行操作链。
+  Future<void> _fileOperations = Future<void>.value();
+
+  /// 文件系统自身的错误只进入内存，不能重新排入失败的写入队列。
+  bool _reportingSinkFailure = false;
 
   /// 因队列满而丢弃的行数，便于排障时量化「日志系统自身在丢」。
   int _droppedLines = 0;
@@ -315,7 +315,7 @@ class AppLogger extends ChangeNotifier {
   /// 此时无限增长会耗尽内存并拖垮应用——日志不应成为故障本身。
   static const int _maxWriteQueue = 2000;
 
-  /// 自上次 [_rotateIfNeeded] 起已写入的字节数。避免每行都 `stat()` 系统调用。
+  /// 当前文件的 UTF-8 字节数，避免每行都 `stat()` 系统调用。
   int _bytesWritten = 0;
 
   AppLogger({
@@ -364,7 +364,7 @@ class AppLogger extends ChangeNotifier {
   /// 落盘最近一次失败的原因，供 UI 展示（为空表示无故障）。
   String? get fileSinkError => _fileSinkError;
 
-  /// 文件写入路径（仅在 [fileSinkEnabled] 为 true 时有值）。
+  /// 当前打开的文件路径；尚未打开、关闭或故障恢复期间为空。
   String? get fileSinkPath => _fileSinkPath;
 
   /// 写入一条日志。level 默认为 [LogLevel.info]。
@@ -421,7 +421,10 @@ class AppLogger extends ChangeNotifier {
       debugPrint(entry.format());
     }
 
-    if (_fileSinkEnabled && level.index >= _minPersistedLevel.index) {
+    if (_fileSinkEnabled &&
+        !_disposed &&
+        !_reportingSinkFailure &&
+        level.index >= _minPersistedLevel.index) {
       _appendToFile(entry.format(includeDate: true));
     }
 
@@ -508,468 +511,35 @@ class AppLogger extends ChangeNotifier {
     return buf.toString();
   }
 
-  /// 启用文件落盘。默认由应用启动时调用（仅 warn/error 实际写入）。
-  ///
-  /// [overridePath] 为空时使用 [resolveLogDir] 的默认路径 —— 与 Dev 页
-  /// 导出路径一致，因此 Android 上用户可直接用文件管理器查看排障日志，
-  /// 且 OS 可在低存储时自动清理该目录。
-  ///
-  /// 重复调用会先关闭旧 sink。落盘失败不阻塞业务。
-  ///
-  /// 注意：失败时**不**把 [_fileSinkEnabled] 置回 false——那是「用户意图」，
-  /// 由调用方（`AppConfigProvider`）决定；此处只如实标记
-  /// [_fileSinkHealthy] = false，让 UI 可以区分「配置为开」与「实际在写」。
-  Future<void> enableFileSink({String? overridePath}) async {
-    if (_fileSinkEnabled) return;
-    try {
-      _logDirPath = overridePath ?? (await resolveLogDir()).path;
-      await _openCurrentLogFile();
-      _fileSinkEnabled = true;
-      _fileSinkHealthy = true;
-      _sinkRecoveryAttempts = 0;
-      _notify();
-    } catch (err, stackTrace) {
-      // 落盘失败不应阻塞业务，但必须让用户/开发者看得见——静默失败会让人
-      // 误以为日志已被保留，而崩溃现场恰恰因此丢失。
-      _fileSinkHealthy = false;
-      _fileSinkError = err.toString();
-      e(
-        _tag,
-        '开启日志落盘失败',
-        error: err,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-      _notify();
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('AppLogger: enableFileSink failed: $err');
-      }
-    }
-  }
+  /// 启用 warn/error 落盘；失败保留开启意图，并通过可用性与错误字段报告。
+  Future<void> enableFileSink({String? overridePath}) =>
+      _enableFileSink(overridePath: overridePath);
 
-  /// 打开（或重建）当前写入文件，并把计数归零。
-  Future<void> _openCurrentLogFile() async {
-    final dir = Directory(_logDirPath!);
-    // 目录可能被系统清理：日志刻意落在**外部 cache**，正是为了在 Android
-    // 低存储时由 OS 自动回收。但回收后用户不会主动重启 App，目录也不会
-    // 自行复原——若此处不重建，后续 openWrite 会拿到一个写入即失败的句柄，
-    // 而 [fileSinkEnabled] 仍为 true，界面显示「已开启」却一条也写不进去。
-    // 这是 Android 上的常规场景，不是边缘情况。
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    final file = File(p.join(dir.path, '$_logFileBaseName$_logFileExtension'));
-    // 追加模式：不截断既有内容，冷启动后新日志接在旧文件后面。
-    final sink = file.openWrite(mode: FileMode.append);
-    _fileSink = sink;
-    _fileSinkPath = file.path;
-    _bytesWritten = await file.exists() ? await file.length() : 0;
-    _watchSinkFailure(sink);
-  }
+  /// 排空已接受的记录后关闭落盘。开关意图立即生效，文件操作按调用顺序执行。
+  Future<void> disableFileSink() => _disableFileSink();
 
-  /// 监听 sink 的异步失败（磁盘满、存储被移除、权限变更等）。
-  ///
-  /// `IOSink.write` / `flush` 的错误**不会**同步抛给调用方——它们在内部
-  /// 累积，等 `done` 完成为 Error 才暴露。若不监听，一次磁盘写满就会让
-  /// sink 永久静默失败：界面仍显示「落盘已开启」，磁盘上却再无内容，
-  /// 且没有任何提示——排障时最难排查的正是这种「看起来在工作」的状态。
-  ///
-  /// **失败后不关闭 [_fileSinkEnabled]**。早期实现在此把它置 false，
-  /// 等于消费者唯一的入口被自己关掉：队列自此只增不减，且没有任何路径
-  /// 能重新打开——一次磁盘抖动就让落盘永久失效，而用户界面上仍写着
-  /// 「已开启」。现在改为标记 [_fileSinkHealthy] = false 并走
-  /// [_recoverSink]，把「意图」与「可用」这两个状态分开。
-  ///
-  /// 移植自 PR #369（moranfanhua）的 `sink.done.catchError` 设计。
-  void _watchSinkFailure(IOSink sink) {
-    // ignore: discarded_futures
-    sink.done.catchError((Object error, StackTrace stackTrace) {
-      // 竞态保护：轮转/关闭会先换走 sink，此时旧 sink 的失败属预期，
-      // 不该把已经切到新文件的 logger 再关掉。
-      if (!identical(_fileSink, sink)) return;
-      if (_closingSink) return;
-      _fileSinkHealthy = false;
-      _fileSinkError = error.toString();
-      e(
-        _tag,
-        '日志文件写入失败',
-        error: error,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-      _recoverSink(error);
-    });
-  }
+  /// 清理自动轮转文件，保留手动导出。默认同时关闭落盘；清除所有数据时可
+  /// 使用 [preserveEnabled]，按当前开关状态恢复写入。
+  Future<void> deletePersistedFiles({
+    String? overridePath,
+    bool preserveEnabled = false,
+  }) => _deletePersistedFiles(
+    overridePath: overridePath,
+    preserveEnabled: preserveEnabled,
+  );
 
-  /// 尝试重开日志文件。成功则继续落盘；连续失败达上限则停手并保持可见的
-  /// 故障状态（[fileSinkUnavailable] 为 true），让 UI 能提示用户。
-  ///
-  /// 旧 sink 的关闭失败在此吞掉——它已经坏了，重试关闭只会重复抛错。
-  Future<void> _recoverSink(Object reason) async {
-    if (_disposed || !_fileSinkEnabled) return;
-    // 关闭/轮转期间不要插手：那两条路径正在处理同一个 sink，
-    // 抢着close 会让 flush 与 close 连续抛 `StreamSink is bound to a stream`。
-    if (_closingSink) return;
-    if (_sinkRecoveryAttempts >= _maxSinkRecoveryAttempts) {
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print(
-          'AppLogger: sink recovery abandoned after '
-          '$_sinkRecoveryAttempts attempts: $reason',
-        );
-      }
-      return;
-    }
-    _sinkRecoveryAttempts++;
-
-    final broken = _fileSink;
-    _fileSink = null;
-    _fileSinkPath = null;
-    _closingSink = true;
-    try {
-      await broken?.close();
-    } catch (_) {
-      // 已损坏的 sink，关闭失败属预期。
-    }
-    _closingSink = false;
-
-    try {
-      await _openCurrentLogFile();
-      _fileSinkHealthy = true;
-      _fileSinkError = null;
-      _sinkRecoveryAttempts = 0;
-      _ensureDraining();
-      _notify();
-    } catch (err, stackTrace) {
-      // 目录可能仍不可写（磁盘满时不缺权限，缺的是空间）；
-      // 保留 unhealthy 状态，下一条日志会再次触发恢复尝试。
-      _fileSinkHealthy = false;
-      e(
-        _tag,
-        '重建日志文件失败',
-        error: err,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-    }
-  }
-
-  /// 把一行交给落盘队列（**仅入队，绝不碰文件**）。
-  ///
-  /// 这是修复「同步突发写入丢日志」的关键：[log] 必须保持同步（它在任意
-  /// 业务路径上被调用，不能等待文件 IO），而文件操作本身是异步的。
-  /// 二者直接耦合必然产生竞态——旧实现里 `unawaited(_rotate())` 之后同步
-  /// 代码继续执行，导致每条日志都触发轮转并被丢弃（实测 400 条只落盘 30 条）。
-  /// 故此处只做入队，实际写入由串行消费者 [_drainQueue] 负责。
-  void _appendToFile(String line) {
-    if (_writeQueue.length >= _maxWriteQueue) {
-      // 队列满意味着文件 IO 严重跟不上（如磁盘写满或存储极慢）。
-      // 此时丢弃并计数，而不是无限增长耗尽内存——日志不应拖垮应用。
-      _droppedLines++;
-      return;
-    }
-    _writeQueue.add(line);
-    _ensureDraining();
-  }
-
-  /// 确保消费者在运行。消费者自行结束后会把 [_draining] 置回 false。
-  void _ensureDraining() {
-    if (_draining) return;
-    _draining = true;
-    // ignore: discarded_futures
-    _drainQueue();
-  }
-
-  /// 串行消费者：把队列里的行写进当前文件，必要时轮转。
-  ///
-  /// 全程只有这一个 Future 在改文件，所以不需要重入保护——
-  /// [_draining] 保证任一时刻只有一个消费者。
-  Future<void> _drainQueue() async {
-    try {
-      while (_writeQueue.isNotEmpty) {
-        final sink = _fileSink;
-        if (sink == null) {
-          // sink 未就绪：若仍希望落盘，说明是失败后的空窗期——
-          // 触发一次恢复尝试（有次数上限），否则队列只增不减直到撞上界。
-          // 直接丢弃会丢崩溃现场，不可接受。
-          if (_fileSinkEnabled) {
-            // 恢复是异步的（要重开文件）。不 await：此处必须立刻退出循环，
-            // 否则会在等待期间被 finally 的重入检查再次拉起消费者。
-            // [_recoverSink] 内部成功后会自己调 [_ensureDraining]。
-            unawaited(_recoverSink('sink 不可用，等待恢复'));
-          }
-          break;
-        }
-        if (_bytesWritten >= maxBytesPerFile) {
-          await _rotate();
-          continue;
-        }
-        final line = _writeQueue.removeAt(0);
-        sink.writeln(line);
-        _bytesWritten += '$line\n'.length;
-      }
-      // 收尾：把sink 刷到磁盘，避免进程被杀时丢内容。
-      // 关闭期可能已经有人把 sink 换走/关掉，此时 flush 必然抛
-      // `StreamSink is bound to a stream`——那是预期竞态，不是故障。
-      if (!_closingSink) await _fileSink?.flush();
-    } catch (err, stackTrace) {
-      // 写盘失败（如磁盘满）在此暴露；注意 IOSink 的异步错误另由
-      // [_watchSinkFailure] 兜住，两条路径都要留痕，不能只在 debug 打印。
-      e(
-        _tag,
-        '日志落盘失败',
-        error: err,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('AppLogger: drain failed: $err');
-      }
-    } finally {
-      _draining = false;
-      // 关闭/轮转期间可能又来了新日志，此时需要再跑一轮。
-      if (_writeQueue.isNotEmpty && _fileSink != null) _ensureDraining();
-    }
-  }
-
-  /// 多文件轮转：`app.2.log` 删除、`app.1.log` → `app.2.log`、`app.log` → `app.1.log`，
-  /// 然后开一个新的空 `app.log`。
-  ///
-  /// 全程只用 rename/delete，不做「读取-重写」，故不会在慢速存储上卡顿；
-  /// 代价是文件边界处的日志可能被切断——但每行自带完整时间戳，可读性不受影响。
-  ///
-  /// 只由 [_drainQueue] 串行调用，故无需考虑并发。
-  Future<void> _rotate() async {
-    final path = _fileSinkPath;
-    if (path == null) return;
-    final dir = Directory(p.dirname(path));
-    final current = File(path);
-
-    try {
-      final closing = _fileSink;
-      _fileSink = null;
-      // 关闭期间 sink 抛错属预期，不能让 [_watchSinkFailure] 误判为写盘失败
-      // 而触发恢复（那会与本方法争抢文件）。
-      _closingSink = true;
-      try {
-        await closing?.flush();
-        await closing?.close();
-      } finally {
-        _closingSink = false;
-      }
-
-      final oldest = File(
-        p.join(dir.path, '$_logFileBaseName.$maxFileCount$_logFileExtension'),
-      );
-      if (await oldest.exists()) {
-        await oldest.delete();
-      }
-      for (var i = maxFileCount - 1; i >= 1; i--) {
-        final from = File(
-          p.join(dir.path, '$_logFileBaseName.$i$_logFileExtension'),
-        );
-        if (await from.exists()) {
-          await from.rename(
-            p.join(dir.path, '$_logFileBaseName.${i + 1}$_logFileExtension'),
-          );
-        }
-      }
-      if (await current.exists()) {
-        await current.rename(
-          p.join(dir.path, '$_logFileBaseName.1$_logFileExtension'),
-        );
-      }
-      await _openCurrentLogFile();
-    } catch (err) {
-      // 轮转失败（如磁盘满、权限异常）不应让日志静默消失：
-      // 退回追加到原文件，下一次超限时再试。
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('AppLogger: rotate failed: $err');
-      }
-      if (_fileSink == null && await current.exists()) {
-        try {
-          _fileSink = current.openWrite(mode: FileMode.append);
-          _bytesWritten = await current.length();
-        } catch (_) {
-          // 实在打不开就放弃本次轮转，内存缓冲仍可正常工作。
-        }
-      }
-    }
-  }
-
-  /// 删除自动落盘产生的日志文件（`bugaoshan.log` 与 `bugaoshan.N.log`），并停止写入。
-  ///
-  /// 供设置页「清除所有数据」与关闭落盘时调用。
-  ///
-  /// 不依赖 sink 曾否启用：关闭落盘后 `_fileSinkPath` 会变 null，但磁盘上
-  /// 仍留着历史文件，因此此时回落到默认目录继续清理。忽略单个文件删除失败，
-  /// 保证尽力清理。
-  ///
-  /// **只删轮转文件，不手动导出的快照**（`exportToFile` 产出的
-  /// `bugaoshan-log-<时间戳>.log`）。导出是用户主动拿去分享给他人的产物，
-  /// 关掉落盘开关不该顺手清掉，故按文件名精确匹配而非前缀匹配——
-  /// 改 [_logFileBaseName] 时尤其容易踩这个边界（曾用
-  /// `startsWith('app')` 侥幸避开，base 改成 `bugaoshan` 就会误删导出文件）。
-  Future<void> deletePersistedFiles({String? overridePath}) async {
-    final dir = overridePath != null
-        ? Directory(overridePath)
-        : _fileSinkPath != null
-        ? Directory(p.dirname(_fileSinkPath!))
-        : await resolveLogDir();
-    await disableFileSink();
-    final rotated = RegExp(
-      '^${RegExp.escape(_logFileBaseName)}(\\.\\d+)?${RegExp.escape(_logFileExtension)}\$',
-    );
-    try {
-      if (!await dir.exists()) return;
-      await for (final entity in dir.list()) {
-        if (entity is! File) continue;
-        if (!rotated.hasMatch(p.basename(entity.path))) continue;
-        try {
-          await entity.delete();
-        } catch (_) {
-          // 单个文件删不掉（如被占用）不影响其余清理。
-        }
-      }
-    } catch (err) {
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('AppLogger: deletePersistedFiles failed: $err');
-      }
-    }
-  }
-
-  /// 把当前日志导出到 [targetDir] 下的 `bugaoshan-export-{timestamp}.log`，
-  /// 返回最终写入的文件路径。失败抛异常。
-  ///
-  /// 命名为 `export` 而非 `log`，与轮转文件 `bugaoshan.log` / `bugaoshan.N.log`
-  /// 明确区分：前者是用户主动分享的快照（不被
-  /// [deletePersistedFiles] 清理），后者是自动轮转产物。
-  ///
-  /// 供 LogViewer "Save" 按钮使用 — 调用方负责选定 [targetDir]
-  /// （推荐 `getLogBaseDir()` 路径下的 `Bugaoshan/logs/`）。
-  Future<String> exportToFile(Directory targetDir) async {
-    if (!await targetDir.exists()) {
-      await targetDir.create(recursive: true);
-    }
-    final ts = DateTime.now();
-    String two(int n) => n.toString().padLeft(2, '0');
-    final stamp =
-        '${ts.year}${two(ts.month)}${two(ts.day)}-${two(ts.hour)}${two(ts.minute)}${two(ts.second)}';
-    final file = File(p.join(targetDir.path, 'bugaoshan-export-$stamp.log'));
-    await file.writeAsString(exportToText());
-    return file.path;
-  }
-
-  /// 关闭文件落盘。
-  Future<void> disableFileSink() async {
-    if (!_fileSinkEnabled) return;
-    // 先等队列排空再关闭：否则队列里的行会随 sink 关闭而永久丢失。
-    // 关闭后不再续跑，故这里是有界的等待。
-    //
-    // 注意**排空期间不能置 [_closingSink]**：消费者的收尾flush 与
-    // [_recoverSink] 都受它约束，提前置位会让排空过程跳过写入，
-    // 结果是刚入队的行被白白丢弃（实测「关闭-重开-再写」丢失最后一条）。
-    // 排空完成后、真正close 之前才置位。
-    await _drainQueueOnce();
-    // flush 与 close 分开兜底：flush 失败（如磁盘满）不该连带跳过 close，
-    // 否则句柄泄漏，下次 enableFileSink 会累积未关闭的 sink。
-    // 移植自 PR #369（moranfanhua）的 `_closeSink`。
-    final sink = _fileSink;
-    _closingSink = true;
-    try {
-      await sink?.flush();
-    } catch (err, stackTrace) {
-      e(
-        _tag,
-        '刷新日志文件失败',
-        error: err,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-    }
-    try {
-      await sink?.close();
-    } catch (err, stackTrace) {
-      e(
-        _tag,
-        '关闭日志文件失败',
-        error: err,
-        stackTrace: stackTrace,
-        category: LogCategory.business,
-      );
-    }
-    _closingSink = false;
-    _fileSink = null;
-    _fileSinkPath = null;
-    _logDirPath = null;
-    _fileSinkEnabled = false;
-    _fileSinkHealthy = false;
-    _fileSinkError = null;
-    _sinkRecoveryAttempts = 0;
-    _notify();
-  }
-
-  /// 等待队列排空（用于关闭前；与 [_drainQueue] 共用同一条消费路径）。
-  ///
-  /// 必须等到**队列空且消费者已收尾**（含最后一次 flush 完成）才算结束。
-  /// 早期实现对空队列只`await Duration.zero`——那仅让出一个 microtask，
-  /// 而消费者的收尾flush 需要真实 IO 事件循环，于是关闭方抢在 flush 之前
-  /// 关掉 sink，队列里刚入队的行被丢弃（实测「关闭→重开→再写」丢最后一条）。
-  Future<void> _drainQueueOnce() async {
-    _ensureDraining();
-    // 有界等待：正常路径只需一两轮；上限兜底防止消费者异常时永久阻塞
-    // 调用方（此刻正在等待的通常是 disableFileSink）。
-    for (var i = 0; i < 400; i++) {
-      if (!_draining && _writeQueue.isEmpty) {
-        // 队列空且无消费者，但可能刚启动过一个还没跑起来的消费者；
-        // 让出一帧确认它确实没有残留工作。
-        await Future<void>.delayed(Duration.zero);
-        if (!_draining && _writeQueue.isEmpty) return;
-        continue;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-    }
-  }
+  /// 导出历史落盘文件与当前内存上下文，返回可分享的快照路径。
+  Future<String> exportToFile(Directory targetDir) => _exportToFile(targetDir);
 
   /// 因队列满而丢弃的行数（供 Dev 页排障时量化）。
   int get droppedWriteLines => _droppedLines;
 
-  /// 自动恢复落盘的最大尝试次数。
-  ///
-  /// 超过即认定存储长期不可用（磁盘满、权限被回收），继续重试只会空转
-  /// 并持续产生「恢复失败」的日志本身——那正是日志系统不该成为故障的地方。
   static const int _maxSinkRecoveryAttempts = 3;
 
   @override
   void dispose() {
     _disposed = true;
-    _closingSink = true;
-    // 队列里可能还有未落盘的行：先尽力排空（dispose 是同步的，无法等待，
-    // 故用 then 链在后台完成），再关闭 sink，避免丢内容。
-    final queue = _writeQueue;
-    if (queue.isNotEmpty) {
-      unawaited(
-        _drainQueueOnce().then((_) async {
-          try {
-            await _fileSink?.flush();
-            await _fileSink?.close();
-          } catch (_) {
-            // 释放阶段失败无需处理。
-          }
-          _fileSink = null;
-        }),
-      );
-      _writeQueue.clear();
-    } else {
-      // 关闭期间的 sink 报错属预期，吞掉即可，不应触发恢复路径。
-      _fileSink?.flush().catchError((_) {});
-      _fileSink?.close().catchError((_) {});
-      _fileSink = null;
-    }
+    unawaited(disableFileSink());
     super.dispose();
   }
 }

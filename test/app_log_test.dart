@@ -81,7 +81,8 @@ void main() {
     ).writeAsString('test');
     final logger = AppLogger();
     await logger.enableFileSink(overridePath: file.path);
-    expect(logger.fileSinkEnabled, isFalse);
+    expect(logger.fileSinkEnabled, isTrue);
+    expect(logger.fileSinkUnavailable, isTrue);
     expect(logger.entries.single.category, LogCategory.business);
     expect(logger.entries.single.level, LogLevel.error);
     expect(logger.entries.single.stackTrace, isNotEmpty);

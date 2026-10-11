@@ -132,7 +132,8 @@ void main() {
 
     // 失败原因必须可查——静默失败会让用户以为日志已被保留。
     expect(logger.fileSinkError, isNotNull, reason: '开启失败应记录原因，供 UI 与排障使用');
-    expect(logger.fileSinkEnabled, isFalse);
+    expect(logger.fileSinkEnabled, isTrue);
+    expect(logger.fileSinkUnavailable, isTrue);
     logger.dispose();
   });
 }

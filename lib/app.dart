@@ -57,11 +57,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (enabled) {
         unawaited(logger.enableFileSink());
       } else {
-        unawaited(
-          logger.disableFileSink().then((_) {
-            return logger.deletePersistedFiles();
-          }),
-        );
+        unawaited(logger.deletePersistedFiles());
       }
     }
 
