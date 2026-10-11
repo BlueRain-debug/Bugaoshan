@@ -372,6 +372,10 @@ The repository operates a strict two-tier release model (`preview` -> `main`):
   - Version/tag rules via `.github/scripts/resolve_release_version.py` (formal: pubspec, idempotent; preview: anchored to the last formal tag with a patch increment `-preview[.N]`; the `/release` prep phase switches to `-rc` naming; preview builds inject the last formal versionName/versionCode).
   - Triggers `build-android.yml` (universal + split APKs with Java 21) and `build-windows.yml` (Windows zip with dynamic WebView2Loader).
   - Publishes GitHub Releases with safe Draft -> Upload -> Publish ordering to support Immutable Releases.
+- **`close-linked-issues.yml` (Issue Auto-Close)**:
+  - Triggers on `pull_request: [closed]`, only runs when the PR was merged.
+  - Because PRs target `preview` rather than the default branch `main`, GitHub's native `Closes #N` keyword would only fire at the `preview -> main` step; this workflow closes the referenced issues at preview merge time instead.
+  - Only acts on PRs labeled **`close issue`**; parses `closes` / `fixes` / `resolves` keywords (with optional `#`) from the PR title and body, closes each referenced issue as completed, and leaves a comment linking the merged PR. Issues already closed, and references that are PRs, are skipped.
 
 ### Release Helpers (`.claude/commands/`)
 
