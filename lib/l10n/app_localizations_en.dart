@@ -505,13 +505,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forceUpdate => 'Update to Latest (Include Preview)';
 
   @override
-  String get appLogTitle => 'App Log';
+  String get appLogTitle => 'Runtime Log';
 
   @override
-  String get viewAppLog => 'View App Log';
+  String get viewAppLog => 'View Runtime Log';
 
   @override
-  String get logEmpty => 'No app log yet.';
+  String get logEmpty => 'No runtime log yet.';
 
   @override
   String logLastEntry(String time, String level, String tag) {

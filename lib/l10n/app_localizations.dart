@@ -1012,19 +1012,19 @@ abstract class AppLocalizations {
   /// No description provided for @appLogTitle.
   ///
   /// In en, this message translates to:
-  /// **'App Log'**
+  /// **'Runtime Log'**
   String get appLogTitle;
 
   /// No description provided for @viewAppLog.
   ///
   /// In en, this message translates to:
-  /// **'View App Log'**
+  /// **'View Runtime Log'**
   String get viewAppLog;
 
   /// No description provided for @logEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No app log yet.'**
+  /// **'No runtime log yet.'**
   String get logEmpty;
 
   /// No description provided for @logLastEntry.
