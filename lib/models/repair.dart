@@ -168,6 +168,8 @@ class RepairAreaNode {
 
 /// 报修工单（`activeTemplateData/list`「我的动态」的行）。
 class RepairTicket {
+  static const String _tag = 'RepairTicket';
+
   /// 详情接口（`repairInfo/get`）使用的工单 id（= 列表行的 `activeId`）。
   final String id;
 
@@ -271,10 +273,7 @@ class RepairTicket {
     }
     // 超过上限仍是字符串：视为不可解析。理论不该发生（后端最多 2 层），
     // 留 trace 日志便于以后排查异常工单。
-    AppLog.e(
-      'RepairTicket',
-      '报修内容超过 5 层转义上限，无法解析：${current.toString().length} 字符',
-    );
+    AppLog.e(_tag, '报修内容超过 5 层转义上限，无法解析：${current.toString().length} 字符');
     return const {};
   }
 
@@ -294,24 +293,14 @@ class RepairTicket {
         if (input.startsWith('{') ||
             input.startsWith('[') ||
             input.startsWith('"')) {
-          AppLog.e(
-            'RepairTicket',
-            '报修内容解析失败',
-            error: error,
-            stackTrace: stackTrace,
-          );
+          AppLog.e(_tag, '报修内容解析失败', error: error, stackTrace: stackTrace);
         }
         return null;
       }
       try {
         return jsonDecode(repaired);
       } catch (error, stackTrace) {
-        AppLog.e(
-          'RepairTicket',
-          '修复报修内容后仍无法解析',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        AppLog.e(_tag, '修复报修内容后仍无法解析', error: error, stackTrace: stackTrace);
         return null;
       }
     }

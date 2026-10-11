@@ -14,6 +14,8 @@ import 'package:bugaoshan/utils/constants.dart';
 /// applicationId mismatch (debug builds add a .debug suffix to applicationId
 /// but component class names resolve from the Gradle namespace).
 class DynamicIconService {
+  static const String _tag = 'DynamicIconService';
+
   static const MethodChannel _channel = kDynamicIconMethodChannel;
 
   /// The native channel is only implemented on Android; other platforms
@@ -34,7 +36,7 @@ class DynamicIconService {
       return list?.cast<String>() ?? [];
     } on MissingPluginException catch (logError, logStackTrace) {
       AppLog.e(
-        'DynamicIconService',
+        _tag,
         'getAvailableIcons 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -50,7 +52,7 @@ class DynamicIconService {
       return await _channel.invokeMethod<String?>('getCurrentIconName');
     } on MissingPluginException catch (logError, logStackTrace) {
       AppLog.e(
-        'DynamicIconService',
+        _tag,
         'getCurrentIconName 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -68,7 +70,7 @@ class DynamicIconService {
       });
     } on MissingPluginException catch (logError, logStackTrace) {
       AppLog.e(
-        'DynamicIconService',
+        _tag,
         'setAlternateIconName 失败',
         error: logError,
         stackTrace: logStackTrace,

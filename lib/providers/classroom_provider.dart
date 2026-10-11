@@ -10,6 +10,8 @@ import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 enum ClassroomLoadState { idle, loading, loaded, error }
 
 class ClassroomProvider extends ChangeNotifier {
+  static const String _tag = 'ClassroomProvider';
+
   ClassroomProvider(this._api);
 
   /// 查询结果按 (校区, 楼栋, 日期) 缓存；超过上限时淘汰最旧的，
@@ -61,22 +63,12 @@ class ClassroomProvider extends ChangeNotifier {
       _buildings = result.buildings;
       _indexState = ClassroomLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'ClassroomProvider',
-        'loadIndex 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: e, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
       _indexState = ClassroomLoadState.error;
       _indexError = zhjwAuthErrorType(e);
     } catch (error, logStackTrace) {
-      AppLog.e(
-        'ClassroomProvider',
-        'loadIndex 失败',
-        error: error,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: error, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
 
       _indexState = ClassroomLoadState.error;
@@ -160,7 +152,7 @@ class ClassroomProvider extends ChangeNotifier {
       resource.error = null;
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'ClassroomProvider',
+        _tag,
         '_loadAvailability 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -170,7 +162,7 @@ class ClassroomProvider extends ChangeNotifier {
       resource.error = zhjwAuthErrorType(e);
     } catch (error, logStackTrace) {
       AppLog.e(
-        'ClassroomProvider',
+        _tag,
         '_loadAvailability 失败',
         error: error,
         stackTrace: logStackTrace,

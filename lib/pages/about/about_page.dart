@@ -31,6 +31,8 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
+  static const String _tag = 'AboutPageState';
+
   final versionProvider = getIt<AppInfoProvider>();
   final updateProvider = getIt<UpdateProvider>();
   final appConfig = getIt<AppConfigProvider>();
@@ -102,7 +104,7 @@ class _AboutPageState extends State<AboutPage> {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'AboutPage',
+        _tag,
         '_checkForUpdates 失败',
         error: e,
         stackTrace: logStackTrace,

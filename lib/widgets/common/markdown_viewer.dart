@@ -66,6 +66,8 @@ class MarkdownAssetPage extends StatefulWidget {
 }
 
 class _MarkdownAssetPageState extends State<MarkdownAssetPage> {
+  static const String _tag = 'MarkdownAssetPageState';
+
   String? _content;
   bool _failed = false;
 
@@ -81,7 +83,7 @@ class _MarkdownAssetPageState extends State<MarkdownAssetPage> {
       if (!mounted) return;
       setState(() => _content = content);
     } catch (e) {
-      AppLog.e('MarkdownAssetPage', 'load ${widget.assetPath} failed: $e');
+      AppLog.e(_tag, 'load ${widget.assetPath} failed: $e');
       if (!mounted) return;
       setState(() => _failed = true);
     }

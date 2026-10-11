@@ -132,11 +132,7 @@ class ZhhqApiService {
   Future<T> _request<T>(
     Future<T> Function(CookieClient client, String tokenKey) fn,
   ) {
-    return AppLog.guard(
-      'ZhhqApiService',
-      '智慧后勤请求',
-      () => _executeWithRetry(fn),
-    );
+    return AppLog.guard(_tag, '智慧后勤请求', () => _executeWithRetry(fn));
   }
 
   Map<String, String> _headers(

@@ -34,6 +34,8 @@ const _balanceCacheDuration = Duration(minutes: 30);
 /// 不按登录账号隔离。同一寝室的不同账号看到并复用同一份数据，
 /// 避免重复查询（见 `docs/decisions/0005-remove-balance-history-account-isolation.md`）。
 class BalanceQueryProvider extends ChangeNotifier {
+  static const String _tag = 'BalanceQueryProvider';
+
   final SharedPreferences _prefs;
   final PayAppApiService _payappApi;
   final DatabaseService _db;
@@ -100,7 +102,7 @@ class BalanceQueryProvider extends ChangeNotifier {
           await _loadBalanceFor(binding, kBalanceTypeElectric, force: true);
         } catch (e, logStackTrace) {
           AppLog.e(
-            'BalanceQueryProvider',
+            _tag,
             '_maybeAutoSample 失败',
             error: e,
             stackTrace: logStackTrace,
@@ -112,7 +114,7 @@ class BalanceQueryProvider extends ChangeNotifier {
           await _loadBalanceFor(binding, kBalanceTypeAc, force: true);
         } catch (e, logStackTrace) {
           AppLog.e(
-            'BalanceQueryProvider',
+            _tag,
             '_maybeAutoSample 失败',
             error: e,
             stackTrace: logStackTrace,
@@ -121,7 +123,7 @@ class BalanceQueryProvider extends ChangeNotifier {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'BalanceQueryProvider',
+        _tag,
         '_maybeAutoSample 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -193,7 +195,7 @@ class BalanceQueryProvider extends ChangeNotifier {
             .toList();
       } catch (e, logStackTrace) {
         AppLog.e(
-          'BalanceQueryProvider',
+          _tag,
           '_loadBindingInfo 失败',
           error: e,
           stackTrace: logStackTrace,
@@ -238,12 +240,7 @@ class BalanceQueryProvider extends ChangeNotifier {
     try {
       await _db.deleteBalanceRecordsByRoom(roomKey);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'BalanceQueryProvider',
-        'removeBinding 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'removeBinding 失败', error: e, stackTrace: logStackTrace);
     }
     ensureCurrentBalances();
   }
@@ -299,7 +296,7 @@ class BalanceQueryProvider extends ChangeNotifier {
       await ensureBalance(balanceType);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BalanceQueryProvider',
+        _tag,
         '_silentlyEnsureBalance 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -426,12 +423,7 @@ class BalanceQueryProvider extends ChangeNotifier {
         entry.updatedAt = _now();
         return loaded;
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'BalanceQueryProvider',
-          'execute 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'execute 失败', error: e, stackTrace: logStackTrace);
         entry.error = e;
         rethrow;
       } finally {
@@ -492,12 +484,7 @@ class BalanceQueryProvider extends ChangeNotifier {
         entry.records = List.unmodifiable(records);
         entry.trend = BalanceTrendCalculator.calculate(entry.records!);
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'BalanceQueryProvider',
-          'load 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'load 失败', error: e, stackTrace: logStackTrace);
         entry.error = e;
         rethrow;
       } finally {
@@ -598,12 +585,7 @@ class BalanceQueryProvider extends ChangeNotifier {
             key.roomKey == record.roomKey && key.balanceType == balanceType,
       );
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'BalanceQueryProvider',
-        '_recordHistory 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_recordHistory 失败', error: e, stackTrace: logStackTrace);
     }
   }
 

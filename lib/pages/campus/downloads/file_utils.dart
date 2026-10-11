@@ -11,6 +11,8 @@ import 'package:open_filex/open_filex.dart';
 
 import 'package:bugaoshan/services/download_manager.dart';
 
+const String _tag = 'FileUtils';
+
 /// Default subdirectory name under `Bugaoshan/` for jwc notice downloads.
 const kNoticeAttachmentDir = 'notice_attachments';
 
@@ -21,14 +23,10 @@ const kPartyAttachmentDir = 'party_attachments';
 const kTuanweiAttachmentDir = 'tuanwei_attachments';
 
 Future<void> openDownloadedFile(String path) {
-  return AppLog.guard('Downloads', '打开下载文件', () async {
+  return AppLog.guard(_tag, '打开下载文件', () async {
     final result = await OpenFilex.open(path);
     if (result.type != ResultType.done) {
-      AppLog.e(
-        'Downloads',
-        '打开下载文件失败 type=${result.type}',
-        error: result.message,
-      );
+      AppLog.e(_tag, '打开下载文件失败 type=${result.type}', error: result.message);
     }
   });
 }
@@ -39,6 +37,8 @@ Future<void> openDownloadedFile(String path) {
 /// a shared JSON map. Legacy files are adopted only when no other URL already
 /// owns that path.
 class DownloadPathIndex {
+  static const String _tag = 'DownloadPathIndex';
+
   DownloadPathIndex(this.downloadDir);
 
   static const _indexDirName = '.download_index';
@@ -65,7 +65,7 @@ class DownloadPathIndex {
         await previous;
       } catch (logError, logStackTrace) {
         AppLog.e(
-          'FileUtils',
+          _tag,
           '下载索引队列恢复失败',
           error: logError,
           stackTrace: logStackTrace,
@@ -178,7 +178,7 @@ class DownloadPathIndex {
       return rawName;
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'FileUtils',
+        _tag,
         '_readFileName 失败',
         error: logError,
         stackTrace: logStackTrace,

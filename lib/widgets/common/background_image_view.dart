@@ -36,6 +36,8 @@ class BackgroundImageView extends StatefulWidget {
 }
 
 class _BackgroundImageViewState extends State<BackgroundImageView> {
+  static const String _tag = 'BackgroundImageViewState';
+
   static const Duration _fadeInDuration = Duration(milliseconds: 300);
 
   ImageStream? _stream;
@@ -80,12 +82,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
           }
         },
         onError: (error, stackTrace) {
-          AppLog.e(
-            'BackgroundImageView',
-            '背景图片解码失败',
-            error: error,
-            stackTrace: stackTrace,
-          );
+          AppLog.e(_tag, '背景图片解码失败', error: error, stackTrace: stackTrace);
           // 解码失败保持空显示，与 Image.errorBuilder 行为一致。
           _removeListener();
         },
@@ -95,7 +92,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
       stream.addListener(listener);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BackgroundImageView',
+        _tag,
         '_resolveImageSize 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -109,7 +106,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
       _stream?.removeListener(_listener!);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BackgroundImageView',
+        _tag,
         '_removeListener 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -186,12 +183,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
       ),
       colorBlendMode: BlendMode.modulate,
       errorBuilder: (_, error, stackTrace) {
-        AppLog.e(
-          'BackgroundImageView',
-          '背景图片渲染失败',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        AppLog.e(_tag, '背景图片渲染失败', error: error, stackTrace: stackTrace);
         return const SizedBox.shrink();
       },
     );

@@ -31,6 +31,8 @@ class ScuLoginPage extends StatefulWidget {
 }
 
 class _ScuLoginPageState extends State<ScuLoginPage> {
+  static const String _tag = 'ScuLoginPageState';
+
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -51,7 +53,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
     // Web 端 scu_ocr_lite 依赖 dart:isolate，运行时不受支持，直接跳过初始化
     if (OcrService.isSupported) {
       OcrService.init().catchError((e) {
-        AppLog.e('ScuLoginPage', 'OCR Init error: $e');
+        AppLog.e(_tag, 'OCR Init error: $e');
       });
     }
     _loadSaved();
@@ -93,12 +95,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       try {
         imageBytes = _decodeBase64Image(captcha.captchaBase64);
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'ScuLoginPage',
-          '_loadCaptcha 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_loadCaptcha 失败', error: e, stackTrace: logStackTrace);
       }
 
       String? recognizedText;
@@ -107,7 +104,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
           recognizedText = await OcrService.performOcr(imageBytes);
         } catch (e, logStackTrace) {
           AppLog.e(
-            'ScuLoginPage',
+            _tag,
             '_loadCaptcha 失败',
             error: e,
             stackTrace: logStackTrace,
@@ -130,12 +127,7 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
         }
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuLoginPage',
-        '_loadCaptcha 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadCaptcha 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -183,24 +175,14 @@ class _ScuLoginPageState extends State<ScuLoginPage> {
       if (!logicRootContext.mounted) return;
       Navigator.of(logicRootContext).pop(true);
     } on ScuLoginException catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuLoginPage',
-        '_submit 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submit 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() => _errorMsg = _localizeLoginError(e, l10n));
       unawaited(_loadCaptcha());
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuLoginPage',
-        '_submit 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submit 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;

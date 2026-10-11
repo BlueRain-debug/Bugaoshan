@@ -37,6 +37,8 @@ class ExportSheetItem<T> {
 }
 
 class CalendarExportUtils {
+  static const String _tag = 'CalendarExportUtils';
+
   const CalendarExportUtils._();
 
   /// 通用导出动作弹层：外观与 [showActionSheet] 保持一致
@@ -170,14 +172,14 @@ class CalendarExportUtils {
       return true;
     } on PlatformException catch (e, logStackTrace) {
       AppLog.e(
-        'CalendarExportUtils',
+        _tag,
         'copyJsonToClipboard 失败',
         error: e,
         stackTrace: logStackTrace,
       );
     } catch (e, logStackTrace) {
       AppLog.e(
-        'CalendarExportUtils',
+        _tag,
         'copyJsonToClipboard 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -280,12 +282,7 @@ class CalendarExportUtils {
         bytes: bytes,
       );
     } on PlatformException catch (e, logStackTrace) {
-      AppLog.e(
-        'CalendarExportUtils',
-        'saveIcsBytes 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'saveIcsBytes 失败', error: e, stackTrace: logStackTrace);
 
       if (!context.mounted) return;
       scaffoldMessenger.showSnackBar(
@@ -293,12 +290,7 @@ class CalendarExportUtils {
       );
       return;
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'CalendarExportUtils',
-        'saveIcsBytes 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'saveIcsBytes 失败', error: e, stackTrace: logStackTrace);
 
       if (!context.mounted) return;
       scaffoldMessenger.showSnackBar(
@@ -374,7 +366,7 @@ class CalendarExportUtils {
       // If result == 'picker', the system picker is already shown.
     } catch (e, logStackTrace) {
       AppLog.e(
-        'CalendarExportUtils',
+        _tag,
         'importToCalendar 失败',
         error: e,
         stackTrace: logStackTrace,

@@ -16,6 +16,8 @@ enum NetworkDeviceLoadState { idle, loading, loaded, error }
 /// 页面只读取本 Provider 的列表和操作状态；WFW session 失效后的重建、
 /// API 重试和旧异步结果屏蔽均由底层认证/API 层及本类负责。
 class NetworkDeviceProvider extends ChangeNotifier {
+  static const String _tag = 'NetworkDeviceProvider';
+
   NetworkDeviceProvider(this._api, this._wfwAuth, this._scuAuth) {
     _lastWfwAuthState = _wfwAuth.state;
     _lastScuAuthState = _scuAuth.state;
@@ -117,12 +119,7 @@ class NetworkDeviceProvider extends ChangeNotifier {
         _devices = List.unmodifiable(devices);
         _state = NetworkDeviceLoadState.loaded;
       } catch (error, logStackTrace) {
-        AppLog.e(
-          'NetworkDeviceProvider',
-          'execute 失败',
-          error: error,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'execute 失败', error: error, stackTrace: logStackTrace);
         if (!_isCurrent(generation)) return;
         _state = NetworkDeviceLoadState.error;
         _error = _mapError(error);
@@ -166,7 +163,7 @@ class NetworkDeviceProvider extends ChangeNotifier {
       return _isOperationCurrent(generation);
     } catch (error, logStackTrace) {
       AppLog.e(
-        'NetworkDeviceProvider',
+        _tag,
         'forceOffline 失败',
         error: error,
         stackTrace: logStackTrace,

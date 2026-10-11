@@ -41,6 +41,8 @@ class ScuResetPasswordPage extends StatefulWidget {
 }
 
 class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
+  static const String _tag = 'ScuResetPasswordPageState';
+
   final _accountService = getIt<ForgotPasswordService>();
 
   final _usernameCtrl = TextEditingController();
@@ -104,12 +106,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
             : captcha.captchaBase64;
         imageBytes = base64.decode(raw);
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'ScuResetPasswordPage',
-          '_loadCaptcha 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_loadCaptcha 失败', error: e, stackTrace: logStackTrace);
       }
       if (!mounted) return;
       setState(() {
@@ -118,12 +115,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
         _captchaCtrl.clear();
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_loadCaptcha 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadCaptcha 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() {
@@ -163,12 +155,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
         _step = 2;
       });
     } on ForgotPasswordException catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_submitAccount 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submitAccount 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = e.message);
@@ -177,12 +164,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
         unawaited(_loadCaptcha());
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_submitAccount 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submitAccount 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = AppLocalizations.of(context)!.networkError);
@@ -223,22 +205,12 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
         });
       });
     } on ForgotPasswordException catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_sendCode 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_sendCode 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = e.message);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_sendCode 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_sendCode 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = AppLocalizations.of(context)!.networkError);
@@ -267,22 +239,12 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
         _step = 3;
       });
     } on ForgotPasswordException catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_submitCode 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submitCode 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = e.message);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScuResetPasswordPage',
-        '_submitCode 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submitCode 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _errorMsg = AppLocalizations.of(context)!.networkError);
@@ -313,7 +275,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
       });
     } on ForgotPasswordException catch (e, logStackTrace) {
       AppLog.e(
-        'ScuResetPasswordPage',
+        _tag,
         '_submitNewPassword 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -323,7 +285,7 @@ class _ScuResetPasswordPageState extends State<ScuResetPasswordPage> {
       setState(() => _errorMsg = e.message);
     } catch (e, logStackTrace) {
       AppLog.e(
-        'ScuResetPasswordPage',
+        _tag,
         '_submitNewPassword 失败',
         error: e,
         stackTrace: logStackTrace,

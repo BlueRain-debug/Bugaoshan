@@ -14,6 +14,8 @@ class BalanceList extends StatefulWidget {
 }
 
 class _BalanceListState extends State<BalanceList> {
+  static const String _tag = 'BalanceListState';
+
   @override
   void initState() {
     super.initState();
@@ -78,12 +80,7 @@ class _BalanceListState extends State<BalanceList> {
       try {
         await widget.provider.refreshBalance(type);
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'BalanceList',
-          '_refreshAll 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_refreshAll 失败', error: e, stackTrace: logStackTrace);
         failed = true;
       }
     }

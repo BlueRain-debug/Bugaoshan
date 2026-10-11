@@ -128,7 +128,7 @@ class CookieClient extends http.BaseClient {
             nextHost = Uri.parse(location).host;
           } catch (logError, logStackTrace) {
             _log.e(
-              'CookieClient',
+              _tag,
               'followRedirects 失败',
               error: logError,
               stackTrace: logStackTrace,
@@ -145,7 +145,7 @@ class CookieClient extends http.BaseClient {
           current = current.resolve(location);
         } on FormatException catch (logError, logStackTrace) {
           _log.e(
-            'CookieClient',
+            _tag,
             'followRedirects 失败',
             error: logError,
             stackTrace: logStackTrace,
@@ -228,7 +228,7 @@ class CookieClient extends http.BaseClient {
         return await _inner.send(request).timeout(kHttpTimeout);
       } on http.ClientException catch (e, logStackTrace) {
         _log.e(
-          'CookieClient',
+          _tag,
           'sendWithClientExceptionRetry 失败',
           error: e,
           stackTrace: logStackTrace,

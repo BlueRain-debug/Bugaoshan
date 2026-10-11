@@ -16,6 +16,8 @@ import 'package:bugaoshan/utils/constants.dart';
 /// 权限处理:[requestPermission] 在 Android 13+ 请求 `POST_NOTIFICATIONS` 运行时权限;
 /// 权限被拒绝时不阻断下载,仅不显示通知。
 class DownloadNotificationService {
+  static const String _tag = 'DownloadNotificationService';
+
   static const _methodChannel = kUpdateMethodChannel;
   static const _cancelEventChannel = kDownloadCancelEventChannel;
 
@@ -39,7 +41,7 @@ class DownloadNotificationService {
       return result ?? false;
     } on PlatformException catch (logError, logStackTrace) {
       AppLog.e(
-        'DownloadNotificationService',
+        _tag,
         'requestPermission 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -71,7 +73,7 @@ class DownloadNotificationService {
       });
     } on PlatformException catch (logError, logStackTrace) {
       AppLog.e(
-        'DownloadNotificationService',
+        _tag,
         'showDownloadNotification 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -99,7 +101,7 @@ class DownloadNotificationService {
       });
     } on PlatformException catch (logError, logStackTrace) {
       AppLog.e(
-        'DownloadNotificationService',
+        _tag,
         'updateProgress 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -118,7 +120,7 @@ class DownloadNotificationService {
       });
     } on PlatformException catch (logError, logStackTrace) {
       AppLog.e(
-        'DownloadNotificationService',
+        _tag,
         'showCompleted 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -137,7 +139,7 @@ class DownloadNotificationService {
       });
     } on PlatformException catch (logError, logStackTrace) {
       AppLog.e(
-        'DownloadNotificationService',
+        _tag,
         'showError 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -152,12 +154,7 @@ class DownloadNotificationService {
     try {
       await _methodChannel.invokeMethod<void>('cancelDownloadNotification');
     } on PlatformException catch (logError, logStackTrace) {
-      AppLog.e(
-        'DownloadNotificationService',
-        'cancel 失败',
-        error: logError,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'cancel 失败', error: logError, stackTrace: logStackTrace);
       // 忽略
     }
   }
@@ -181,12 +178,7 @@ class DownloadNotificationService {
     _cancelSub = _cancelEventChannel.receiveBroadcastStream().listen(
       (_) => _cancelController?.add(null),
       onError: (Object error, StackTrace stackTrace) {
-        AppLog.e(
-          'DownloadNotificationService',
-          '下载取消事件流失败',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        AppLog.e(_tag, '下载取消事件流失败', error: error, stackTrace: stackTrace);
       },
     );
   }

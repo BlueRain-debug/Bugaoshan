@@ -15,6 +15,8 @@ class _SubmitTab extends StatefulWidget {
 }
 
 class _SubmitTabState extends State<_SubmitTab> {
+  static const String _tag = 'SubmitTabState';
+
   RepairAddress? _selectedAddress;
   String? _projectValue;
   String _projectLabel = '';
@@ -119,12 +121,7 @@ class _SubmitTabState extends State<_SubmitTab> {
         resources.add({'fileUrl': path, 'fileType': '1', 'statusType': '1'});
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'RepairSubmitTab',
-        '_submit 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_submit 失败', error: e, stackTrace: logStackTrace);
       if (!mounted) return;
       setState(() => _uploadingImages = false);
       _showError(e.toString());

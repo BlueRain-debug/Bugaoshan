@@ -13,6 +13,8 @@ class StartupErrorApp extends StatefulWidget {
 }
 
 class _StartupErrorAppState extends State<StartupErrorApp> {
+  static const String _tag = 'StartupErrorAppState';
+
   String? _status;
 
   void _setStatus(String status) {
@@ -30,12 +32,7 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
       await action();
       _setStatus('$label: done');
     } catch (error, stackTrace) {
-      AppLog.e(
-        'StartupRecovery',
-        '$label 失败',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      AppLog.e(_tag, '$label 失败', error: error, stackTrace: stackTrace);
       _setStatus('$label: failed - $error');
     }
   }

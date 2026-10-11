@@ -33,6 +33,8 @@ class BalanceCard extends StatefulWidget {
 }
 
 class _BalanceCardState extends State<BalanceCard> {
+  static const String _tag = 'BalanceCardState';
+
   bool _privacyHidden = true;
 
   Future<void> _forceRefresh() async {
@@ -40,7 +42,7 @@ class _BalanceCardState extends State<BalanceCard> {
       await widget.provider.refreshBalance(widget.balanceType);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BalanceCard',
+        _tag,
         '_forceRefresh 失败',
         error: logError,
         stackTrace: logStackTrace,

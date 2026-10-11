@@ -7,6 +7,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/constants.dart';
 
 class WidgetUpdateService {
+  static const String _tag = 'WidgetUpdateService';
+
   static const _channel = kUpdateMethodChannel;
   static const String _kDisposedMessage = 'WidgetUpdateService disposed';
   Timer? _debounceTimer;
@@ -117,12 +119,7 @@ class WidgetUpdateService {
         await updateWidgetData(force: true);
       }
     } catch (e, stack) {
-      AppLog.e(
-        'WidgetUpdateService',
-        'syncWidgetShowTomorrow 失败',
-        error: e,
-        stackTrace: stack,
-      );
+      AppLog.e(_tag, 'syncWidgetShowTomorrow 失败', error: e, stackTrace: stack);
     }
   }
 
@@ -142,12 +139,7 @@ class WidgetUpdateService {
         'density': density.index,
       });
     } catch (e, stack) {
-      AppLog.e(
-        'WidgetUpdateService',
-        'syncWidgetAppearance 失败',
-        error: e,
-        stackTrace: stack,
-      );
+      AppLog.e(_tag, 'syncWidgetAppearance 失败', error: e, stackTrace: stack);
     }
   }
 
@@ -190,12 +182,7 @@ class WidgetUpdateService {
             'BugaoShan WidgetUpdateService: native updateWidget completed successfully',
           );
         } catch (e, stack) {
-          AppLog.e(
-            'WidgetUpdateService',
-            '_runOnce 失败',
-            error: e,
-            stackTrace: stack,
-          );
+          AppLog.e(_tag, '_runOnce 失败', error: e, stackTrace: stack);
 
           // Clear follow-up flag to avoid stale state causing extra runs
           _needsRunAgain = false;
@@ -262,7 +249,7 @@ class WidgetUpdateService {
           'size': size,
         });
         if (result != true) {
-          AppLog.e('WidgetUpdateService', '桌面启动器拒绝添加小组件');
+          AppLog.e(_tag, '桌面启动器拒绝添加小组件');
         }
         return result ?? false;
       } else {
@@ -270,12 +257,7 @@ class WidgetUpdateService {
         return false;
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'WidgetUpdateService',
-        'pinWidget 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'pinWidget 失败', error: e, stackTrace: logStackTrace);
 
       return false;
     }
@@ -291,7 +273,7 @@ class WidgetUpdateService {
       return result?.whereType<int>().toSet() ?? {};
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WidgetUpdateService',
+        _tag,
         'getPinnedWidgetIds 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -310,12 +292,7 @@ class WidgetUpdateService {
       final result = await _channel.invokeMethod<bool>('openAppSettings');
       return result ?? false;
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'WidgetUpdateService',
-        'openAppSettings 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'openAppSettings 失败', error: e, stackTrace: logStackTrace);
 
       return false;
     }
@@ -330,7 +307,7 @@ class WidgetUpdateService {
       return result ?? false;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WidgetUpdateService',
+        _tag,
         'isIgnoringBatteryOptimizations 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -349,7 +326,7 @@ class WidgetUpdateService {
       return result ?? false;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WidgetUpdateService',
+        _tag,
         'requestIgnoreBatteryOptimizations 失败',
         error: e,
         stackTrace: logStackTrace,

@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowStateService with WindowListener {
+  static const String _tag = 'WindowStateService';
+
   static const String _keyX = 'window_x';
   static const String _keyY = 'window_y';
   static const String _keyW = 'window_w';
@@ -114,7 +116,7 @@ class WindowStateService with WindowListener {
       return Offset(clampedX, clampedY);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'WindowStateService',
+        _tag,
         '_clampToScreen 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -147,12 +149,7 @@ class WindowStateService with WindowListener {
       await _prefs.setDouble(_keyW, size.width);
       await _prefs.setDouble(_keyH, size.height);
     } catch (logError, logStackTrace) {
-      AppLog.e(
-        'WindowStateService',
-        '_saveNow 失败',
-        error: logError,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_saveNow 失败', error: logError, stackTrace: logStackTrace);
       // Best-effort save.
     }
   }

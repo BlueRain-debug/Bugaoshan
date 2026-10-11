@@ -8,6 +8,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 ///
 /// 通过 [CcylAuth] 获取 token，委托给 [CcylService] 的静态方法。
 class CcylApiService {
+  static const String _tag = 'CcylApiService';
+
   final CcylAuth _auth;
   CcylApiService(this._auth);
 
@@ -15,11 +17,7 @@ class CcylApiService {
   /// CCYL token 过期时服务端返回业务错误码而非 [UnauthenticatedException]。
   /// 这里捕获 [CcylException] 后清除旧 token、重新鉴权、再试一次。
   Future<T> _retryOnCcylAuthError<T>(Future<T> Function() fn) async {
-    return AppLog.guard(
-      'CcylApiService',
-      '第二课堂请求',
-      () => retryOnCcylAuthError(_auth, fn),
-    );
+    return AppLog.guard(_tag, '第二课堂请求', () => retryOnCcylAuthError(_auth, fn));
   }
 
   Future<List<CyclActivity>> searchActivities({

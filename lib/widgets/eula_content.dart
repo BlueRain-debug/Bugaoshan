@@ -27,6 +27,8 @@ class EulaContent extends StatefulWidget {
 
 class _EulaContentState extends State<EulaContent>
     with AutomaticKeepAliveClientMixin {
+  static const String _tag = 'EulaContentState';
+
   @override
   bool get wantKeepAlive => true;
   String _eulaContent = '';
@@ -58,7 +60,7 @@ class _EulaContentState extends State<EulaContent>
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'EulaContent',
+        _tag,
         '_loadEulaContent 失败',
         error: e,
         stackTrace: logStackTrace,

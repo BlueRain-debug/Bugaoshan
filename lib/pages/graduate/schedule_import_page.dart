@@ -128,7 +128,7 @@ class _GraduateScheduleImportPageState
         }
       } catch (e, logStackTrace) {
         AppLog.e(
-          'ScheduleImportPage',
+          _tag,
           '_tryDirectFetch 失败',
           error: e,
           stackTrace: logStackTrace,
@@ -146,12 +146,7 @@ class _GraduateScheduleImportPageState
       });
       AppLog.i(_tag, '直连获取课表成功：${data.courses.length} 门课');
     } on ScuException catch (e, logStackTrace) {
-      AppLog.e(
-        'ScheduleImportPage',
-        '_tryDirectFetch 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_tryDirectFetch 失败', error: e, stackTrace: logStackTrace);
       AppLog.i(_tag, '直连获取课表失败：$e');
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
@@ -163,12 +158,7 @@ class _GraduateScheduleImportPageState
         _directFailureMessage = l10n == null ? null : e.message;
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScheduleImportPage',
-        '_tryDirectFetch 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_tryDirectFetch 失败', error: e, stackTrace: logStackTrace);
       AppLog.i(_tag, '直连获取课表失败：$e');
       if (!mounted) return;
       setState(() {
@@ -199,12 +189,7 @@ class _GraduateScheduleImportPageState
         source: kGraduateScheduleCaptureQuery,
       );
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScheduleImportPage',
-        '_pollCapture 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_pollCapture 失败', error: e, stackTrace: logStackTrace);
 
       return;
     }
@@ -244,12 +229,7 @@ class _GraduateScheduleImportPageState
         );
         await controller.reload();
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'ScheduleImportPage',
-          '_reload 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_reload 失败', error: e, stackTrace: logStackTrace);
       }
       return;
     }
@@ -346,12 +326,7 @@ class _GraduateScheduleImportPageState
       );
       Navigator.of(context).pop();
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ScheduleImportPage',
-        '_import 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_import 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _importing = false);

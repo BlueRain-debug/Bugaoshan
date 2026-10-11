@@ -18,6 +18,8 @@ class EnvironmentInfoPage extends StatefulWidget {
 }
 
 class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
+  static const String _tag = 'EnvironmentInfoPageState';
+
   final _provider = getIt<AppInfoProvider>();
   late Future<VersionInfo> _future;
   late Future<Map<String, dynamic>> _deviceInfoFuture;
@@ -27,11 +29,7 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
   void initState() {
     super.initState();
     _future = _provider.getVersionInfo().then((v) => _info = v);
-    _deviceInfoFuture = AppLog.guard(
-      'EnvironmentInfo',
-      '读取设备信息',
-      _getDeviceInfo,
-    );
+    _deviceInfoFuture = AppLog.guard(_tag, '读取设备信息', _getDeviceInfo);
   }
 
   Future<Map<String, dynamic>> _getDeviceInfo() async {
@@ -66,7 +64,7 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
     final info = _info;
     if (info == null) return;
     await AppLog.guard(
-      'EnvironmentInfo',
+      _tag,
       '复制环境信息',
       () => Clipboard.setData(ClipboardData(text: info.toString())),
     );

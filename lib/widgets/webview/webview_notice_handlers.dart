@@ -15,6 +15,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'captcha_webview_dialog.dart';
 import 'download_options.dart';
 
+const String _tag = 'WebviewNoticeHandlers';
+
 /// JavaScript handlers and download logic for WebViewNoticePage.
 mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
   InAppWebViewController? get controller;
@@ -38,7 +40,7 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
       if (mounted) setState(() => pageAttachments = attachments);
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WebviewNoticeHandlers',
+        _tag,
         'onAttachmentsMessage 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -131,7 +133,7 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WebviewNoticeHandlers',
+        _tag,
         '_downloadWithCaptchaHandling 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -252,7 +254,7 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WebviewNoticeHandlers',
+        _tag,
         'onDownloadAttachment 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -284,7 +286,7 @@ mixin WebViewNoticeHandlers<T extends StatefulWidget> on State<T> {
       return true;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'WebviewNoticeHandlers',
+        _tag,
         'handleDownloadStartRequest 失败',
         error: e,
         stackTrace: logStackTrace,

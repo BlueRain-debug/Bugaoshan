@@ -117,7 +117,7 @@ class CcylAuth extends ChangeNotifier implements SubsystemAuth {
       );
       _log.i(_tag, 'init: token restored');
     } catch (e, logStackTrace) {
-      _log.e('CcylAuth', 'init 失败', error: e, stackTrace: logStackTrace);
+      _log.e(_tag, 'init 失败', error: e, stackTrace: logStackTrace);
 
       await _clearPersistedSession();
     }
@@ -229,7 +229,7 @@ class CcylAuth extends ChangeNotifier implements SubsystemAuth {
       notifyListeners();
       return true;
     } catch (e, logStackTrace) {
-      _log.e('CcylAuth', '_doReLogin 失败', error: e, stackTrace: logStackTrace);
+      _log.e(_tag, '_doReLogin 失败', error: e, stackTrace: logStackTrace);
 
       return false;
     }

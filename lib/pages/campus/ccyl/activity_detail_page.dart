@@ -20,6 +20,8 @@ class ActivityDetailPage extends StatefulWidget {
 }
 
 class _ActivityDetailPageState extends State<ActivityDetailPage> {
+  static const String _tag = 'ActivityDetailPageState';
+
   bool _loading = true;
   LoadErrorType? _error;
   CyclActivity? _activity;
@@ -53,12 +55,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         _loading = false;
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ActivityDetailPage',
-        '_loadData 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadData 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() {
@@ -110,12 +107,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         selectedType.code ?? '',
       );
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ActivityDetailPage',
-        '_signUp 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_signUp 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _actionLoading = false);
@@ -146,12 +138,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
       final provider = getIt<CcylProvider>();
       await provider.service.cancelSignUp(widget.activityId);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ActivityDetailPage',
-        '_cancelSignUp 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_cancelSignUp 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() => _actionLoading = false);
@@ -305,12 +292,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
           height: 200,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            AppLog.e(
-              'CcylActivity',
-              '活动图片加载失败',
-              error: error,
-              stackTrace: stackTrace,
-            );
+            AppLog.e(_tag, '活动图片加载失败', error: error, stackTrace: stackTrace);
             return Container(
               width: double.infinity,
               height: 200,

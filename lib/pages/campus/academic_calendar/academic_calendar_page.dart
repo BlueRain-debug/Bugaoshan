@@ -37,6 +37,8 @@ class AcademicCalendarPage extends StatefulWidget {
 
 class _AcademicCalendarPageState extends State<AcademicCalendarPage>
     with SingleTickerProviderStateMixin {
+  static const String _tag = 'AcademicCalendarPageState';
+
   static const _base = 'https://jwc.scu.edu.cn';
 
   late TabController _tabController;
@@ -122,12 +124,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage>
 
       await _loadDetail(entries.first);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'AcademicCalendarPage',
-        '_loadList 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadList 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         setState(() {
           _loading = false;
@@ -175,12 +172,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage>
         _loading = false;
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'AcademicCalendarPage',
-        '_loadDetail 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadDetail 失败', error: e, stackTrace: logStackTrace);
       if (!_isCurrentDetailRequest(requestGeneration, entry)) return;
       setState(() {
         _loading = false;
@@ -219,7 +211,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage>
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'AcademicCalendarPage',
+        _tag,
         '_loadInteractiveData 失败',
         error: e,
         stackTrace: logStackTrace,

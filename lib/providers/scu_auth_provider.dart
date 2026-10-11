@@ -118,7 +118,7 @@ class ScuAuthProvider extends ChangeNotifier {
       return value == 'true';
     } catch (e, logStackTrace) {
       _log.e(
-        'ScuAuthProvider',
+        _tag,
         'isAutoLoginEnabled 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -138,12 +138,7 @@ class ScuAuthProvider extends ChangeNotifier {
         value: enabled ? 'true' : 'false',
       );
     } catch (e, logStackTrace) {
-      _log.e(
-        'ScuAuthProvider',
-        'setAutoLogin 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      _log.e(_tag, 'setAutoLogin 失败', error: e, stackTrace: logStackTrace);
       // 写入失败仅记录日志，避免登录成功后被误判为网络错误而无法跳转
     }
   }
@@ -182,12 +177,7 @@ class ScuAuthProvider extends ChangeNotifier {
             final imageBytes = base64.decode(raw);
             captchaText = await OcrService.performOcr(imageBytes);
           } catch (e, logStackTrace) {
-            _log.e(
-              'ScuAuthProvider',
-              'autoLogin 失败',
-              error: e,
-              stackTrace: logStackTrace,
-            );
+            _log.e(_tag, 'autoLogin 失败', error: e, stackTrace: logStackTrace);
 
             return false;
           }
@@ -203,12 +193,7 @@ class ScuAuthProvider extends ChangeNotifier {
           _log.i(_tag, 'autoLogin: ok');
           return true;
         } on ScuLoginException catch (e, logStackTrace) {
-          _log.e(
-            'ScuAuthProvider',
-            'autoLogin 失败',
-            error: e,
-            stackTrace: logStackTrace,
-          );
+          _log.e(_tag, 'autoLogin 失败', error: e, stackTrace: logStackTrace);
           if (e.message == 'invalid_captcha') {
             _log.w(
               _tag,
@@ -219,12 +204,7 @@ class ScuAuthProvider extends ChangeNotifier {
 
           return false;
         } catch (e, logStackTrace) {
-          _log.e(
-            'ScuAuthProvider',
-            'autoLogin 失败',
-            error: e,
-            stackTrace: logStackTrace,
-          );
+          _log.e(_tag, 'autoLogin 失败', error: e, stackTrace: logStackTrace);
 
           return false;
         }

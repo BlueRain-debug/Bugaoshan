@@ -25,6 +25,8 @@ class ChangelogPage extends StatefulWidget {
 }
 
 class _ChangelogPageState extends State<ChangelogPage> {
+  static const String _tag = 'ChangelogPageState';
+
   List<_VersionEntry> _entries = [];
   bool _isLoading = true;
 
@@ -44,12 +46,7 @@ class _ChangelogPageState extends State<ChangelogPage> {
         });
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ChangelogPage',
-        '_loadChangelog 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadChangelog 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         setState(() => _isLoading = false);
       }

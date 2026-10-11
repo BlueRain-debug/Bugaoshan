@@ -28,6 +28,8 @@ class DevPage extends StatefulWidget {
 }
 
 class _DevPageState extends State<DevPage> {
+  static const String _tag = 'DevPageState';
+
   final _appConfig = getIt<AppConfigProvider>();
   final _updateProvider = getIt<UpdateProvider>();
 
@@ -39,7 +41,7 @@ class _DevPageState extends State<DevPage> {
       await _updateProvider.getAllLatestReleases();
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'DevPage',
+        _tag,
         '_checkForUpdates 失败',
         error: logError,
         stackTrace: logStackTrace,

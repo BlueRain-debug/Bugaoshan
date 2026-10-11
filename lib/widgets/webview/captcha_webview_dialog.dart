@@ -34,6 +34,8 @@ class CaptchaWebViewDialog extends StatefulWidget {
 }
 
 class _CaptchaWebViewDialogState extends State<CaptchaWebViewDialog> {
+  static const String _tag = 'CaptchaWebViewDialogState';
+
   bool _loading = true;
   // 弹窗是否已被用户主动关闭。关闭后 WebView 的下载回调可能仍在途，
   // 需要用 _closed + mounted 双重防护，避免对已关闭的弹窗执行 pop。
@@ -68,7 +70,7 @@ class _CaptchaWebViewDialogState extends State<CaptchaWebViewDialog> {
       }
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'CaptchaWebviewDialog',
+        _tag,
         '_onDownloadStarting 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -116,7 +118,7 @@ class _CaptchaWebViewDialogState extends State<CaptchaWebViewDialog> {
                     },
                     onReceivedError: (_, request, error) {
                       AppLog.e(
-                        'CaptchaWebView',
+                        _tag,
                         '验证页面加载失败 url=${request.url}',
                         error: error,
                       );
@@ -124,7 +126,7 @@ class _CaptchaWebViewDialogState extends State<CaptchaWebViewDialog> {
                     },
                     onReceivedHttpError: (_, request, response) {
                       AppLog.e(
-                        'CaptchaWebView',
+                        _tag,
                         '验证页面 HTTP ${response.statusCode} url=${request.url}',
                       );
                     },

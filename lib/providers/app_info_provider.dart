@@ -5,6 +5,8 @@ import 'package:bugaoshan/models/version_info.dart';
 import 'package:bugaoshan/providers/environment_info/native.dart';
 
 class AppInfoProvider {
+  static const String _tag = 'AppInfoProvider';
+
   /// 已知 F-Droid 客户端的包名。
   ///
   /// 从这些渠道安装的包由 F-Droid 负责更新。由于 F-Droid 版采用可复制构建，
@@ -42,7 +44,7 @@ class AppInfoProvider {
       gitCommit.length >= 7 ? gitCommit.substring(0, 7) : gitCommit;
 
   Future<VersionInfo> getVersionInfo() async {
-    return AppLog.guard('AppInfo', '读取运行环境', () async {
+    return AppLog.guard(_tag, '读取运行环境', () async {
       return VersionInfo(
         app:
             "AppName: ${packageInfo.appName}\n"

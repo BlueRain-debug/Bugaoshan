@@ -33,6 +33,8 @@ class ActivityLibDetailPage extends StatefulWidget {
 }
 
 class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
+  static const String _tag = 'ActivityLibDetailPageState';
+
   bool _loading = true;
   LoadErrorType? _error;
   CyclActivityLib? _activityLib;
@@ -71,12 +73,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
         );
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ActivityLibDetailPage',
-        '_loadData 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadData 失败', error: e, stackTrace: logStackTrace);
 
       if (!mounted) return;
       setState(() {
@@ -113,7 +110,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
       );
     } catch (e, logStackTrace) {
       AppLog.e(
-        'ActivityLibDetailPage',
+        _tag,
         '_toggleSubscription 失败',
         error: e,
         stackTrace: logStackTrace,

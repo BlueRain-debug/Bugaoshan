@@ -8,6 +8,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 enum ExportResult { success, failed, canceled }
 
 class ExportScheduleProvider {
+  static const String _tag = 'ExportScheduleProvider';
+
   final CourseProvider _courseProvider;
   // When override fields are set, they take precedence over the current schedule.
   // This allows exporting a non-active schedule from schedule management page.
@@ -45,7 +47,7 @@ class ExportScheduleProvider {
   Future<ExportResult> copyToClipBoard() async {
     final cfg = _config;
     if (cfg == null) {
-      AppLog.e('ExportSchedule', '复制课表失败：缺少课表配置');
+      AppLog.e(_tag, '复制课表失败：缺少课表配置');
       return ExportResult.failed;
     }
     final data = {
@@ -62,7 +64,7 @@ class ExportScheduleProvider {
   CalendarExportPayload buildCalendarPayload(String teacherLabel) {
     final cfg = _config;
     if (cfg == null) {
-      AppLog.e('ExportSchedule', '导出课表失败：缺少课表配置');
+      AppLog.e(_tag, '导出课表失败：缺少课表配置');
       throw StateError('No schedule to export');
     }
     return IcsService.genCourseExportPayload(

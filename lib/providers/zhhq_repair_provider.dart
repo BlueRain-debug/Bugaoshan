@@ -127,7 +127,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       await _auth.ensureAuthenticated();
     } catch (e, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'retryAuth 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -173,7 +173,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
         );
       } catch (error, logStackTrace) {
         _log.e(
-          'ZhhqRepairProvider',
+          _tag,
           'execute 失败',
           error: error,
           stackTrace: logStackTrace,
@@ -218,7 +218,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
         await inFlight;
       } catch (logError, logStackTrace) {
         _log.e(
-          'ZhhqRepairProvider',
+          _tag,
           'loadTickets 失败',
           error: logError,
           stackTrace: logStackTrace,
@@ -248,7 +248,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       );
     } catch (error, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         '_fetchTickets 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -272,7 +272,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.ifAllowWithdrawRepair(id: id);
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'ifAllowWithdrawRepair 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -318,7 +318,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchEvaluateProjects();
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchEvaluateProjects 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -358,7 +358,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return _isOperationCurrent(generation);
     } catch (error, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'addAddress 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -399,7 +399,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return _isOperationCurrent(generation);
     } catch (error, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'submitTicket 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -423,7 +423,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchBookDates();
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchBookDates 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -439,7 +439,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchBookTimes(date);
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchBookTimes 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -455,7 +455,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchProjects(areaId);
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchProjects 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -474,7 +474,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchAcceptDept(areaId: areaId, projectId: projectId);
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchAcceptDept 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -490,7 +490,7 @@ class ZhhqRepairProvider extends ChangeNotifier {
       return await _api.fetchAreaTreeNodes();
     } on ScuException catch (logError, logStackTrace) {
       _log.e(
-        'ZhhqRepairProvider',
+        _tag,
         'fetchAreaTree 失败',
         error: logError,
         stackTrace: logStackTrace,

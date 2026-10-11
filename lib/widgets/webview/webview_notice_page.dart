@@ -45,6 +45,8 @@ class WebViewNoticePage extends StatefulWidget {
 
 class _WebViewNoticePageState extends State<WebViewNoticePage>
     with WebViewNoticeHandlers {
+  static const String _tag = 'WebViewNoticePageState';
+
   InAppWebViewController? _controller;
   String _beautifyScript = '';
   String _domReadyScript = '';
@@ -145,23 +147,13 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
       try {
         await controller.evaluateJavascript(source: _beautifyScript);
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'WebviewNoticePage',
-          '_onLoadStop 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_onLoadStop 失败', error: e, stackTrace: logStackTrace);
       }
       if (_domReadyScript.isNotEmpty) {
         try {
           await controller.evaluateJavascript(source: _domReadyScript);
         } catch (e, logStackTrace) {
-          AppLog.e(
-            'WebviewNoticePage',
-            '_onLoadStop 失败',
-            error: e,
-            stackTrace: logStackTrace,
-          );
+          AppLog.e(_tag, '_onLoadStop 失败', error: e, stackTrace: logStackTrace);
 
           await _finishLoading();
         }
@@ -300,10 +292,7 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
                 onLoadStart: _onLoadStart,
                 onLoadStop: _onLoadStop,
                 onReceivedError: (controller, request, error) {
-                  AppLog.e(
-                    'WebViewNoticePage',
-                    '${widget.debugLabel} WebView error: $error',
-                  );
+                  AppLog.e(_tag, '${widget.debugLabel} WebView error: $error');
                   if ((request.isForMainFrame ?? false) &&
                       _errorHtmlTemplate.isNotEmpty) {
                     final html = _errorHtmlTemplate.replaceAll(
@@ -315,7 +304,7 @@ class _WebViewNoticePageState extends State<WebViewNoticePage>
                 },
                 onReceivedHttpError: (controller, request, response) {
                   AppLog.e(
-                    'WebViewNoticePage',
+                    _tag,
                     '${widget.debugLabel} HTTP ${response.statusCode} url=${request.url}',
                   );
                 },

@@ -16,6 +16,8 @@ class CalendarEntry {
 }
 
 class OfficialCalendarView extends StatelessWidget {
+  static const String _tag = 'OfficialCalendarView';
+
   final List<CalendarEntry> entries;
   final CalendarEntry? selected;
   final bool loading;
@@ -120,7 +122,7 @@ class OfficialCalendarView extends StatelessWidget {
                     },
                     errorBuilder: (context, error, stackTrace) {
                       AppLog.e(
-                        'OfficialCalendar',
+                        _tag,
                         '校历图片加载失败',
                         error: error,
                         stackTrace: stackTrace,

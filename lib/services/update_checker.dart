@@ -3,6 +3,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 
 import 'package:http/http.dart' as http;
 
+const String _tag = 'UpdateChecker';
+
 /// Bugaoshan GitHub 仓库标识。
 const String kGithubRepo = 'The-Brotherhood-of-SCU/Bugaoshan';
 
@@ -134,14 +136,14 @@ List<int>? _parseVersion(String version) {
       .replaceFirst(RegExp(r'^v', caseSensitive: false), '');
   final parts = clean.split('.');
   if (parts.length < 3) {
-    AppLog.e('UpdateChecker', '无法比较更新版本：版本号格式错误 version=$version');
+    AppLog.e(_tag, '无法比较更新版本：版本号格式错误 version=$version');
     return null;
   }
   try {
     return [int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2])];
   } catch (error, stackTrace) {
     AppLog.e(
-      'UpdateChecker',
+      _tag,
       '解析更新版本号失败 version=$version',
       error: error,
       stackTrace: stackTrace,

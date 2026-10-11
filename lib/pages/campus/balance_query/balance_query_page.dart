@@ -17,6 +17,8 @@ import 'widgets/bind_room_dialog.dart';
 /// 页面只负责渲染认证和 [BalanceQueryProvider] 的当前快照；余额、绑定选项
 /// 的缓存、加载和错误状态均由 Provider 管理。
 class BalanceQueryPage extends StatelessWidget {
+  static const String _tag = 'BalanceQueryPage';
+
   const BalanceQueryPage({super.key});
 
   @override
@@ -142,12 +144,7 @@ class BalanceQueryPage extends StatelessWidget {
     try {
       await provider.switchBinding(index);
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'BalanceQueryPage',
-        '_switchBinding 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_switchBinding 失败', error: e, stackTrace: logStackTrace);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

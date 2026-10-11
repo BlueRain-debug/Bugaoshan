@@ -49,6 +49,8 @@ class AddWidgetContent extends StatefulWidget {
 
 class _AddWidgetContentState extends State<AddWidgetContent>
     with WidgetsBindingObserver {
+  static const String _tag = 'AddWidgetContentState';
+
   /// 提交 pin 请求后,等待该时长再做"弹窗是否出现"的判定
   static const _pinVerifyDelay = Duration(seconds: 5);
 
@@ -134,7 +136,7 @@ class _AddWidgetContentState extends State<AddWidgetContent>
           await service.syncWidgetShowTomorrow(v);
         } catch (e, st) {
           AppLog.e(
-            'AddWidgetPage',
+            _tag,
             '_buildShowTomorrowSwitch 失败',
             error: e,
             stackTrace: st,

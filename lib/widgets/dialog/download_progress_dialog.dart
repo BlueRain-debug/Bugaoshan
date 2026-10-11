@@ -9,6 +9,8 @@ import 'package:bugaoshan/providers/update_provider.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/theme_shape.dart';
 
+const String _tag = 'DownloadProgressDialog';
+
 /// 下载进度状态
 class UpdateProgressState extends ChangeNotifier {
   String _status = 'Downloading...';
@@ -225,7 +227,7 @@ Future<bool> showDownloadProgressDialog({
       return false;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'DownloadProgressDialog',
+        _tag,
         'showDownloadProgressDialog 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -275,7 +277,7 @@ Future<bool> showDownloadProgressDialog({
     return false;
   } catch (e, logStackTrace) {
     AppLog.e(
-      'DownloadProgressDialog',
+      _tag,
       'showDownloadProgressDialog 失败',
       error: e,
       stackTrace: logStackTrace,

@@ -58,6 +58,8 @@ class ImportSchedulePage extends StatefulWidget {
 }
 
 class _ImportSchedulePageState extends State<ImportSchedulePage> {
+  static const String _tag = 'ImportSchedulePageState';
+
   final _controller = TextEditingController();
   bool _loading = false;
   int _currentProgress = 0;
@@ -195,12 +197,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         _showSuccessAndPop();
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ImportSchedulePage',
-        '_import 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_import 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         unawaited(
@@ -243,24 +240,14 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         }
       }
     } on ScuException catch (e, logStackTrace) {
-      AppLog.e(
-        'ImportSchedulePage',
-        '_importOnline 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
       }
       if (mounted) setState(() => _loading = false);
       return;
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ImportSchedulePage',
-        '_importOnline 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         unawaited(
@@ -503,7 +490,7 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
             }
           } catch (logError, logStackTrace) {
             AppLog.e(
-              'ImportSchedulePage',
+              _tag,
               '_importOnline 失败',
               error: logError,
               stackTrace: logStackTrace,
@@ -523,22 +510,12 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
         }
       }
     } on ScuException catch (e, logStackTrace) {
-      AppLog.e(
-        'ImportSchedulePage',
-        '_importOnline 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ImportSchedulePage',
-        '_importOnline 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         unawaited(

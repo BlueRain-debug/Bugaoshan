@@ -13,6 +13,8 @@ class SetAppIconPage extends StatefulWidget {
 }
 
 class _SetAppIconPageState extends State<SetAppIconPage> {
+  static const String _tag = 'SetAppIconPageState';
+
   List<String> _availableIcons = [];
   String? _currentIcon;
   bool _isLoading = true;
@@ -37,7 +39,7 @@ class _SetAppIconPageState extends State<SetAppIconPage> {
       });
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'SetAppIconPage',
+        _tag,
         '_loadData 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -86,7 +88,7 @@ class _SetAppIconPageState extends State<SetAppIconPage> {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'SetAppIconPage',
+        _tag,
         '_confirmAndSwitch 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -155,6 +157,8 @@ class _SetAppIconPageState extends State<SetAppIconPage> {
 }
 
 class _IconOption extends StatelessWidget {
+  static const String _tag = 'IconOption';
+
   final String iconAsset;
   final String label;
   final String subtitle;
@@ -183,7 +187,7 @@ class _IconOption extends StatelessWidget {
         height: size,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          AppLog.e('AppIcon', '图标图片加载失败', error: error, stackTrace: stackTrace);
+          AppLog.e(_tag, '图标图片加载失败', error: error, stackTrace: stackTrace);
           return Container(
             width: size,
             height: size,

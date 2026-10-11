@@ -57,12 +57,7 @@ class CcylOAuthService {
       _log.w(_tag, 'getOAuthCode: no code in response');
       return null;
     } catch (e, logStackTrace) {
-      _log.e(
-        'CcylOauthService',
-        'getOAuthCode 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      _log.e(_tag, 'getOAuthCode 失败', error: e, stackTrace: logStackTrace);
 
       return null;
     } finally {

@@ -23,6 +23,8 @@ class ActivitiesTab extends StatefulWidget {
 }
 
 class _ActivitiesTabState extends State<ActivitiesTab> {
+  static const String _tag = 'ActivitiesTabState';
+
   static const _defaultPageSize = 10;
   // 本地筛选（状态/学时）无法下推到服务端，用更大分页减少筛选时的续拉轮数。
   static const _filteredPageSize = 20;
@@ -124,12 +126,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
         _hasMore = results.length >= pageSize;
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ActivitiesTab',
-        '_loadActivities 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadActivities 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         setState(() {
@@ -183,7 +180,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
           }
         } catch (e, logStackTrace) {
           AppLog.e(
-            'ActivitiesTab',
+            _tag,
             '_resolveQueuedSeriesPhases 失败',
             error: e,
             stackTrace: logStackTrace,
@@ -231,7 +228,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
       if (mounted) setState(() => _orgOptions = orgs);
     } catch (e, logStackTrace) {
       AppLog.e(
-        'ActivitiesTab',
+        _tag,
         '_ensureFilterOptions 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -260,7 +257,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'ActivitiesTab',
+        _tag,
         '_ensureFilterOptions 失败',
         error: e,
         stackTrace: logStackTrace,

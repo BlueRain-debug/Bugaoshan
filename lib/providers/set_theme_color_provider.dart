@@ -18,6 +18,8 @@ class ThemeColorPreviewResult {
 }
 
 class SetThemeColorProvider {
+  static const String _tag = 'SetThemeColorProvider';
+
   final AppConfigProvider _appConfigProvider;
 
   SetThemeColorProvider(this._appConfigProvider);
@@ -29,7 +31,7 @@ class SetThemeColorProvider {
   Color? get extractedColor => _extractedColor;
 
   Future<Color> getSystemAccentColor() async {
-    return AppLog.guard('ThemeColor', '读取系统主题色', () async {
+    return AppLog.guard(_tag, '读取系统主题色', () async {
       await SystemTheme.accentColor.load();
       return SystemTheme.accentColor.accent;
     });
@@ -77,7 +79,7 @@ class SetThemeColorProvider {
   }
 
   Future<ExtractColorResult> extractColorFromBackgroundImage() async {
-    return AppLog.guard('ThemeColor', '提取背景主题色', () async {
+    return AppLog.guard(_tag, '提取背景主题色', () async {
       final bgPath = _appConfigProvider.backgroundImagePath.value;
       if (bgPath == null) {
         _lastExtractResult = ExtractColorResult.noBackgroundImage;
@@ -86,7 +88,7 @@ class SetThemeColorProvider {
 
       final file = File(bgPath);
       if (!await file.exists()) {
-        AppLog.e('ThemeColor', '背景图片不存在，提取主题色失败');
+        AppLog.e(_tag, '背景图片不存在，提取主题色失败');
         _lastExtractResult = ExtractColorResult.failure;
         return ExtractColorResult.failure;
       }
@@ -100,7 +102,7 @@ class SetThemeColorProvider {
         format: ui.ImageByteFormat.rawRgba,
       );
       if (byteData == null) {
-        AppLog.e('ThemeColor', '无法读取背景图片像素，提取主题色失败');
+        AppLog.e(_tag, '无法读取背景图片像素，提取主题色失败');
         _lastExtractResult = ExtractColorResult.failure;
         return ExtractColorResult.failure;
       }
@@ -123,7 +125,7 @@ class SetThemeColorProvider {
       );
 
       if (dominantColorValue == null) {
-        AppLog.e('ThemeColor', '背景图片没有可用像素，提取主题色失败');
+        AppLog.e(_tag, '背景图片没有可用像素，提取主题色失败');
         _lastExtractResult = ExtractColorResult.failure;
         return ExtractColorResult.failure;
       }

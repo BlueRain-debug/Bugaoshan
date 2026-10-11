@@ -9,6 +9,8 @@ import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 enum TrainProgramLoadState { idle, loading, loaded, error }
 
 class TrainProgramProvider extends ChangeNotifier {
+  static const String _tag = 'TrainProgramProvider';
+
   final ZhjwApiService _zhjwApi;
 
   TrainProgramProvider(this._zhjwApi);
@@ -95,7 +97,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _gradesState = TrainProgramLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCollegesAndGrades 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -106,7 +108,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _gradesError = zhjwAuthErrorType(e);
     } on ServiceException catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCollegesAndGrades 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -117,7 +119,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _gradesError = campusNetworkErrorType(LoadErrorType.loadFailed);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCollegesAndGrades 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -143,17 +145,12 @@ class TrainProgramProvider extends ChangeNotifier {
       );
       _programsState = TrainProgramLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'TrainProgramProvider',
-        'searchPrograms 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'searchPrograms 失败', error: e, stackTrace: logStackTrace);
       _programsState = TrainProgramLoadState.error;
       _programsError = zhjwAuthErrorType(e);
     } on ServiceException catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'searchPrograms 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -162,7 +159,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _programsError = campusNetworkErrorType(LoadErrorType.loadFailed);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'searchPrograms 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -186,7 +183,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _detailState = TrainProgramLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchProgramDetail 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -196,7 +193,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _detailError = zhjwAuthErrorType(e);
     } on ServiceException catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchProgramDetail 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -206,7 +203,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _detailError = campusNetworkErrorType(LoadErrorType.loadFailed);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchProgramDetail 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -239,7 +236,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _courseDetailState = TrainProgramLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCourseDetail 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -249,7 +246,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _courseDetailError = zhjwAuthErrorType(e);
     } on ServiceException catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCourseDetail 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -259,7 +256,7 @@ class TrainProgramProvider extends ChangeNotifier {
       _courseDetailError = campusNetworkErrorType(LoadErrorType.loadFailed);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'TrainProgramProvider',
+        _tag,
         'fetchCourseDetail 失败',
         error: logError,
         stackTrace: logStackTrace,

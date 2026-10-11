@@ -19,6 +19,8 @@ class OrderedActivitiesTab extends StatefulWidget {
 }
 
 class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
+  static const String _tag = 'OrderedActivitiesTabState';
+
   List<CyclActivity> _activities = [];
   bool _loading = false;
   LoadErrorType? _error;
@@ -74,12 +76,7 @@ class _OrderedActivitiesTabState extends State<OrderedActivitiesTab> {
         _hasMore = results.length >= 10;
       });
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'OrderedActivitiesTab',
-        '_loadActivities 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadActivities 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         setState(() {

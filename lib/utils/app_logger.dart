@@ -229,6 +229,7 @@ class LogRedactor {
 ///   落盘是崩溃现场唯一的后手——进程退出后内存缓冲必然丢失。
 /// - 模块通过 `getIt<AppLogger>()` 拿到实例，无需依赖注入额外参数。
 class AppLogger extends ChangeNotifier {
+  static const String _tag = 'AppLogger';
   static const int _defaultCapacity = 1000;
 
   /// 落盘的最低级别：[LogLevel.warn] 及以上。
@@ -533,7 +534,7 @@ class AppLogger extends ChangeNotifier {
       _fileSinkHealthy = false;
       _fileSinkError = err.toString();
       e(
-        'AppLogger',
+        _tag,
         '开启日志落盘失败',
         error: err,
         stackTrace: stackTrace,
@@ -591,7 +592,7 @@ class AppLogger extends ChangeNotifier {
       _fileSinkHealthy = false;
       _fileSinkError = error.toString();
       e(
-        'AppLogger',
+        _tag,
         '日志文件写入失败',
         error: error,
         stackTrace: stackTrace,
@@ -645,7 +646,7 @@ class AppLogger extends ChangeNotifier {
       // 保留 unhealthy 状态，下一条日志会再次触发恢复尝试。
       _fileSinkHealthy = false;
       e(
-        'AppLogger',
+        _tag,
         '重建日志文件失败',
         error: err,
         stackTrace: stackTrace,
@@ -716,7 +717,7 @@ class AppLogger extends ChangeNotifier {
       // 写盘失败（如磁盘满）在此暴露；注意 IOSink 的异步错误另由
       // [_watchSinkFailure] 兜住，两条路径都要留痕，不能只在 debug 打印。
       e(
-        'AppLogger',
+        _tag,
         '日志落盘失败',
         error: err,
         stackTrace: stackTrace,
@@ -883,7 +884,7 @@ class AppLogger extends ChangeNotifier {
       await sink?.flush();
     } catch (err, stackTrace) {
       e(
-        'AppLogger',
+        _tag,
         '刷新日志文件失败',
         error: err,
         stackTrace: stackTrace,
@@ -894,7 +895,7 @@ class AppLogger extends ChangeNotifier {
       await sink?.close();
     } catch (err, stackTrace) {
       e(
-        'AppLogger',
+        _tag,
         '关闭日志文件失败',
         error: err,
         stackTrace: stackTrace,

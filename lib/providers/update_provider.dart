@@ -20,6 +20,8 @@ import 'package:bugaoshan/widgets/route/router_utils.dart';
 /// 直接返回之前缓存的 Future,await 得到第一次的结果。任务完成(finally)后置空,
 /// 允许下次调用。
 class UpdateProvider {
+  static const String _tag = 'UpdateProvider';
+
   UpdateProvider(this._service, this._appInfo, this._notification);
 
   final UpdateService _service;
@@ -119,7 +121,7 @@ class UpdateProvider {
       return (stable, preview);
     } catch (e, logStackTrace) {
       AppLog.e(
-        'UpdateProvider',
+        _tag,
         '_doGetAllLatestReleases 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -235,7 +237,7 @@ class UpdateProvider {
       rethrow;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'UpdateProvider',
+        _tag,
         '_doDownloadAndInstall 失败',
         error: e,
         stackTrace: logStackTrace,

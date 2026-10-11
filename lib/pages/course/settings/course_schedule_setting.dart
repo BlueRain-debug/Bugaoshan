@@ -28,6 +28,8 @@ class CourseScheduleSetting extends StatefulWidget {
 }
 
 class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
+  static const String _tag = 'CourseScheduleSettingState';
+
   final courseProvider = getIt<CourseProvider>();
   final authProvider = getIt<ScuAuthProvider>();
 
@@ -103,7 +105,7 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
       unawaited(_save());
     } on ScuException catch (e, logStackTrace) {
       AppLog.e(
-        'CourseScheduleSetting',
+        _tag,
         '_fetchCurrentWeek 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -114,7 +116,7 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
       ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e, logStackTrace) {
       AppLog.e(
-        'CourseScheduleSetting',
+        _tag,
         '_fetchCurrentWeek 失败',
         error: e,
         stackTrace: logStackTrace,

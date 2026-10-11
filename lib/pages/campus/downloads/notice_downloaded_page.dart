@@ -55,6 +55,8 @@ class NoticeDownloadedPage extends StatefulWidget {
 
 class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
     with TickerProviderStateMixin {
+  static const String _tag = 'NoticeDownloadedPageState';
+
   late final List<_DirConfig> _dirConfigs;
 
   late final TabController _tabController;
@@ -147,12 +149,7 @@ class _NoticeDownloadedPageState extends State<NoticeDownloadedPage>
       }
       await openUri(Uri.file(dir.path));
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'NoticeDownloadedPage',
-        '_openFolder 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_openFolder 失败', error: e, stackTrace: logStackTrace);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,

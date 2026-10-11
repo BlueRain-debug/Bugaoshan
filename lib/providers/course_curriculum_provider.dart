@@ -20,6 +20,8 @@ class CourseScheduleDetailState {
 }
 
 class CourseCurriculumProvider extends ChangeNotifier {
+  static const String _tag = 'CourseCurriculumProvider';
+
   CourseCurriculumProvider(this._api);
 
   static const pageSize = 30;
@@ -132,23 +134,13 @@ class CourseCurriculumProvider extends ChangeNotifier {
       notifyListeners();
       await search();
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'CourseCurriculumProvider',
-        'loadIndex 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: e, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
       _indexState = CourseCurriculumLoadState.error;
       _indexError = zhjwAuthErrorType(e);
       notifyListeners();
     } catch (error, logStackTrace) {
-      AppLog.e(
-        'CourseCurriculumProvider',
-        'loadIndex 失败',
-        error: error,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: error, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
 
       _indexState = CourseCurriculumLoadState.error;
@@ -210,12 +202,7 @@ class CourseCurriculumProvider extends ChangeNotifier {
       _totalCount = result.totalCount;
       _coursesState = CourseCurriculumLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'CourseCurriculumProvider',
-        '_loadCourses 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadCourses 失败', error: e, stackTrace: logStackTrace);
       if (!_isCurrentCourseRequest(
         generation: generation,
         semester: semester,
@@ -231,7 +218,7 @@ class CourseCurriculumProvider extends ChangeNotifier {
       _coursesError = zhjwAuthErrorType(e);
     } catch (error, logStackTrace) {
       AppLog.e(
-        'CourseCurriculumProvider',
+        _tag,
         '_loadCourses 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -316,12 +303,7 @@ class CourseCurriculumProvider extends ChangeNotifier {
         state: CourseCurriculumLoadState.loaded,
       );
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'CourseCurriculumProvider',
-        'loadSchedule 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadSchedule 失败', error: e, stackTrace: logStackTrace);
       if (_detailGenerations[key] != generation) return;
       _details[key] = CourseScheduleDetailState(
         courses: previous.courses,
@@ -330,7 +312,7 @@ class CourseCurriculumProvider extends ChangeNotifier {
       );
     } catch (error, logStackTrace) {
       AppLog.e(
-        'CourseCurriculumProvider',
+        _tag,
         'loadSchedule 失败',
         error: error,
         stackTrace: logStackTrace,

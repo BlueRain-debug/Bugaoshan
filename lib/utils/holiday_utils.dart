@@ -30,6 +30,8 @@ const Map<int, Map<int, String>> _kFixedHolidays = {
 /// - 节气采用寿星天文算法精确计算
 /// - 公历节日和农历传统节日依据国家标准
 class HolidayUtils {
+  static const String _tag = 'HolidayUtils';
+
   HolidayUtils._();
 
   /// 缓存 {year: {holidayName: totalDays}}
@@ -53,12 +55,7 @@ class HolidayUtils {
         return legalHoliday.isWork() ? null : legalHoliday.getName();
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'HolidayUtils',
-        'getHolidayName 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'getHolidayName 失败', error: e, stackTrace: logStackTrace);
     }
     // tyme 无此日数据 → 固定日期放假兜底
     return _getFixedHolidayFallback(date);
@@ -112,7 +109,7 @@ class HolidayUtils {
           count++;
         } catch (logError, logStackTrace) {
           AppLog.e(
-            'HolidayUtils',
+            _tag,
             '_computeHolidayTotalDays 失败',
             error: logError,
             stackTrace: logStackTrace,
@@ -138,7 +135,7 @@ class HolidayUtils {
           count++;
         } catch (logError, logStackTrace) {
           AppLog.e(
-            'HolidayUtils',
+            _tag,
             '_computeHolidayTotalDays 失败',
             error: logError,
             stackTrace: logStackTrace,
@@ -160,7 +157,7 @@ class HolidayUtils {
             }
           } catch (e, logStackTrace) {
             AppLog.e(
-              'HolidayUtils',
+              _tag,
               '_computeHolidayTotalDays 失败',
               error: e,
               stackTrace: logStackTrace,
@@ -187,12 +184,7 @@ class HolidayUtils {
         if (name != '春节' && name != '清明节') return name;
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'HolidayUtils',
-        'getFestivalName 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'getFestivalName 失败', error: e, stackTrace: logStackTrace);
     }
     return null;
   }
@@ -210,7 +202,7 @@ class HolidayUtils {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'HolidayUtils',
+        _tag,
         'getSolarTermName 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -253,7 +245,7 @@ class HolidayUtils {
       }
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'HolidayUtils',
+        _tag,
         'getSpecialDay 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -294,12 +286,7 @@ class HolidayUtils {
         );
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'HolidayUtils',
-        'getSpecialDay 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'getSpecialDay 失败', error: e, stackTrace: logStackTrace);
     }
 
     return SpecialDayInfo(type: SpecialDayType.ordinary);

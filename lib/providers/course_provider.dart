@@ -4,6 +4,8 @@ import 'package:bugaoshan/services/database_service.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 
 class CourseProvider {
+  static const String _tag = 'CourseProvider';
+
   final DatabaseService _db;
 
   /// Called after any data mutation that affects displayed courses.
@@ -35,12 +37,7 @@ class CourseProvider {
       scheduleConfig.value = config;
       allSchedules.value = _db.getAllSchedules();
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'CourseProvider',
-        '_loadData 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadData 失败', error: e, stackTrace: logStackTrace);
     } finally {
       isLoading.value = false;
       onCoursesChanged?.call();
@@ -48,7 +45,7 @@ class CourseProvider {
   }
 
   Future<void> switchSchedule(String scheduleId) async {
-    return AppLog.guard('CourseProvider', '切换课表', () async {
+    return AppLog.guard(_tag, '切换课表', () async {
       isLoading.value = true;
       try {
         await _db.switchSchedule(scheduleId);
@@ -60,7 +57,7 @@ class CourseProvider {
   }
 
   Future<void> addSchedule(ScheduleConfig config) async {
-    return AppLog.guard('CourseProvider', '新增课表', () async {
+    return AppLog.guard(_tag, '新增课表', () async {
       // 落库后直接 switchSchedule，由 _loadData 统一发布 scheduleConfig 与
       // allSchedules。若这里先单独发布 allSchedules，switchSchedule 的异步
       // 间隙里会出现「hasSchedule=true 而 scheduleConfig 未就位」的中间态，
@@ -71,7 +68,7 @@ class CourseProvider {
   }
 
   Future<void> deleteSchedule(String scheduleId) async {
-    return AppLog.guard('CourseProvider', '删除课表', () async {
+    return AppLog.guard(_tag, '删除课表', () async {
       await _db.deleteSchedule(scheduleId);
       // Reload everything as current schedule might have changed
       await _loadData();
@@ -79,7 +76,7 @@ class CourseProvider {
   }
 
   Future<List<Course>> getCoursesForSchedule(String scheduleId) async {
-    return AppLog.guard('CourseProvider', '读取课表课程', () async {
+    return AppLog.guard(_tag, '读取课表课程', () async {
       return await _db.getCoursesAsync(scheduleId: scheduleId);
     });
   }
@@ -107,7 +104,7 @@ class CourseProvider {
   }
 
   Future<void> addCourse(Course course) async {
-    return AppLog.guard('CourseProvider', '新增课程', () async {
+    return AppLog.guard(_tag, '新增课程', () async {
       await _db.addCourse(course);
       courses.value = _db.getCourses();
       onCoursesChanged?.call();
@@ -115,7 +112,7 @@ class CourseProvider {
   }
 
   Future<void> updateCourse(Course course) async {
-    return AppLog.guard('CourseProvider', '修改课程', () async {
+    return AppLog.guard(_tag, '修改课程', () async {
       await _db.updateCourse(course);
       courses.value = _db.getCourses();
       onCoursesChanged?.call();
@@ -123,7 +120,7 @@ class CourseProvider {
   }
 
   Future<void> deleteCourse(String courseId) async {
-    return AppLog.guard('CourseProvider', '删除课程', () async {
+    return AppLog.guard(_tag, '删除课程', () async {
       await _db.deleteCourse(courseId);
       courses.value = _db.getCourses();
       onCoursesChanged?.call();
@@ -131,7 +128,7 @@ class CourseProvider {
   }
 
   Future<void> updateScheduleConfig(ScheduleConfig config) async {
-    return AppLog.guard('CourseProvider', '保存课表设置', () async {
+    return AppLog.guard(_tag, '保存课表设置', () async {
       await _db.saveScheduleConfig(config);
       allSchedules.value = _db.getAllSchedules();
       if (config.id == _db.getCurrentScheduleId()) {
@@ -147,7 +144,7 @@ class CourseProvider {
     String scheduleId,
     List<Course> newCourses,
   ) async {
-    return AppLog.guard('CourseProvider', '替换课表课程', () async {
+    return AppLog.guard(_tag, '替换课表课程', () async {
       await _db.replaceScheduleCourses(scheduleId, newCourses);
       if (scheduleId == _db.getCurrentScheduleId()) {
         courses.value = _db.getCourses();
@@ -165,7 +162,7 @@ class CourseProvider {
   }
 
   Future<void> clearAllData() async {
-    return AppLog.guard('CourseProvider', '清空课表', () async {
+    return AppLog.guard(_tag, '清空课表', () async {
       await _db.clearAllCourseData();
       await _loadData();
     });

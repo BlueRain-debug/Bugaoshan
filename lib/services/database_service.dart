@@ -14,6 +14,8 @@ import 'package:bugaoshan/models/course.dart';
 const String _keyCurrentScheduleId = 'currentScheduleId';
 
 class DatabaseService {
+  static const String _tag = 'DatabaseService';
+
   late Database _db;
 
   // In-memory cache to support synchronous read methods
@@ -59,12 +61,7 @@ class DatabaseService {
           dir = await getApplicationSupportDirectory();
         }
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'DatabaseService',
-          'init 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'init 失败', error: e, stackTrace: logStackTrace);
 
         dir = await getApplicationSupportDirectory();
       }
@@ -100,12 +97,7 @@ class DatabaseService {
           );
         }
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'DatabaseService',
-          'init 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'init 失败', error: e, stackTrace: logStackTrace);
       }
     }
 
@@ -253,7 +245,7 @@ class DatabaseService {
   Future<void> switchSchedule(String scheduleId) async {
     // 未知 id 早返回，避免把空 '' 写进 metadata 并触发 courses 缓存重载。
     if (_schedulesCache.indexWhere((s) => s.id == scheduleId) < 0) {
-      AppLog.e('DatabaseService', '切换课表失败：课表不存在 id=$scheduleId');
+      AppLog.e(_tag, '切换课表失败：课表不存在 id=$scheduleId');
       return;
     }
     _currentScheduleId = scheduleId;
@@ -342,7 +334,7 @@ class DatabaseService {
 
   Future<void> addCourse(Course course) async {
     if (_currentScheduleId.isEmpty) {
-      AppLog.e('DatabaseService', '新增课程失败：未选择课表');
+      AppLog.e(_tag, '新增课程失败：未选择课表');
       return;
     }
     await _db.insert('courses', _courseToRow(course, _currentScheduleId));
@@ -371,7 +363,7 @@ class DatabaseService {
 
   Future<void> updateCourse(Course course) async {
     if (_currentScheduleId.isEmpty) {
-      AppLog.e('DatabaseService', '修改课程失败：未选择课表');
+      AppLog.e(_tag, '修改课程失败：未选择课表');
       return;
     }
     await _db.update(
@@ -456,7 +448,7 @@ class DatabaseService {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'DatabaseService',
+        _tag,
         '_ensureCustomWeeksColumn 失败',
         error: e,
         stackTrace: logStackTrace,

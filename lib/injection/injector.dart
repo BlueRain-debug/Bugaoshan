@@ -65,6 +65,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'injector.config.dart';
 
+const String _tag = 'Injector';
+
 final getIt = GetIt.instance;
 
 @InjectableInit(
@@ -406,12 +408,7 @@ void _configureAsyncDependencies() {
         Object error,
         StackTrace stackTrace,
       ) {
-        AppLog.e(
-          'WidgetUpdateService',
-          '课表变更后同步小组件失败',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        AppLog.e(_tag, '课表变更后同步小组件失败', error: error, stackTrace: stackTrace);
       });
     };
 
@@ -428,12 +425,7 @@ void _configureAsyncDependencies() {
           );
         }
       } catch (error, stackTrace) {
-        AppLog.e(
-          'WidgetUpdateService',
-          '初始化小组件设置失败',
-          error: error,
-          stackTrace: stackTrace,
-        );
+        AppLog.e(_tag, '初始化小组件设置失败', error: error, stackTrace: stackTrace);
       }
     }
 

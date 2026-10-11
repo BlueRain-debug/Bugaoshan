@@ -92,7 +92,7 @@ class GsAuth extends ChangeNotifier implements SubsystemAuth {
       (inner as dynamic).withCredentials = true;
     } catch (logError, logStackTrace) {
       _log.e(
-        'GsAuth',
+        _tag,
         '_buildWebClient 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -122,7 +122,7 @@ class GsAuth extends ChangeNotifier implements SubsystemAuth {
       );
       _log.d(_tag, 'gsapp SSO: status=${gsappResponse.statusCode}');
     } catch (e, logStackTrace) {
-      _log.e('GsAuth', '_login 失败', error: e, stackTrace: logStackTrace);
+      _log.e(_tag, '_login 失败', error: e, stackTrace: logStackTrace);
     }
 
     // ehall 域会话预热：课表接口实测部署在 ehall 域（kGsScheduleEndpointPath，
@@ -155,7 +155,7 @@ class GsAuth extends ChangeNotifier implements SubsystemAuth {
         );
         _log.d(_tag, 'app index: $appIndex -> ${appIndexResponse.statusCode}');
       } catch (e, logStackTrace) {
-        _log.e('GsAuth', '_login 失败', error: e, stackTrace: logStackTrace);
+        _log.e(_tag, '_login 失败', error: e, stackTrace: logStackTrace);
       }
     }
 

@@ -13,6 +13,8 @@ const _keyPassingScores = 'grades_passing_scores';
 enum GradesLoadState { idle, loading, loaded, error }
 
 class GradesProvider extends ChangeNotifier {
+  static const String _tag = 'GradesProvider';
+
   final SharedPreferences _prefs;
   final ZhjwApiService _zhjwApi;
   String? _userIdentity;
@@ -59,12 +61,7 @@ class GradesProvider extends ChangeNotifier {
         );
         _schemeState = GradesLoadState.loaded;
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'GradesProvider',
-          '_restoreCache 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_restoreCache 失败', error: e, stackTrace: logStackTrace);
       }
     }
     final cachedPassing = _prefs.getString(
@@ -77,12 +74,7 @@ class GradesProvider extends ChangeNotifier {
         );
         _passingState = GradesLoadState.loaded;
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'GradesProvider',
-          '_restoreCache 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_restoreCache 失败', error: e, stackTrace: logStackTrace);
       }
     }
   }
@@ -143,7 +135,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'GradesProvider',
+        _tag,
         'refreshSchemeScores 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -158,7 +150,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'GradesProvider',
+        _tag,
         'refreshSchemeScores 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -210,7 +202,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'GradesProvider',
+        _tag,
         'refreshPassingScores 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -225,7 +217,7 @@ class GradesProvider extends ChangeNotifier {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'GradesProvider',
+        _tag,
         'refreshPassingScores 失败',
         error: e,
         stackTrace: logStackTrace,

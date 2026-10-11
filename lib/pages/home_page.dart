@@ -28,6 +28,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  static const String _tag = 'HomePageState';
+
   int _currentIndex = 0;
   bool _nativeDock = false;
 
@@ -50,7 +52,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       await authProvider.autoLogin();
     } catch (e, logStackTrace) {
       AppLog.e(
-        'HomePage',
+        _tag,
         '_attemptAutoLogin 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -73,7 +75,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'HomePage',
+        _tag,
         '_checkForUpdateInBackground 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -99,12 +101,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       try {
         await getIt<WidgetUpdateService>().updateWidgetData();
       } catch (e, logStackTrace) {
-        AppLog.e(
-          'HomePage',
-          '_updateWidget 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, '_updateWidget 失败', error: e, stackTrace: logStackTrace);
       }
     }
   }

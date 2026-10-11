@@ -103,12 +103,7 @@ class AuthCoordinator {
           _log.i(_tag, 'ensure: ok module=$moduleId');
           return true;
         } catch (e, logStackTrace) {
-          _log.e(
-            'AuthCoordinator',
-            'ensure 失败',
-            error: e,
-            stackTrace: logStackTrace,
-          );
+          _log.e(_tag, 'ensure 失败', error: e, stackTrace: logStackTrace);
 
           return false;
         }

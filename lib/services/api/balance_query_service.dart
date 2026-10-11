@@ -6,6 +6,8 @@ import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/utils/json_utils.dart';
 
 class BalanceQueryService {
+  static const String _tag = 'BalanceQueryService';
+
   static const _base = 'https://payapp.scu.edu.cn/eleFees';
 
   static final Map<String, String> _headers = {
@@ -147,12 +149,7 @@ class BalanceQueryService {
       final requestUrl = response.request?.url ?? Uri.parse(_base);
       return _isKnownAuthenticationTarget(requestUrl.resolve(location));
     } on FormatException catch (error, stackTrace) {
-      AppLog.e(
-        'BalanceQuery',
-        '解析缴费平台重定向地址失败',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      AppLog.e(_tag, '解析缴费平台重定向地址失败', error: error, stackTrace: stackTrace);
       return false;
     }
   }

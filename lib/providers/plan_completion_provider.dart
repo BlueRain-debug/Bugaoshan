@@ -13,6 +13,8 @@ const _keyPlanCompletion = 'plan_completion_nodes';
 enum PlanCompletionLoadState { idle, loading, loaded, error }
 
 class PlanCompletionProvider extends ChangeNotifier {
+  static const String _tag = 'PlanCompletionProvider';
+
   final SharedPreferences _prefs;
   final ZhjwApiService _zhjwApi;
   int _requestGeneration = 0;
@@ -26,7 +28,7 @@ class PlanCompletionProvider extends ChangeNotifier {
         _state = PlanCompletionLoadState.loaded;
       } catch (e, logStackTrace) {
         AppLog.e(
-          'PlanCompletionProvider',
+          _tag,
           'PlanCompletionProvider 失败',
           error: e,
           stackTrace: logStackTrace,
@@ -99,7 +101,7 @@ class PlanCompletionProvider extends ChangeNotifier {
       if (generation != _requestGeneration) return;
     } on RateLimitedException catch (logError, logStackTrace) {
       AppLog.e(
-        'PlanCompletionProvider',
+        _tag,
         'fetchPlanCompletion 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -113,7 +115,7 @@ class PlanCompletionProvider extends ChangeNotifier {
       _error = LoadErrorType.rateLimited;
     } on ServiceException catch (logError, logStackTrace) {
       AppLog.e(
-        'PlanCompletionProvider',
+        _tag,
         'fetchPlanCompletion 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -128,7 +130,7 @@ class PlanCompletionProvider extends ChangeNotifier {
       }
     } on UnauthenticatedException catch (e, logStackTrace) {
       AppLog.e(
-        'PlanCompletionProvider',
+        _tag,
         'fetchPlanCompletion 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -142,7 +144,7 @@ class PlanCompletionProvider extends ChangeNotifier {
       _error = zhjwAuthErrorType(e);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'PlanCompletionProvider',
+        _tag,
         'fetchPlanCompletion 失败',
         error: logError,
         stackTrace: logStackTrace,

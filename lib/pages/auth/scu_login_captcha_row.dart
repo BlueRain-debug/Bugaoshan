@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 /// 验证码未加载时图片区域显示刷新图标，同样可点击刷新。
 /// [labelTrailing] 可选，渲染在「验证码」标签行右侧（如「重置密码」入口）。
 class ScuLoginCaptchaRow extends StatelessWidget {
+  static const String _tag = 'ScuLoginCaptchaRow';
+
   const ScuLoginCaptchaRow({
     super.key,
     required this.controller,
@@ -112,7 +114,7 @@ class ScuLoginCaptchaRow extends StatelessWidget {
                           gaplessPlayback: true,
                           errorBuilder: (context, error, stackTrace) {
                             AppLog.e(
-                              'ScuCaptcha',
+                              _tag,
                               '验证码图片渲染失败',
                               error: error,
                               stackTrace: stackTrace,

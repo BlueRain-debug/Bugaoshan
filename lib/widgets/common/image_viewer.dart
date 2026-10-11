@@ -22,6 +22,8 @@ void showFullScreenImageViewer(
 }
 
 class ImageViewerPage extends StatelessWidget {
+  static const String _tag = 'ImageViewerPage';
+
   final String imageUrl;
   final Map<String, String>? headers;
 
@@ -45,7 +47,7 @@ class ImageViewerPage extends StatelessWidget {
                 backgroundDecoration: const BoxDecoration(color: Colors.black),
                 errorBuilder: (context, error, stackTrace) {
                   AppLog.e(
-                    'ImageViewer',
+                    _tag,
                     '图片加载失败',
                     error: error,
                     stackTrace: stackTrace,
@@ -128,12 +130,7 @@ class ImageViewerPage extends StatelessWidget {
         ).showSnackBar(SnackBar(content: Text(l10n.imageSavedToGallery)));
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'ImageViewer',
-        '_saveToGallery 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_saveToGallery 失败', error: e, stackTrace: logStackTrace);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +155,7 @@ class ImageViewerPage extends StatelessWidget {
       if (!context.mounted) return;
       await shareSingleFile(file.path, context: context);
     } catch (e, logStackTrace) {
-      AppLog.e('ImageViewer', '_share 失败', error: e, stackTrace: logStackTrace);
+      AppLog.e(_tag, '_share 失败', error: e, stackTrace: logStackTrace);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

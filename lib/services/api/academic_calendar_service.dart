@@ -7,6 +7,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/calendar_event_utils.dart';
 
 class AcademicCalendarService {
+  static const String _tag = 'AcademicCalendarService';
+
   final SharedPreferences _prefs;
   final http.Client? _client;
 
@@ -110,7 +112,7 @@ class AcademicCalendarService {
         return _parseCalendarJson(cached);
       } catch (e, logStackTrace) {
         AppLog.e(
-          'AcademicCalendarService',
+          _tag,
           '_loadLocalCalendar 失败',
           error: e,
           stackTrace: logStackTrace,
@@ -125,7 +127,7 @@ class AcademicCalendarService {
       return _parseCalendarJson(assetContent);
     } catch (e, logStackTrace) {
       AppLog.e(
-        'AcademicCalendarService',
+        _tag,
         '_loadLocalCalendar 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -156,12 +158,7 @@ class AcademicCalendarService {
         }
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'AcademicCalendarService',
-        '_tryFetch 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_tryFetch 失败', error: e, stackTrace: logStackTrace);
     }
     return null;
   }
@@ -211,7 +208,7 @@ class AcademicCalendarService {
       return null;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'AcademicCalendarService',
+        _tag,
         'findTotalWeeksFromCalendar 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -246,7 +243,7 @@ class AcademicCalendarService {
       return null;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'AcademicCalendarService',
+        _tag,
         'findMatchingSemester 失败',
         error: e,
         stackTrace: logStackTrace,

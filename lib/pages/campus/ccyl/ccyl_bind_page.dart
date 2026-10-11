@@ -15,6 +15,8 @@ class CcylBindPage extends StatefulWidget {
 }
 
 class _CcylBindPageState extends State<CcylBindPage> {
+  static const String _tag = 'CcylBindPageState';
+
   late final CcylOAuthService _oauthService = CcylOAuthService(
     getIt<ScuAuth>(),
   );
@@ -46,12 +48,7 @@ class _CcylBindPageState extends State<CcylBindPage> {
         Navigator.of(context).pop(true);
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'CcylBindPage',
-        '_doOAuthBind 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_doOAuthBind 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         setState(() {

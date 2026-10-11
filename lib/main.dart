@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -15,12 +15,14 @@ import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/utils/app_error_reporter.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 
+const String _tag = 'Main';
+
 Future<void> main() async {
   try {
     await _initializeApp();
     runApp(MyApp());
   } catch (error, stackTrace) {
-    AppLog.e('Startup', '应用启动失败', error: error, stackTrace: stackTrace);
+    AppLog.e(_tag, '应用启动失败', error: error, stackTrace: stackTrace);
     runApp(StartupErrorApp(errorMessage: stackTrace.toString()));
   }
 }

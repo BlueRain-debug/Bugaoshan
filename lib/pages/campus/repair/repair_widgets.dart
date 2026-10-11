@@ -215,6 +215,8 @@ class _ProjectSelector extends StatefulWidget {
 }
 
 class _ProjectSelectorState extends State<_ProjectSelector> {
+  static const String _tag = 'ProjectSelectorState';
+
   List<RepairProject> _categories = const [];
   RepairProject? _selectedCategory;
   bool _loading = false;
@@ -250,7 +252,7 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
       if (mounted) setState(() => _categories = projects);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'RepairWidgets',
+        _tag,
         '_loadProjects 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -412,6 +414,8 @@ class _AddAddressSheet extends StatefulWidget {
 }
 
 class _AddAddressSheetState extends State<_AddAddressSheet> {
+  static const String _tag = 'AddAddressSheetState';
+
   final _formKey = GlobalKey<FormState>();
   final _detailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -443,7 +447,7 @@ class _AddAddressSheetState extends State<_AddAddressSheet> {
       if (mounted) setState(() => _areaTree = tree);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'RepairWidgets',
+        _tag,
         '_loadAreaTree 失败',
         error: logError,
         stackTrace: logStackTrace,

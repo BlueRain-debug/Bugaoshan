@@ -40,6 +40,8 @@ class DownloadTask {
 ///
 /// Register as a singleton in GetIt and observe with [ListenableBuilder].
 class DownloadManager extends ChangeNotifier {
+  static const String _tag = 'DownloadManager';
+
   final Map<String, DownloadTask> _tasks = {};
 
   Map<String, DownloadTask> get tasks => Map.unmodifiable(_tasks);
@@ -113,12 +115,7 @@ class DownloadManager extends ChangeNotifier {
       return path;
     } catch (e, logStackTrace) {
       if (e is! DownloadCancelledException) {
-        AppLog.e(
-          'DownloadManager',
-          'download 失败',
-          error: e,
-          stackTrace: logStackTrace,
-        );
+        AppLog.e(_tag, 'download 失败', error: e, stackTrace: logStackTrace);
       }
       updateTask(
         task,

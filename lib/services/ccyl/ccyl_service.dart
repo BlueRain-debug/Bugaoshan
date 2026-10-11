@@ -10,6 +10,8 @@ import 'package:bugaoshan/utils/json_utils.dart';
 /// 所有认证逻辑（login / token / logout）在 [CcylAuth] 中管理。
 /// API 方法通过 [authHeaders] 参数接收已注入 token 的请求头。
 class CcylService {
+  static const String _tag = 'CcylService';
+
   static const _base = 'https://dekt.scu.edu.cn';
   static const apiBase = 'https://dekt.scu.edu.cn/ccyl-api';
 
@@ -376,7 +378,7 @@ class CcylService {
         }
       } on CcylAuthExpiredException catch (logError, logStackTrace) {
         AppLog.e(
-          'CcylService',
+          _tag,
           'getDicts 失败',
           error: logError,
           stackTrace: logStackTrace,
@@ -384,7 +386,7 @@ class CcylService {
         rethrow;
       } on CcylException catch (logError, logStackTrace) {
         AppLog.e(
-          'CcylService',
+          _tag,
           'getDicts 失败',
           error: logError,
           stackTrace: logStackTrace,
@@ -418,19 +420,14 @@ class CcylService {
       return json;
     } on CcylException catch (logError, logStackTrace) {
       AppLog.e(
-        'CcylService',
+        _tag,
         '_httpPost 失败',
         error: logError,
         stackTrace: logStackTrace,
       );
       rethrow;
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'CcylService',
-        '_httpPost 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_httpPost 失败', error: e, stackTrace: logStackTrace);
       throw CcylException('[$api] 网络请求失败: $e');
     }
   }
@@ -450,20 +447,10 @@ class CcylService {
       _logBusinessFailure(api, json);
       return json;
     } on CcylException catch (logError, logStackTrace) {
-      AppLog.e(
-        'CcylService',
-        '_httpGet 失败',
-        error: logError,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_httpGet 失败', error: logError, stackTrace: logStackTrace);
       rethrow;
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'CcylService',
-        '_httpGet 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_httpGet 失败', error: e, stackTrace: logStackTrace);
       throw CcylException('[$api] 网络请求失败: $e');
     }
   }
@@ -471,7 +458,7 @@ class CcylService {
   static void _logBusinessFailure(String api, Map<String, dynamic> json) {
     final code = json['code'];
     if (code != null && code.toString() != '0') {
-      AppLog.e('CcylService', '[$api] 业务请求失败 code=$code', error: json['msg']);
+      AppLog.e(_tag, '[$api] 业务请求失败 code=$code', error: json['msg']);
     }
   }
 

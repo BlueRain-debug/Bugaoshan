@@ -39,6 +39,8 @@ class BalanceTrendPage extends StatefulWidget {
 }
 
 class _BalanceTrendPageState extends State<BalanceTrendPage> {
+  static const String _tag = 'BalanceTrendPageState';
+
   BalanceTrendTimeRange _range = BalanceTrendTimeRange.days7;
 
   /// 自定义模式的起止日期(本地日期,仅日期部分有效)。
@@ -101,7 +103,7 @@ class _BalanceTrendPageState extends State<BalanceTrendPage> {
       );
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BalanceTrendPage',
+        _tag,
         '_loadHistory 失败',
         error: logError,
         stackTrace: logStackTrace,

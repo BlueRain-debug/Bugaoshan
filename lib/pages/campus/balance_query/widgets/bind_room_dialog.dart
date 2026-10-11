@@ -19,6 +19,8 @@ class BindRoomDialog extends StatefulWidget {
 }
 
 class BindRoomDialogState extends State<BindRoomDialog> {
+  static const String _tag = 'BindRoomDialogState';
+
   int _step = 0;
   bool _isVerifying = false;
   String? _verifyError;
@@ -45,7 +47,7 @@ class BindRoomDialogState extends State<BindRoomDialog> {
       await widget.provider.getCampusList();
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BindRoomDialog',
+        _tag,
         '_loadCampuses 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -67,7 +69,7 @@ class BindRoomDialogState extends State<BindRoomDialog> {
       await widget.provider.getArchitectureList(_selectedCampus!.code);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BindRoomDialog',
+        _tag,
         '_loadBuildings 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -101,7 +103,7 @@ class BindRoomDialogState extends State<BindRoomDialog> {
       }
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'BindRoomDialog',
+        _tag,
         '_loadUnits 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -162,12 +164,7 @@ class BindRoomDialogState extends State<BindRoomDialog> {
         });
       }
     } catch (e, logStackTrace) {
-      AppLog.e(
-        'BindRoomDialog',
-        '_verifyAndBind 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_verifyAndBind 失败', error: e, stackTrace: logStackTrace);
 
       if (mounted) {
         setState(() {

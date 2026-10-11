@@ -10,6 +10,8 @@ import 'package:bugaoshan/injection/injector.dart';
 ///
 /// 全部为静态方法，调用方自行处理异常与结果反馈。
 class StorageCleanupService {
+  static const String _tag = 'StorageCleanupService';
+
   const StorageCleanupService._();
 
   /// `getTemporaryDirectory()` 是否等价于「本应用的缓存目录」。
@@ -44,7 +46,7 @@ class StorageCleanupService {
         await entity.delete(recursive: true);
       } catch (error, logStackTrace) {
         AppLog.e(
-          'StorageCleanupService',
+          _tag,
           'clearDirectory 失败',
           error: error,
           stackTrace: logStackTrace,

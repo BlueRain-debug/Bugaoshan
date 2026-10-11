@@ -17,6 +17,8 @@ enum FitnessTestLoadState { idle, loading, loaded, error }
 /// 远端通知和当前选中年份的成绩只保存在此处；页面仅根据资源状态渲染，并通过
 /// [ensureLoaded]、[refresh] 和 [selectYear] 表达加载意图。
 class FitnessTestProvider extends ChangeNotifier {
+  static const String _tag = 'FitnessTestProvider';
+
   FitnessTestProvider(this._prefs, this._api) {
     _selectedYear =
         _prefs.getInt(kFitnessTestSelectedYearKey) ?? DateTime.now().year;
@@ -116,7 +118,7 @@ class FitnessTestProvider extends ChangeNotifier {
         _noticesState = FitnessTestLoadState.loaded;
       } catch (error, logStackTrace) {
         AppLog.e(
-          'FitnessTestProvider',
+          _tag,
           '_loadNotices 失败',
           error: error,
           stackTrace: logStackTrace,
@@ -159,7 +161,7 @@ class FitnessTestProvider extends ChangeNotifier {
         _scoreState = FitnessTestLoadState.loaded;
       } catch (error, logStackTrace) {
         AppLog.e(
-          'FitnessTestProvider',
+          _tag,
           '_loadScore 失败',
           error: error,
           stackTrace: logStackTrace,

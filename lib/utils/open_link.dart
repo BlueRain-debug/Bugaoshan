@@ -2,15 +2,17 @@ import 'package:bugaoshan/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 
+const String _tag = 'OpenLink';
+
 Future<void> openLink(String link) async {
-  await AppLog.guard('OpenLink', '打开链接', () => openUri(Uri.parse(link)));
+  await AppLog.guard(_tag, '打开链接', () => openUri(Uri.parse(link)));
 }
 
 Future<bool> openUri(Uri uri, {LaunchMode mode = LaunchMode.platformDefault}) {
-  return AppLog.guard('OpenLink', '启动外部应用', () async {
+  return AppLog.guard(_tag, '启动外部应用', () async {
     final opened = await launchUrl(uri, mode: mode);
     if (!opened) {
-      AppLog.e('OpenLink', '没有可打开该链接的应用 url=$uri');
+      AppLog.e(_tag, '没有可打开该链接的应用 url=$uri');
     }
     return opened;
   });

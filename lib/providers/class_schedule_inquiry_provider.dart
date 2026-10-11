@@ -20,6 +20,8 @@ class ClassScheduleDetailState {
 }
 
 class ClassScheduleInquiryProvider extends ChangeNotifier {
+  static const String _tag = 'ClassScheduleInquiryProvider';
+
   ClassScheduleInquiryProvider(this._api);
 
   static const pageSize = 30;
@@ -146,23 +148,13 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       notifyListeners();
       await search();
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'ClassScheduleInquiryProvider',
-        'loadIndex 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: e, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
       _indexState = ClassScheduleInquiryLoadState.error;
       _indexError = zhjwAuthErrorType(e);
       notifyListeners();
     } catch (error, logStackTrace) {
-      AppLog.e(
-        'ClassScheduleInquiryProvider',
-        'loadIndex 失败',
-        error: error,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadIndex 失败', error: error, stackTrace: logStackTrace);
       if (generation != _indexGeneration) return;
 
       _indexState = ClassScheduleInquiryLoadState.error;
@@ -192,7 +184,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       _subjectsState = ClassScheduleInquiryLoadState.loaded;
     } catch (error, logStackTrace) {
       AppLog.e(
-        'ClassScheduleInquiryProvider',
+        _tag,
         'loadSubjects 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -237,7 +229,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       _classOptionsState = ClassScheduleInquiryLoadState.loaded;
     } catch (error, logStackTrace) {
       AppLog.e(
-        'ClassScheduleInquiryProvider',
+        _tag,
         'loadClassOptions 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -307,12 +299,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       _totalCount = result.totalCount;
       _classesState = ClassScheduleInquiryLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'ClassScheduleInquiryProvider',
-        '_loadClasses 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, '_loadClasses 失败', error: e, stackTrace: logStackTrace);
       if (!_isCurrentClassRequest(
         generation: generation,
         semester: semester,
@@ -327,7 +314,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       _classesError = zhjwAuthErrorType(e);
     } catch (error, logStackTrace) {
       AppLog.e(
-        'ClassScheduleInquiryProvider',
+        _tag,
         '_loadClasses 失败',
         error: error,
         stackTrace: logStackTrace,
@@ -408,12 +395,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
         state: ClassScheduleInquiryLoadState.loaded,
       );
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'ClassScheduleInquiryProvider',
-        'loadSchedule 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'loadSchedule 失败', error: e, stackTrace: logStackTrace);
       if (_detailGenerations[key] != generation) return;
       _details[key] = ClassScheduleDetailState(
         courses: previous.courses,
@@ -422,7 +404,7 @@ class ClassScheduleInquiryProvider extends ChangeNotifier {
       );
     } catch (error, logStackTrace) {
       AppLog.e(
-        'ClassScheduleInquiryProvider',
+        _tag,
         'loadSchedule 失败',
         error: error,
         stackTrace: logStackTrace,

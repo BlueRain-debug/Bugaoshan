@@ -66,6 +66,8 @@ class UpdateCheckResult {
 }
 
 class UpdateService {
+  static const String _tag = 'UpdateService';
+
   static const _channel = kUpdateMethodChannel;
 
   final SharedPreferences _prefs;
@@ -229,7 +231,7 @@ class UpdateService {
                 await ent.delete();
               } catch (e, logStackTrace) {
                 AppLog.e(
-                  'UpdateService',
+                  _tag,
                   'cleanupOldPackages 失败',
                   error: e,
                   stackTrace: logStackTrace,
@@ -241,7 +243,7 @@ class UpdateService {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'UpdateService',
+        _tag,
         'cleanupOldPackages 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -261,7 +263,7 @@ class UpdateService {
       return UpdateCheckResult.noUpdate();
     } catch (e, logStackTrace) {
       AppLog.e(
-        'UpdateService',
+        _tag,
         'checkStableUpdate 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -284,7 +286,7 @@ class UpdateService {
       return UpdateCheckResult.noUpdate();
     } catch (e, logStackTrace) {
       AppLog.e(
-        'UpdateService',
+        _tag,
         'checkPreviewUpdate 失败',
         error: e,
         stackTrace: logStackTrace,

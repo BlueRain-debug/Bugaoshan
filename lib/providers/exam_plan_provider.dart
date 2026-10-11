@@ -8,6 +8,8 @@ import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 enum ExamPlanLoadState { idle, loading, loaded, error }
 
 class ExamPlanProvider extends ChangeNotifier {
+  static const String _tag = 'ExamPlanProvider';
+
   ExamPlanProvider(this._api);
 
   final ZhjwApiService _api;
@@ -38,24 +40,14 @@ class ExamPlanProvider extends ChangeNotifier {
       _exams = exams;
       _state = ExamPlanLoadState.loaded;
     } on UnauthenticatedException catch (e, logStackTrace) {
-      AppLog.e(
-        'ExamPlanProvider',
-        'load 失败',
-        error: e,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'load 失败', error: e, stackTrace: logStackTrace);
       if (generation != _generation) return;
       _state = ExamPlanLoadState.error;
       // 未登录 → notLoggedIn 让页面展示登录引导；统一认证已登录但本科教务
       // 始终踢回登录页（研究生账号）→ undergradOnly 给针对性指引。
       _error = zhjwAuthErrorType(e, fallback: LoadErrorType.notLoggedIn);
     } catch (error, logStackTrace) {
-      AppLog.e(
-        'ExamPlanProvider',
-        'load 失败',
-        error: error,
-        stackTrace: logStackTrace,
-      );
+      AppLog.e(_tag, 'load 失败', error: error, stackTrace: logStackTrace);
       if (generation != _generation) return;
 
       _state = ExamPlanLoadState.error;

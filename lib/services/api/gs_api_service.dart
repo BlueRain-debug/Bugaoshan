@@ -94,7 +94,7 @@ class GsApiService {
       return semesters.isEmpty ? null : semesters.first;
     } catch (e, logStackTrace) {
       AppLog.e(
-        'GsApiService',
+        _tag,
         'latestSemesterCode 失败',
         error: e,
         stackTrace: logStackTrace,
@@ -231,7 +231,7 @@ class GsApiService {
       decoded = jsonDecode(response.body);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'GsApiService',
+        _tag,
         '_postEnvelopeOnce 失败',
         error: logError,
         stackTrace: logStackTrace,
@@ -337,7 +337,7 @@ class GsApiService {
       decoded = jsonDecode(response.body);
     } catch (logError, logStackTrace) {
       AppLog.e(
-        'GsApiService',
+        _tag,
         '_getZeroOnce 失败',
         error: logError,
         stackTrace: logStackTrace,

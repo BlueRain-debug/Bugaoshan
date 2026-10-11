@@ -16,6 +16,8 @@ library;
 import 'dart:convert';
 import 'package:bugaoshan/utils/app_log.dart';
 
+const String _tag = 'GraduateScheduleCapture';
+
 /// 捕获结果存放的全局变量名（JS 侧写入，Dart 侧轮询读取）。
 const String kGraduateCaptureGlobal = '__bugaoshanGsCapture';
 
@@ -116,12 +118,7 @@ List<GraduateCaptureEntry> graduateCaptureEntriesFrom(String? storeJson) {
   try {
     decoded = jsonDecode(storeJson);
   } catch (error, stackTrace) {
-    AppLog.e(
-      'GraduateSchedule',
-      '解析课表抓取结果失败',
-      error: error,
-      stackTrace: stackTrace,
-    );
+    AppLog.e(_tag, '解析课表抓取结果失败', error: error, stackTrace: stackTrace);
     return const [];
   }
   if (decoded is! List) return const [];

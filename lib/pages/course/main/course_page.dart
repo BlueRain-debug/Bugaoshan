@@ -31,6 +31,8 @@ class CoursePage extends StatefulWidget {
 }
 
 class _CoursePageState extends State<CoursePage> with WidgetsBindingObserver {
+  static const String _tag = 'CoursePageState';
+
   final courseProvider = getIt<CourseProvider>();
   final appConfig = getIt<AppConfigProvider>();
 
@@ -351,7 +353,7 @@ class _CoursePageState extends State<CoursePage> with WidgetsBindingObserver {
       }
     } catch (e, logStackTrace) {
       AppLog.e(
-        'CoursePage',
+        _tag,
         '_checkAndPromptNextSemester 失败',
         error: e,
         stackTrace: logStackTrace,
