@@ -361,6 +361,13 @@ The repository operates a strict two-tier release model (`preview` -> `main`):
   - **Only accepts PRs from `preview`**. Direct pushes or direct feature PRs are strictly forbidden.
   - Merges into `main` automatically trigger the release pipeline to publish a **Formal Stable Release** (`prerelease: false, latest: true`, tag `vX.Y.Z`), generate F-Droid changelogs, and commit metadata.
 
+### PR Labels
+
+Two labels drive automation / review routing on pull requests:
+
+- **`close issue`** — the PR closes the issue(s) it references. GitHub's native `Closes #N` keyword only fires when a PR merges into the default branch, and PRs here target `preview`, so `close-linked-issues.yml` reads this label and closes the referenced issues at preview-merge time. Always write the reference as `Closes #N` in the PR title or body, and apply the label.
+- **`review request`** — the change needs someone with the matching device / OS environment to run it before merging (e.g. Android multi-button navigation, iOS 26 Liquid Glass, a specific vendor ROM). It is a manual routing marker: nothing consumes it automatically, so a reviewer must be asked directly.
+
 ### CI Workflows
 
 - **`pre-flight.yml` (Quality Gate & Policy Enforcement)**:
