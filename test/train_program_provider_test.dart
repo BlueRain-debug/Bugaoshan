@@ -6,15 +6,15 @@ import 'package:bugaoshan/providers/train_program_provider.dart';
 import 'package:bugaoshan/services/api/zhjw_api_service.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/injection/injector.dart';
-import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late AuthLogger logger;
+  late AppLogger logger;
   setUp(() async {
     await getIt.reset();
-    logger = AuthLogger();
-    getIt.registerSingleton<AuthLogger>(logger);
+    logger = AppLogger();
+    getIt.registerSingleton<AppLogger>(logger);
   });
   tearDown(() async => getIt.reset());
 
@@ -28,7 +28,7 @@ void main() {
     await request;
     expect(provider.detailState, TrainProgramLoadState.error);
     final entry = logger.entries.single;
-    expect(entry.category, AuthLogCategory.business);
+    expect(entry.category, LogCategory.business);
     expect(entry.error, contains('服务不可用'));
     expect(entry.stackTrace, isNotNull);
     expect(entry.message, contains('fetchProgramDetail'));
