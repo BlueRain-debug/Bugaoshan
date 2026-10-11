@@ -12,6 +12,7 @@ import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
 
 /// 研究生培养进度页。
@@ -221,7 +222,10 @@ class TrainPlanContentView extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: withSystemBottomInset(
+        context,
+        EdgeInsets.fromLTRB(16, 12, 16, 32),
+      ),
       children: [
         _Card(
           child: Column(

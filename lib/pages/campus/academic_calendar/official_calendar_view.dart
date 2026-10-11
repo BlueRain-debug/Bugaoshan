@@ -3,6 +3,7 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/widgets/common/image_viewer.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 typedef OfficialCalendarImageBuilder =
     Widget Function(BuildContext context, String url);
@@ -55,7 +56,7 @@ class OfficialCalendarView extends StatelessWidget {
               ? const Center(child: CircularProgressIndicator())
               : imageUrls.isEmpty
               ? Center(child: Text(l10n.noData))
-              : _buildImageList(l10n),
+              : _buildImageList(context, l10n),
         ),
       ],
     );
@@ -86,9 +87,12 @@ class OfficialCalendarView extends StatelessWidget {
     );
   }
 
-  Widget _buildImageList(AppLocalizations l10n) {
+  Widget _buildImageList(BuildContext context, AppLocalizations l10n) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: withSystemBottomInset(
+        context,
+        EdgeInsets.fromLTRB(16, 16, 16, 32),
+      ),
       itemCount: imageUrls.length,
       itemBuilder: (context, index) {
         final imageUrl = imageUrls[index];

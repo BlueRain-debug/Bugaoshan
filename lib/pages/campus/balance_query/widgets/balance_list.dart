@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/providers/balance_query_provider.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'balance_card.dart';
 
 class BalanceList extends StatefulWidget {
@@ -42,7 +43,7 @@ class _BalanceListState extends State<BalanceList> {
         return RefreshIndicator(
           onRefresh: () => _refreshAll(context),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: withSystemBottomInset(context, EdgeInsets.all(16)),
             children: [
               BalanceCard(
                 key: ValueKey('electric_$balanceKey'),

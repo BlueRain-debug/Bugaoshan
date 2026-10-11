@@ -77,7 +77,7 @@ class _MyTicketsTabState extends State<_MyTicketsTab> {
       onRefresh: _refresh,
       child: ListView.separated(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: withSystemBottomInset(context, const EdgeInsets.all(16)),
         itemCount: tickets.length,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) =>

@@ -16,6 +16,7 @@ import 'package:bugaoshan/providers/update_provider.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/widgets/dialog/download_progress_dialog.dart';
 import 'package:bugaoshan/widgets/dialog/update_dialog.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class DevPage extends StatefulWidget {
   const DevPage({super.key});
@@ -133,7 +134,7 @@ class _DevPageState extends State<DevPage> {
     return Scaffold(
       appBar: AppBar(title: Text(localizations.devPage)),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: withSystemBottomInset(context, const EdgeInsets.all(24)),
         children: [
           const EnvironmentInfoTile(),
           const Divider(),

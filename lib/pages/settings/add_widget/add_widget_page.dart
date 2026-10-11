@@ -12,6 +12,7 @@ import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/models/widget_size.dart';
 import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 import 'battery_optimization_card.dart';
 import 'hint_card.dart';
@@ -25,8 +26,8 @@ class AddWidgetPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(localizations.addWidgetPageTitle)),
-      body: const SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: withSystemBottomInset(context, const EdgeInsets.all(16)),
         child: AddWidgetContent(),
       ),
     );

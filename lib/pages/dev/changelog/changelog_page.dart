@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/dev/changelog/changelog_version_page.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class _VersionEntry {
   final String version;
@@ -98,7 +99,10 @@ class _ChangelogPageState extends State<ChangelogPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: withSystemBottomInset(
+                context,
+                EdgeInsets.symmetric(vertical: 8),
+              ),
               itemCount: _entries.length,
               separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
               itemBuilder: (context, index) {

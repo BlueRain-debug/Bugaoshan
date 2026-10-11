@@ -9,6 +9,7 @@ import 'package:bugaoshan/pages/campus/balance_query/widgets/balance_trend_range
 import 'package:bugaoshan/pages/campus/balance_query/widgets/balance_trend_raw_records_card.dart';
 import 'package:bugaoshan/pages/campus/balance_query/widgets/balance_trend_stats_card.dart';
 import 'package:bugaoshan/pages/campus/balance_query/widgets/balance_trend_time_range.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 /// 电费余额趋势页。
 ///
@@ -169,7 +170,7 @@ class _BalanceTrendPageState extends State<BalanceTrendPage> {
           return RefreshIndicator(
             onRefresh: () => _loadHistory(force: true),
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: withSystemBottomInset(context, EdgeInsets.all(16)),
               children: [
                 // 第一层:4 个预设 tab
                 BalanceTrendRangeSelector(

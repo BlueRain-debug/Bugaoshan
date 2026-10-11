@@ -10,6 +10,7 @@ import 'package:bugaoshan/pages/dev/auth_log/auth_log_entry_tile.dart';
 import 'package:bugaoshan/pages/dev/auth_log/auth_log_filter_bar.dart';
 import 'package:bugaoshan/utils/auth_logger.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 /// 全屏日志查看器（开发者调试用，文案不做 i18n）。
 ///
@@ -113,7 +114,10 @@ class _AuthLogViewerPageState extends State<AuthLogViewerPage> {
                 // 反时序：新条目在顶端。
                 final reversed = filtered.reversed.toList(growable: false);
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: withSystemBottomInset(
+                    context,
+                    EdgeInsets.symmetric(vertical: 4),
+                  ),
                   itemCount: reversed.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, i) =>

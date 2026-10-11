@@ -18,6 +18,7 @@ import 'package:bugaoshan/widgets/common/styled_tile.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import '../widgets/empty_schedule_placeholder.dart';
 import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class CourseScheduleSetting extends StatefulWidget {
   const CourseScheduleSetting({super.key});
@@ -128,7 +129,10 @@ class _CourseScheduleSettingState extends State<CourseScheduleSetting> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.scheduleSetting)),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: withSystemBottomInset(
+          context,
+          EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
         children: [
           // Semester config section
           SectionTitle(title: l10n.semesterConfig),
