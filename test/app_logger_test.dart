@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:bugaoshan/utils/app_error_reporter.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
@@ -133,11 +134,10 @@ void main() {
       logger.log(LogLevel.info, 'B', '5');
 
       expect(logger.entries, hasLength(3));
-      expect(
-        logger.tagCounts.map((e) => '${e.key}:${e.value}').toList(),
-        ['B:2', 'A:1'],
-        reason: 'A 只剩 1 条仍在缓冲内',
-      );
+      expect(logger.tagCounts.map((e) => '${e.key}:${e.value}').toList(), [
+        'B:2',
+        'A:1',
+      ], reason: 'A 只剩 1 条仍在缓冲内');
     });
 
     test('clear 同时清空 entries 与 tagCounts', () {
@@ -172,11 +172,11 @@ void main() {
 
       expect(
         entry.format(),
-        '22:30:05.042 WARN  [ReminderService] syncPlan skipped',
+        '22:30:05.042 WARN  [authentication] [ReminderService] syncPlan skipped',
       );
       expect(
         entry.format(includeDate: true),
-        '2026-10-09 22:30:05.042 WARN  [ReminderService] syncPlan skipped',
+        '2026-10-09 22:30:05.042 WARN  [authentication] [ReminderService] syncPlan skipped',
       );
     });
   });
@@ -365,6 +365,12 @@ void main() {
       logger.dispose();
 
       var bytes = 0;
+      // 按整条记录写入后轮转，每份最多比阈值多一条记录；分类也占字节。
+      final maxEntryBytes = logger.entries
+          .map(
+            (entry) => utf8.encode(entry.format(includeDate: true)).length + 2,
+          )
+          .reduce((a, b) => a > b ? a : b);
       var files = 0;
       for (final name in await names()) {
         files++;
@@ -380,7 +386,7 @@ void main() {
       );
       expect(
         bytes,
-        lessThanOrEqualTo(512 * 3 + 200),
+        lessThanOrEqualTo((512 + maxEntryBytes) * 3),
         reason: '不应超过容量上限太多，实际 $bytes B',
       );
     });

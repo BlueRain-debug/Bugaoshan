@@ -40,7 +40,7 @@ void main() {
     expect(flutterCalls, 1);
     expect(asyncCalls, 1);
     expect(logger.entries.map((entry) => entry.tag), [
-      'FlutterError',
+      'FlutterError.Flutter framework',
       'PlatformDispatcher',
     ]);
     expect(
