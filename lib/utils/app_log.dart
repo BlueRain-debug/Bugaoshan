@@ -43,7 +43,7 @@ class AppLog {
     String tag,
     String message, {
     Object? error,
-    StackTrace? stackTrace,
+    Object? stackTrace,
   }) => _logger.log(
     LogLevel.warn,
     tag,
@@ -56,7 +56,7 @@ class AppLog {
     String tag,
     String message, {
     Object? error,
-    StackTrace? stackTrace,
+    Object? stackTrace,
   }) => _logger.log(
     LogLevel.error,
     tag,
