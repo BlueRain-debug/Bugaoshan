@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 
 /// 给滚动容器的显式 `padding` 补上系统底部 inset。
@@ -20,5 +22,5 @@ import 'package:flutter/widgets.dart';
 EdgeInsets withSystemBottomInset(BuildContext context, EdgeInsets padding) {
   final bottom = MediaQuery.paddingOf(context).bottom;
   if (bottom == 0) return padding;
-  return padding.copyWith(bottom: padding.bottom + bottom);
+  return padding.copyWith(bottom: max(padding.bottom, bottom));
 }
