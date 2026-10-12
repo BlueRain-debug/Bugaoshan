@@ -499,7 +499,7 @@ L3 ScuAuth
   身份标识覆盖 camelCase、snake_case 与中文「学号」标签三种写法，
   但**不**脱敏 `account` / `id` / `sid` 等语义模糊的键——过度脱敏会抹掉排障信息。
 - 仅 debug 构建同步输出控制台日志。
-- **文件落盘默认开启**：warn / error 写入 `<getLogBaseDir()>/Bugaoshan/logs/`，按 2 MB × 3 份自动轮转；debug / info 仅在内存。设置页与开发者页面共用落盘开关。
+- **文件落盘默认开启**：warn / error 写入 `<getLogBaseDir()>/Bugaoshan/logs/`，按 2 MB × 3 份自动轮转；debug / info 仅在内存。落盘开关位于开发者页面。
 - 日志由单个异步写入队列串行落盘，避免同步记录与异步轮转争抢文件。队列有容量上限，溢出计入 `droppedWriteLines`。
 - 开发者页面可查看、过滤、清空和导出脱敏日志；导出快照与自动落盘文件位于同一目录，关闭落盘开关只删除轮转文件，保留手动导出的快照。
 - 全局异常由 [`setupGlobalErrorHandlers()`](../../lib/utils/app_error_reporter.dart) 接管，在 binding 就绪后立即安装，覆盖框架异常、未捕获异步异常与当前 isolate 的错误监听，保留此前的处理器。启动失败亦经 `AppLog.e` 记录。

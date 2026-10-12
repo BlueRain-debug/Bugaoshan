@@ -79,6 +79,34 @@ void main() {
     );
   }
 
+  for (final status in [500, 403]) {
+    test('HTTP $status 的非 JSON 响应保留脱敏标题但不记录正文', () async {
+      final client = CookieClient(
+        inner: MockClient(
+          (request) async => http.Response(
+            '<html><title>WAF blocked password&#61;private-secret</title><body>private response payload</body></html>',
+            status,
+            request: request,
+          ),
+        ),
+      );
+      final (auth, service) = makeService([client]);
+      await expectLater(
+        service.fetchFormSchema('350'),
+        throwsA(
+          status == 403
+              ? isA<UnauthenticatedException>()
+              : isA<FormatException>(),
+        ),
+      );
+      final exported = logger.exportToText();
+      expect(exported, contains('title=WAF blocked'));
+      expect(exported, isNot(contains('private-secret')));
+      expect(exported, isNot(contains('private response payload')));
+      expect(auth.getClientCalls, status == 403 ? 2 : 1);
+    });
+  }
+
   group('fetchFormSchema', () {
     test('appId 参数化：请求带对应 app_id 并解析 auth/data', () async {
       final requests = <http.Request>[];

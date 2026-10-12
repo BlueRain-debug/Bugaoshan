@@ -1,5 +1,6 @@
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 import 'package:bugaoshan/services/dynamic_icon_service.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
@@ -181,26 +182,31 @@ class _IconOption extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppShapes.large),
-      child: Image.asset(
-        iconAsset,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          AppLog.e(_tag, '图标图片加载失败', error: error, stackTrace: stackTrace);
-          return Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppShapes.large),
-            ),
-            child: Icon(
-              Icons.broken_image,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          );
-        },
+      child: ImageErrorLog(
+        source: iconAsset,
+        tag: _tag,
+        message: '图标图片加载失败',
+        builder: (report) => Image.asset(
+          iconAsset,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            report(error, stackTrace);
+            return Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppShapes.large),
+              ),
+              child: Icon(
+                Icons.broken_image,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            );
+          },
+        ),
       ),
     );
   }

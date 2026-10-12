@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bugaoshan/pages/dev/logs/log_entry_tile.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
 
 /// 日志条目渲染的组件测试。
 ///
@@ -11,6 +12,9 @@ import 'package:bugaoshan/utils/app_logger.dart';
 /// 日志挤出可视区，查看器本就靠纵向空间排障。
 void main() {
   Widget wrap(LogEntry entry) => MaterialApp(
+    locale: const Locale('zh'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(body: LogEntryTile(entry: entry)),
   );
 

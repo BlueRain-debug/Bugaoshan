@@ -222,6 +222,11 @@ class LogRedactor {
   }
 }
 
+/// FormatException 的 source 可能含响应或表单正文，不进入异常日志。
+String describeLogError(Object error) => error is FormatException
+    ? 'FormatException: ${error.message} (offset=${error.offset})'
+    : error.toString();
+
 /// 全局应用日志器（单例）。
 ///
 /// 设计要点：
@@ -250,6 +255,7 @@ class AppLogger extends ChangeNotifier {
 
   static const String _logFileBaseName = 'bugaoshan';
   static const String _logFileExtension = '.log';
+  static const int _maxExportSnapshots = 5;
 
   final int capacity;
 
@@ -351,6 +357,8 @@ class AppLogger extends ChangeNotifier {
     return list;
   }
 
+  bool hasTag(String tag) => _tagCounts.containsKey(tag);
+
   /// 当前是否启用了文件写入（**用户意图**，不代表实际可写）。
   bool get fileSinkEnabled => _fileSinkEnabled;
 
@@ -386,13 +394,7 @@ class AppLogger extends ChangeNotifier {
       tag: tag,
       message: LogRedactor.apply(message),
       category: category,
-      error: error == null
-          ? null
-          : LogRedactor.apply(
-              error is FormatException
-                  ? 'FormatException: ${error.message} (offset=${error.offset})'
-                  : error.toString(),
-            ),
+      error: error == null ? null : LogRedactor.apply(describeLogError(error)),
       stackTrace: stackTrace == null
           ? null
           : LogRedactor.apply(stackTrace.toString()),
@@ -511,9 +513,18 @@ class AppLogger extends ChangeNotifier {
     return buf.toString();
   }
 
-  /// 启用 warn/error 落盘；失败保留开启意图，并通过可用性与错误字段报告。
-  Future<void> enableFileSink({String? overridePath}) =>
-      _enableFileSink(overridePath: overridePath);
+  /// 启用 warn/error 落盘；启动期可补写启用前的缓冲记录。
+  /// 失败保留开启意图，并通过可用性与错误字段报告。
+  Future<void> enableFileSink({
+    String? overridePath,
+    bool includeBufferedEntries = false,
+  }) => _enableFileSink(
+    overridePath: overridePath,
+    includeBufferedEntries: includeBufferedEntries,
+  );
+
+  /// 等待已接受的记录写入；不改变落盘开关或关闭文件。
+  Future<void> flushFileSink() => _flushFileSink();
 
   /// 排空已接受的记录后关闭落盘。开关意图立即生效，文件操作按调用顺序执行。
   Future<void> disableFileSink() => _disableFileSink();

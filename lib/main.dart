@@ -14,6 +14,7 @@ import 'package:system_theme/system_theme.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/utils/app_error_reporter.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/log_persistence.dart';
 
 const String _tag = 'Main';
 
@@ -23,6 +24,7 @@ Future<void> main() async {
     runApp(MyApp());
   } catch (error, stackTrace) {
     AppLog.e(_tag, '应用启动失败', error: error, stackTrace: stackTrace);
+    await AppLog.flushFileSink();
     runApp(StartupErrorApp(errorMessage: stackTrace.toString()));
   }
 }
@@ -35,6 +37,7 @@ Future<void> _initializeApp() async {
   setupGlobalErrorHandlers();
   if (!kIsWeb) {
     DartPluginRegistrant.ensureInitialized();
+    await initializeLogPersistence();
     if (_isDesktopPlatform) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;

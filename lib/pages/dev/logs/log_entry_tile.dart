@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:bugaoshan/utils/app_logger.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
 
 /// 单条日志的行视图：时间 · level · tag · message，按 level 着色。
 /// 用于 [LogViewerPage] 内的列表渲染。
@@ -10,6 +11,7 @@ class LogEntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final (Color bg, Color fg) = switch (entry.level) {
       LogLevel.debug => (scheme.surfaceContainerLow, scheme.onSurfaceVariant),
@@ -47,7 +49,7 @@ class LogEntryTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${entry.category == LogCategory.authentication ? '认证' : '业务'} · ${entry.tag}',
+                  '${entry.category == LogCategory.authentication ? l10n.logCategoryAuthentication : l10n.logCategoryBusiness} · ${entry.tag}',
                   style: Theme.of(
                     context,
                   ).textTheme.labelSmall?.copyWith(color: fg),
@@ -90,7 +92,7 @@ class LogEntryTile extends StatelessWidget {
                         childrenPadding: EdgeInsets.zero,
                         visualDensity: VisualDensity.compact,
                         title: Text(
-                          '错误堆栈',
+                          l10n.logStackTrace,
                           style: Theme.of(
                             context,
                           ).textTheme.labelSmall?.copyWith(color: fg),

@@ -122,19 +122,6 @@ class SoftwareSettingPage extends StatelessWidget {
                 label: localizations.setFont,
                 onTap: () => popupOrNavigate(context, const SetFontPage()),
               ),
-              ValueListenableBuilder<bool>(
-                valueListenable: appConfig.logPersistenceEnabled,
-                builder: (context, enabled, _) => SwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  title: Text(localizations.logPersistenceSwitch),
-                  subtitle: Text(
-                    localizations.logPersistenceSwitchHint,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  value: enabled,
-                  onChanged: (v) => appConfig.logPersistenceEnabled.value = v,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 14),

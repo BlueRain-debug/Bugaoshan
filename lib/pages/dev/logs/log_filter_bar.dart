@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:bugaoshan/utils/app_logger.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
 
 /// 顶部筛选条：level 多选 chip + tag 下拉。
 class LogFilterBar extends StatelessWidget {
@@ -23,6 +24,7 @@ class LogFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final selectedLevels = levels; // null = 全部
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -53,12 +55,12 @@ class LogFilterBar extends StatelessWidget {
           DropdownButton<String?>(
             value: tagCounts.any((entry) => entry.key == tag) ? tag : null,
             focusColor: Colors.transparent,
-            hint: const Text('全部 tag'),
+            hint: Text(l10n.logAllTags),
             onChanged: onTagChanged,
             items: <DropdownMenuItem<String?>>[
-              const DropdownMenuItem<String?>(
+              DropdownMenuItem<String?>(
                 value: null,
-                child: Text('全部 tag'),
+                child: Text(l10n.logAllTags),
               ),
               for (final e in tagCounts)
                 DropdownMenuItem<String?>(

@@ -50,4 +50,43 @@ void main() {
       isTrue,
     );
   });
+
+  test('超长上下文、异常和堆栈共用上限，脱敏不会因截断失效', () async {
+    await getIt.reset();
+    final logger = AppLogger();
+    getIt.registerSingleton<AppLogger>(logger);
+    final flutterHandler = FlutterError.onError;
+    final asyncHandler = PlatformDispatcher.instance.onError;
+    addTearDown(() async {
+      FlutterError.onError = flutterHandler;
+      PlatformDispatcher.instance.onError = asyncHandler;
+      await getIt.reset();
+    });
+    FlutterError.onError = (_) {};
+    setupGlobalErrorHandlers();
+    FlutterError.onError!(
+      FlutterErrorDetails(
+        exception: FormatException(
+          'invalid ${'x' * 4000}',
+          'private response source',
+        ),
+        context: ErrorDescription(
+          'context {"password":"${'private-secret' * 400}"} ${'c' * 4000}',
+        ),
+        stack: StackTrace.fromString('#0 first-frame\n${'frame\n' * 2000}'),
+      ),
+    );
+    final entry = logger.entries.single;
+    expect(
+      entry.message.length + entry.error!.length + entry.stackTrace!.length,
+      lessThanOrEqualTo(2000),
+    );
+    expect(entry.stackTrace, startsWith('#0 first-frame'));
+    expect(logger.exportToText(), isNot(contains('private-secret')));
+    expect(logger.exportToText(), isNot(contains('private response source')));
+    expect(
+      formatExceptionForLog('', StackTrace.fromString('#0 frame')),
+      '#0 frame',
+    );
+  });
 }

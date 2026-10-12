@@ -106,15 +106,33 @@ class ServiceApiService {
         statusCode == 401 ||
         statusCode == 403 ||
         body.trim().isEmpty) {
+      final title = responseTitleForLog(body);
+      if (title != null) {
+        _log.w(
+          _tag,
+          '会话响应 HTTP $statusCode title=$title',
+          category: LogCategory.business,
+        );
+      }
       throw const UnauthenticatedException();
     }
   }
 
   Map<String, dynamic> _decodeResponse(String body, int statusCode) {
     _checkSessionExpiry(body, statusCode);
-    // 诊断日志：记录非 2xx/非 JSON 的响应，便于定位服务端拒绝原因
+    // 诊断日志仅记录长度与脱敏后的 HTML 标题，保留拒绝原因而不暴露正文。
+    final title = responseTitleForLog(body);
     if (statusCode < 200 || statusCode >= 300) {
-      AppLog.e(_tag, 'non-2xx: status=$statusCode bodyLength=${body.length}');
+      AppLog.e(
+        _tag,
+        'non-2xx: status=$statusCode bodyLength=${body.length}'
+        '${title == null ? '' : ' title=$title'}',
+      );
+    } else if (title != null) {
+      AppLog.e(
+        _tag,
+        '响应非 JSON: status=$statusCode bodyLength=${body.length} title=$title',
+      );
     }
     final json = jsonDecode(body) as Map<String, dynamic>;
     // e:10042 表示未登录（vjuid cookie 缺失/失效），交给认证层重试

@@ -3850,4 +3850,116 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get logPersistenceSwitchHint =>
       'Save warnings and errors to log files on this device (about 6 MB, rotating). On by default. When off, logs stay in memory only and are lost when the app closes.';
+
+  @override
+  String get runtimeLogs => 'Runtime logs';
+
+  @override
+  String get logCopyAll => 'Copy all';
+
+  @override
+  String get logSaveShare => 'Save and share';
+
+  @override
+  String get logCopyFolderPath => 'Copy log folder path';
+
+  @override
+  String get logOpenFolder => 'Open log folder';
+
+  @override
+  String get logClearMemory => 'Clear memory logs';
+
+  @override
+  String get logAll => 'All';
+
+  @override
+  String get logAuthentication => 'Authentication';
+
+  @override
+  String get logBusinessErrors => 'Business errors';
+
+  @override
+  String get logAllTags => 'All tags';
+
+  @override
+  String get logNoMatches => 'No matching logs';
+
+  @override
+  String get logCategoryAuthentication => 'Authentication';
+
+  @override
+  String get logCategoryBusiness => 'Business';
+
+  @override
+  String get logStackTrace => 'Stack trace';
+
+  @override
+  String get logCopied => 'Logs copied to clipboard';
+
+  @override
+  String get logCopyFailed => 'Could not copy logs';
+
+  @override
+  String get logShared => 'Log snapshot exported';
+
+  @override
+  String get logSaveFailed => 'Could not save logs';
+
+  @override
+  String get logShareFailed =>
+      'Could not share logs. The saved snapshot is still available.';
+
+  @override
+  String get logClearTitle => 'Clear logs in memory?';
+
+  @override
+  String get logClearHint =>
+      'Only logs from the current process will be cleared. Saved log files are kept.';
+
+  @override
+  String get logPersistenceOff =>
+      'Logs stay in memory and are lost when the app closes';
+
+  @override
+  String get logPersistenceActive =>
+      'Warnings and errors are saved to bugaoshan.log (about 6 MB, rotating)';
+
+  @override
+  String get logPersistenceRetryHint =>
+      'Turn this off and on to retry. If it still fails, check available storage.';
+
+  @override
+  String logPersistenceUnavailable(String reason) {
+    return 'Log file writing is unavailable$reason';
+  }
+
+  @override
+  String logDroppedEntries(int count) {
+    return 'Queued log entries dropped: $count';
+  }
+
+  @override
+  String logDirectoryCopied(String path) {
+    return 'Folder path copied: $path\nUse Save and share to export logs.';
+  }
+
+  @override
+  String logSaved(String path) {
+    return 'Log snapshot saved to: $path';
+  }
+
+  @override
+  String get logDirectoryOpenFailed => 'Could not open the log folder';
+
+  @override
+  String get logStartupTitle => 'Bugaoshan could not start';
+
+  @override
+  String get logCopy => 'Copy logs';
+
+  @override
+  String get logSave => 'Save logs';
+
+  @override
+  String get logShare => 'Share logs';
 }

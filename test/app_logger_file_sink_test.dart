@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -248,4 +250,149 @@ void main() {
     expect(await current().readAsString(), contains('日志99'));
     expect(instance.droppedWriteLines, 0);
   });
+
+  for (final duringFlush in [false, true]) {
+    test('活动文件在${duringFlush ? '刷新期间' : '两批写入之间'}被清理后重开并补写', () async {
+      final original = current();
+      final replacement = File('${directory.path}/recreated.log');
+      final redirected = _RedirectedLogFile(original);
+      final parentZone = Zone.current;
+      final instance = logger();
+      // Windows 不允许删除打开的文件；切换路径解析目标模拟 POSIX unlink：
+      // 原 IOSink 继续成功写旧文件，但当前路径已不存在。
+      await IOOverrides.runZoned(
+        () async {
+          await instance.enableFileSink(overridePath: directory.path);
+          instance.e('Test', 'before-cleanup');
+          await instance.flushFileSink();
+          if (duringFlush) {
+            redirected.replacementAfterFlush = replacement;
+          } else {
+            redirected.delegate = replacement;
+          }
+          instance.e('Test', 'after-cleanup');
+          await instance.flushFileSink();
+          expect(instance.fileSinkUnavailable, isFalse);
+          expect(await replacement.readAsString(), contains('after-cleanup'));
+          expect(redirected.openCount, 2);
+          await instance.disableFileSink();
+        },
+        createFile: (path) => p.normalize(path) == p.normalize(original.path)
+            ? redirected
+            : parentZone.run(() => File(path)),
+      );
+    });
+  }
+
+  test('导出只保留最近五份快照且开关清理保留这些快照', () async {
+    for (var i = 1; i <= 6; i++) {
+      await File(
+        '${directory.path}/bugaoshan-export-$i.log',
+      ).writeAsString('old snapshot $i');
+    }
+    final unrelated = File('${directory.path}/bugaoshan-export-manual.log');
+    await unrelated.writeAsString('user named snapshot');
+    final instance = logger();
+    instance.e('Test', 'current failure');
+    final latest = File(await instance.exportToFile(directory));
+    expect(await latest.readAsString(), contains('current failure'));
+    expect(
+      await File('${directory.path}/bugaoshan-export-1.log').exists(),
+      isFalse,
+    );
+    expect(
+      await File('${directory.path}/bugaoshan-export-2.log').exists(),
+      isFalse,
+    );
+    final retained = await directory
+        .list()
+        .where(
+          (file) => RegExp(r'bugaoshan-export-\d+\.log$').hasMatch(file.path),
+        )
+        .toList();
+    expect(retained, hasLength(5));
+    await instance.deletePersistedFiles(overridePath: directory.path);
+    expect(await latest.exists(), isTrue);
+    expect(await unrelated.readAsString(), 'user named snapshot');
+  });
+
+  test('已有未来时间戳快照也不能使本次导出被清理', () async {
+    final future = DateTime.now().microsecondsSinceEpoch + 1000000000;
+    for (var i = 0; i < 6; i++) {
+      await File(
+        '${directory.path}/bugaoshan-export-${future + i}.log',
+      ).writeAsString('future');
+    }
+    final instance = logger();
+    instance.e('Test', 'new snapshot');
+    final currentExport = File(await instance.exportToFile(directory));
+    expect(await currentExport.readAsString(), contains('new snapshot'));
+    final snapshots = await directory
+        .list()
+        .where((file) => file.path.contains('bugaoshan-export-'))
+        .toList();
+    expect(snapshots, hasLength(5));
+  });
+}
+
+class _RedirectedLogFile implements File {
+  _RedirectedLogFile(File file) : delegate = file, path = file.path;
+
+  File delegate;
+  File? replacementAfterFlush;
+  int openCount = 0;
+
+  @override
+  final String path;
+
+  @override
+  Future<bool> exists() => delegate.exists();
+
+  @override
+  Future<int> length() => delegate.length();
+
+  @override
+  IOSink openWrite({FileMode mode = FileMode.write, Encoding encoding = utf8}) {
+    openCount++;
+    return _FlushHookSink(
+      delegate.openWrite(mode: mode, encoding: encoding),
+      () {
+        if (replacementAfterFlush case final replacement?) {
+          delegate = replacement;
+          replacementAfterFlush = null;
+        }
+      },
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FlushHookSink implements IOSink {
+  _FlushHookSink(this._sink, this._afterFlush);
+
+  final IOSink _sink;
+  final void Function() _afterFlush;
+
+  @override
+  Future<void> get done => _sink.done;
+
+  @override
+  void add(List<int> data) => _sink.add(data);
+
+  @override
+  void writeln([Object? object = '']) => _sink.writeln(object);
+
+  @override
+  Future<void> flush() async {
+    await _sink.flush();
+    _afterFlush();
+  }
+
+  @override
+  Future<void> close() => _sink.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

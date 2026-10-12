@@ -13,7 +13,7 @@ import 'package:bugaoshan/widgets/dialog/dialog.dart';
 ///
 /// ```
 /// # 触发后执行（Android 外部 cache）：
-/// adb shell run-as <包名> ls -l cache/Bugaoshan/logs/
+/// adb shell ls -l /sdcard/Android/data/<包名>/cache/Bugaoshan/logs/
 /// ```
 ///
 /// 之所以用「带序号的消息」而非单纯计数：若确有丢失，能直接看出丢的是
@@ -21,7 +21,7 @@ import 'package:bugaoshan/widgets/dialog/dialog.dart';
 class LogStressTile extends StatelessWidget {
   /// 单次压测的条数。
   ///
-  /// 取 200是为了在 2 MB × 3 份的默认配置下触发多次轮转
+  /// 取 200 是为了在 2 MB × 3 份的默认配置下验证突发写入不丢记录
   /// （每条约 100 字节，200 条 ≈ 20 KB，远小于容量——
   /// 想验证「不丢」时应确保写入量不超过容量，否则超出部分本就该被淘汰）。
   static const int defaultBurst = 200;
@@ -61,9 +61,9 @@ class LogStressTile extends StatelessWidget {
         if (!context.mounted) return;
         final sinkOn = logger.fileSinkEnabled;
         final message = sinkOn
-            ? '已写入 $burst 条到内存队列。若落盘未开启，请先在软件设置中开启。'
-            : '已写入 $burst 条到内存，但**落盘当前未开启**，磁盘上不会有文件。'
-                  '请先到「设置 → 软件设置」开启「在本机保留诊断日志」。';
+            ? '已写入 $burst 条到内存队列，日志正在异步落盘。'
+            : '已写入 $burst 条到内存，但落盘当前未开启，磁盘上不会有文件。'
+                  '请先在开发者页面开启「在本机保留诊断日志」。';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/pages/home_page.dart';
 import 'package:bugaoshan/pages/wizard/eula_gate_page.dart';
@@ -54,6 +55,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final logger = getIt<AppLogger>();
     final notifier = _appConfig.logPersistenceEnabled;
     void apply(bool enabled) {
+      if (kIsWeb) return;
       if (enabled) {
         unawaited(logger.enableFileSink());
       } else {

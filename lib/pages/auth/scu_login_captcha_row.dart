@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/auth/scu_login_input_field.dart';
@@ -108,25 +108,25 @@ class ScuLoginCaptchaRow extends StatelessWidget {
                     : captchaImageBytes != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.memory(
-                          captchaImageBytes!,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
-                          errorBuilder: (context, error, stackTrace) {
-                            AppLog.e(
-                              _tag,
-                              '验证码图片渲染失败',
-                              error: error,
-                              stackTrace: stackTrace,
-                            );
-                            return Icon(
-                              Icons.broken_image_outlined,
-                              color: isDark
-                                  ? Colors.white54
-                                  : Colors.grey.shade600,
-                              size: 22,
-                            );
-                          },
+                        child: ImageErrorLog(
+                          source: captchaImageBytes!,
+                          tag: _tag,
+                          message: '验证码图片渲染失败',
+                          builder: (report) => Image.memory(
+                            captchaImageBytes!,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            errorBuilder: (context, error, stackTrace) {
+                              report(error, stackTrace);
+                              return Icon(
+                                Icons.broken_image_outlined,
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.grey.shade600,
+                                size: 22,
+                              );
+                            },
+                          ),
                         ),
                       )
                     : Icon(

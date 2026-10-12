@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:bugaoshan/injection/injector.dart';
+import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/dev/logs/log_entry_tile.dart';
 import 'package:bugaoshan/pages/dev/logs/log_filter_bar.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
@@ -16,8 +17,7 @@ import 'package:bugaoshan/utils/share_utils.dart';
 /// - 顶栏：复制全部、保存分享、复制目录路径、清空
 /// - 内容：level 多选过滤 chip + tag 下拉 + 反时序列表 + 按 level 着色
 ///
-/// 文案直接写中文而非走 l10n：本页只在 Dev 页出现，不面向普通用户，
-/// 引入 arb 键反而增加翻译维护成本。
+/// 用户反馈问题时也会进入此页，操作文案随应用语言切换。
 class LogViewerPage extends StatefulWidget {
   const LogViewerPage({super.key});
 
@@ -26,7 +26,6 @@ class LogViewerPage extends StatefulWidget {
 }
 
 class _LogViewerPageState extends State<LogViewerPage> {
-  static const String _appBarTitle = '运行日志';
   static const String _tag = 'LogViewerPage';
 
   final _log = getIt<AppLogger>();
@@ -34,6 +33,25 @@ class _LogViewerPageState extends State<LogViewerPage> {
   Set<LogLevel>? _filterLevels;
   String? _filterTag; // null = All
   int _view = 0; // 全部 / 认证 / 业务错误
+
+  @override
+  void initState() {
+    super.initState();
+    _log.addListener(_resetMissingTag);
+  }
+
+  void _resetMissingTag() {
+    final tag = _filterTag;
+    if (tag != null && !_log.hasTag(tag)) {
+      setState(() => _filterTag = null);
+    }
+  }
+
+  @override
+  void dispose() {
+    _log.removeListener(_resetMissingTag);
+    super.dispose();
+  }
 
   /// 解析到日志落盘目录（必要时创建子目录）：
   /// - Android = app 外部 cache 下的 `Bugaoshan/logs/`（文件管理器可见，OS 可清理）
@@ -44,27 +62,30 @@ class _LogViewerPageState extends State<LogViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(_appBarTitle),
+        title: Text(l10n.runtimeLogs),
         actions: [
           IconButton(
-            tooltip: '复制全部',
+            tooltip: l10n.logCopyAll,
             icon: const Icon(Icons.copy_all),
             onPressed: _copyAll,
           ),
           IconButton(
-            tooltip: '保存并分享',
+            tooltip: l10n.logSaveShare,
             icon: const Icon(Icons.save_alt),
             onPressed: _save,
           ),
           IconButton(
-            tooltip: '复制日志目录路径',
+            tooltip: Platform.isAndroid
+                ? l10n.logCopyFolderPath
+                : l10n.logOpenFolder,
             icon: const Icon(Icons.folder_open),
             onPressed: _openFolder,
           ),
           IconButton(
-            tooltip: '清空内存日志',
+            tooltip: l10n.logClearMemory,
             icon: const Icon(Icons.delete_sweep),
             onPressed: _confirmClear,
           ),
@@ -86,9 +107,9 @@ class _LogViewerPageState extends State<LogViewerPage> {
                       spacing: 8,
                       children: [
                         for (final (index, label) in [
-                          '全部',
-                          '认证日志',
-                          '业务错误',
+                          l10n.logAll,
+                          l10n.logAuthentication,
+                          l10n.logBusinessErrors,
                         ].indexed)
                           ChoiceChip(
                             label: Text(label),
@@ -120,6 +141,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   }
 
   Widget _buildList(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final all = _log.entries;
     final levels = _filterLevels;
     final filtered = all
@@ -141,7 +163,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
     if (filtered.isEmpty) {
       return Center(
         child: Text(
-          all.isEmpty ? '暂无日志' : '没有符合条件的日志',
+          all.isEmpty ? l10n.logEmpty : l10n.logNoMatches,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -184,19 +206,21 @@ class _LogViewerPageState extends State<LogViewerPage> {
   }
 
   Future<void> _copyAll() async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await Clipboard.setData(ClipboardData(text: _log.exportToText()));
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('已复制全部日志到剪贴板')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.logCopied)));
     } catch (error, stackTrace) {
       AppLog.e(_tag, '复制日志失败', error: error, stackTrace: stackTrace);
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('复制日志失败')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.logCopyFailed)));
     }
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final dir = await _logDir();
@@ -204,16 +228,17 @@ class _LogViewerPageState extends State<LogViewerPage> {
       try {
         if (!mounted) return;
         await shareSingleFile(path, context: context);
-        messenger.showSnackBar(const SnackBar(content: Text('已导出，正在分享…')));
+        if (!mounted) return;
+        messenger.showSnackBar(SnackBar(content: Text(l10n.logShared)));
       } catch (e, stackTrace) {
         AppLog.e(_tag, '分享日志失败', error: e, stackTrace: stackTrace);
         if (!mounted) return;
-        messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
+        messenger.showSnackBar(SnackBar(content: Text(l10n.logShareFailed)));
       }
     } catch (e, stackTrace) {
       AppLog.e(_tag, '保存日志失败', error: e, stackTrace: stackTrace);
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('导出失败：$e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.logSaveFailed)));
     }
   }
 
@@ -229,6 +254,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
   /// 因此 Android 改为「复制绝对路径」——配合顶栏 Save（分享导出）才是把日志
   /// 取出来的正确路径。其余平台 `Uri.file(dir)` 交给桌面文件管理器是有效的。
   Future<void> _openFolder() async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final dir = await _logDir();
@@ -236,7 +262,7 @@ class _LogViewerPageState extends State<LogViewerPage> {
         await Clipboard.setData(ClipboardData(text: dir.path));
         if (!mounted) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('已复制目录路径：${dir.path}\n点「保存并分享」可把日志发给自己。')),
+          SnackBar(content: Text(l10n.logDirectoryCopied(dir.path))),
         );
         return;
       }
@@ -244,24 +270,27 @@ class _LogViewerPageState extends State<LogViewerPage> {
     } catch (e, stackTrace) {
       AppLog.e(_tag, '打开日志目录失败', error: e, stackTrace: stackTrace);
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('打开目录失败：$e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.logDirectoryOpenFailed)),
+      );
     }
   }
 
   Future<void> _confirmClear() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('清空内存中的日志？'),
-        content: const Text('仅清空当前内存中的日志，磁盘上已保存的文件不受影响。'),
+        title: Text(l10n.logClearTitle),
+        content: Text(l10n.logClearHint),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('确定'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),

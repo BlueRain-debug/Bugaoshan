@@ -23,9 +23,21 @@ extension _AppLoggerFileSink on AppLogger {
     return _writeSequence;
   }
 
-  Future<void> _enableFileSink({String? overridePath}) {
+  Future<void> _enableFileSink({
+    String? overridePath,
+    bool includeBufferedEntries = false,
+  }) {
     if (_disposed) return Future<void>.value();
+    final replayBuffer = includeBufferedEntries && !_fileSinkEnabled;
     _fileSinkEnabled = true;
+    if (replayBuffer) {
+      for (final entry in _buffer) {
+        if (entry.level.index >= AppLogger._minPersistedLevel.index &&
+            entry.tag != AppLogger._tag) {
+          _appendToFile(entry.format(includeDate: true), scheduleDrain: false);
+        }
+      }
+    }
     final through = _endWriteBatch();
     final operation = _serializeFileOperation(() async {
       try {
@@ -45,6 +57,11 @@ extension _AppLoggerFileSink on AppLogger {
     });
     _notify();
     return operation;
+  }
+
+  Future<void> _flushFileSink() {
+    final through = _endWriteBatch();
+    return _serializeFileOperation(() => _drainQueue(() => through));
   }
 
   Future<void> _disableFileSink() {
@@ -142,13 +159,13 @@ extension _AppLoggerFileSink on AppLogger {
     }
   }
 
-  void _appendToFile(String line) {
+  void _appendToFile(String line, {bool scheduleDrain = true}) {
     if (_writeQueue.length >= AppLogger._maxWriteQueue) {
       _droppedLines++;
       return;
     }
     _writeQueue.add((sequence: ++_writeSequence, line: line));
-    _ensureDraining();
+    if (scheduleDrain) _ensureDraining();
   }
 
   void _ensureDraining() {
@@ -175,21 +192,31 @@ extension _AppLoggerFileSink on AppLogger {
     bool allowRecovery = true,
   }) async {
     while (_writeQueue.isNotEmpty && _writeQueue.first.sequence <= through()) {
-      if (_fileSink == null || !_fileSinkHealthy) {
-        if (!allowRecovery ||
-            !_fileSinkEnabled ||
-            _disposed ||
-            _logDirPath == null) {
-          return;
-        }
-        if (_sinkRecoveryAttempts >= AppLogger._maxSinkRecoveryAttempts) return;
-        if (!await _recoverSink()) continue;
-      }
       try {
+        // POSIX 上缓存被清理后旧句柄仍可写，不能只依赖 flush 抛错来恢复。
+        // 每批次检查一次路径，不为每条记录单独做文件系统调用。
+        if (_fileSink != null &&
+            _fileSinkHealthy &&
+            !await File(_fileSinkPath!).exists()) {
+          await _closeFileSink();
+        }
+        if (_fileSink == null || !_fileSinkHealthy) {
+          if (!allowRecovery ||
+              !_fileSinkEnabled ||
+              _disposed ||
+              _logDirPath == null) {
+            return;
+          }
+          if (_sinkRecoveryAttempts >= AppLogger._maxSinkRecoveryAttempts) {
+            return;
+          }
+          if (!await _recoverSink()) continue;
+        }
         if (_bytesWritten > 0 && _bytesWritten >= maxBytesPerFile) {
           await _rotate();
         }
         final sink = _fileSink!;
+        final path = _fileSinkPath!;
         var count = 0;
         for (final record in _writeQueue) {
           if (record.sequence > through()) break;
@@ -199,6 +226,10 @@ extension _AppLoggerFileSink on AppLogger {
           if (_bytesWritten >= maxBytesPerFile) break;
         }
         await sink.flush();
+        // 写入期间被清理时仍保留本批记录，交给下一次重开补写。
+        if (!await File(path).exists()) {
+          throw FileSystemException('日志文件在写入时被清理', path);
+        }
         // flush 成功前保留记录，失败重开后仍可补写（部分写入时可能重复）。
         _writeQueue.removeRange(0, count);
         _sinkRecoveryAttempts = 0;
@@ -314,7 +345,46 @@ extension _AppLoggerFileSink on AppLogger {
       final stamp = DateTime.now().microsecondsSinceEpoch;
       final file = File(p.join(targetDir.path, 'bugaoshan-export-$stamp.log'));
       await file.writeAsString(content.toString(), encoding: utf8);
+      try {
+        await _trimExportSnapshots(targetDir, file.path);
+      } catch (error, stackTrace) {
+        // 快照清理失败不代表活动日志不可写，也不能让已成功的导出失败。
+        _reportingSinkFailure = true;
+        try {
+          e(
+            AppLogger._tag,
+            '清理旧日志快照失败',
+            error: error,
+            stackTrace: stackTrace,
+            category: LogCategory.business,
+          );
+        } finally {
+          _reportingSinkFailure = false;
+        }
+      }
       return file.path;
     });
+  }
+
+  Future<void> _trimExportSnapshots(
+    Directory directory,
+    String currentPath,
+  ) async {
+    final pattern = RegExp(r'^bugaoshan-export-(\d+)\.log$');
+    final snapshots = <({File file, int timestamp})>[];
+    await for (final entity in directory.list()) {
+      if (entity is! File) continue;
+      if (p.equals(entity.path, currentPath)) continue;
+      final match = pattern.firstMatch(p.basename(entity.path));
+      final timestamp = match == null ? null : int.tryParse(match[1]!);
+      if (timestamp != null) {
+        snapshots.add((file: entity, timestamp: timestamp));
+      }
+    }
+    snapshots.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    // 始终保留本次导出，系统时间回拨也不能删除即将分享的文件。
+    for (final snapshot in snapshots.skip(AppLogger._maxExportSnapshots - 1)) {
+      await snapshot.file.delete();
+    }
   }
 }

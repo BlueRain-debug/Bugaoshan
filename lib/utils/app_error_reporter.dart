@@ -3,14 +3,12 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 
-/// 单条异常日志的最大字符数，防止 stack trace 过长挤占环形缓冲。
-///
-/// 1000 条的容量在平均每条 ~200 字符时最健康；未截断的 stack trace
-/// 轻易上百行，单条就能顶掉几十条正常日志。
+/// 全局异常的消息、详情与堆栈共用字符上限，控制单条诊断记录的内存占用。
 const int _kMaxExceptionChars = 2000;
 
-/// context 占位后仍留给异常本身的最小预算。
+/// 上下文较长时仍留给堆栈的最小预算。
 const int _kMinExceptionChars = 200;
 
 bool _reporting = false;
@@ -21,7 +19,24 @@ void _report(String tag, String operation, Object error, Object? stack) {
   if (_reporting) return;
   _reporting = true;
   try {
-    AppLog.e(tag, operation, error: error, stackTrace: stack);
+    final detail = formatExceptionForLog(
+      error,
+      null,
+      maxChars: _kMaxExceptionChars ~/ 2,
+    );
+    final message = _truncate(
+      LogRedactor.apply(operation),
+      _kMaxExceptionChars -
+          detail.length -
+          (stack == null ? 0 : _kMinExceptionChars),
+    );
+    final trace = stack == null
+        ? null
+        : _truncate(
+            LogRedactor.apply(stack.toString()),
+            _kMaxExceptionChars - message.length - detail.length,
+          );
+    AppLog.e(tag, message, error: detail, stackTrace: trace);
   } finally {
     _reporting = false;
   }
@@ -33,18 +48,32 @@ String formatExceptionForLog(
   StackTrace? stack, {
   int maxChars = _kMaxExceptionChars,
 }) {
-  final buffer = StringBuffer()..writeln(error);
+  final description = describeLogError(error);
+  final buffer = StringBuffer();
+  if (description.isNotEmpty) buffer.writeln(description);
   if (stack != null) {
     buffer.writeln(stack);
   }
-  final text = buffer.toString().trimRight();
+  // 必须先脱敏再截断，避免截掉 JSON 引号后使凭据规则失效。
+  final text = LogRedactor.apply(buffer.toString().trimRight());
   // 防御非法预算：本函数会在错误处理路径上被调用，此处抛异常会掩盖真实错误。
   if (maxChars <= 0) return text;
+  return _truncate(text, maxChars);
+}
+
+String _truncate(String text, int maxChars) {
   if (text.length <= maxChars) return text;
-  // 保留头部：异常类型与消息在开头，排障价值最高。
-  final kept = text.substring(0, maxChars);
-  final omittedLines = '\n'.allMatches(text.substring(maxChars)).length + 1;
-  return '$kept\n… [truncated, $omittedLines more lines]';
+  var kept = maxChars;
+  var suffix = '';
+  for (var i = 0; i < 3; i++) {
+    final omittedLines = '\n'.allMatches(text.substring(kept)).length + 1;
+    suffix = '\n… [truncated, $omittedLines more lines]';
+    final next = (maxChars - suffix.length).clamp(0, maxChars);
+    if (next == kept) break;
+    kept = next;
+  }
+  if (kept == 0) return text.substring(0, maxChars);
+  return '${text.substring(0, kept)}$suffix';
 }
 
 /// 安装全局异常接管，使崩溃现场进入 [AppLog]。
@@ -52,7 +81,7 @@ String formatExceptionForLog(
 /// 覆盖三类此前完全无人接管的异常：
 /// - [FlutterError.onError]：框架构建 / 布局 / 绘制异常（debug 下红屏的来源）。
 /// - [PlatformDispatcher.onError]：引擎层未捕获的异步异常。
-/// - [Isolate.current] 错误监听：非 main isolate 内的未捕获错误。
+/// - [Isolate.current] 错误监听：当前 isolate 内的未捕获错误（仅原生平台）。
 ///
 /// 必须在 `WidgetsFlutterBinding.ensureInitialized()` 之后调用——三者都需要
 /// binding 就绪（[PlatformDispatcher.onError] 依赖 binding 提供的 dispatcher 实例）。
@@ -65,25 +94,13 @@ void setupGlobalErrorHandlers() {
     final tag = details.library == null || details.library!.isEmpty
         ? 'FlutterError'
         : 'FlutterError.${details.library}';
-    // context 是 DiagnosticsNode，toString() 可能输出整棵组件树而远长于
-    // 上限；必须给 maxChars 留出正数余量，否则 formatExceptionForLog 内部
-    // substring 会抛 RangeError —— 错误处理器自己在处理异常时崩溃，
-    // 会把真实错误信息一并掩盖。
-    //
-    // context 作为独立 message 传入（而非拼进异常文本）：它是定位线索而非
-    // 异常本身，混在一起会让「异常消息」被组件树冲淡。
+    // 上下文、异常和堆栈共享 _report 的字符预算，同时保留各自独立字段。
     final context = details.context?.toString() ?? '';
-    final budget = (_kMaxExceptionChars - context.length).clamp(
-      _kMinExceptionChars,
-      _kMaxExceptionChars,
-    );
     _report(
       tag,
       context.isEmpty ? '未捕获的框架异常' : '未捕获的框架异常\ncontext: $context',
       details.exception,
-      details.stack == null
-          ? null
-          : formatExceptionForLog('', details.stack, maxChars: budget),
+      details.stack,
     );
     // 保留默认行为：debug 下红屏、release 下打印，否则会静默掩盖框架错误。
     if (previousFlutterOnError != null) {
@@ -105,8 +122,8 @@ void setupGlobalErrorHandlers() {
     return true;
   };
 
-  // 持有引用防止端口被 GC 关闭；非 main isolate 的错误会送到这里。
-  if (_errorPort != null) return;
+  // Web 不支持 RawReceivePort / Isolate.current，仍保留上面的框架与异步处理器。
+  if (kIsWeb || _errorPort != null) return;
   final port = RawReceivePort((dynamic pair) {
     if (pair is! List || pair.length < 2) return;
     if (pair[0] == null) return;

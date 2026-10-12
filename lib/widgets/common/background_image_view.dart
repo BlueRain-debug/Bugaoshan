@@ -3,6 +3,7 @@ import 'package:bugaoshan/utils/app_log.dart';
 
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/models/background_crop.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 
 /// 课程页背景图渲染组件：按 [crop] 裁剪参数把原图缩放/平移进容器，超出部分裁掉。
 ///
@@ -43,6 +44,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
   ImageStream? _stream;
   ImageStreamListener? _listener;
   Size? _imageSize;
+  final _imageErrors = ImageErrorReporter();
 
   bool get _hasCustomCrop => widget.crop != null && !widget.crop!.isCover;
 
@@ -56,6 +58,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
   void didUpdateWidget(covariant BackgroundImageView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.path != widget.path) {
+      _imageErrors.reset();
       _imageSize = null;
       _resolveImageSize();
     }
@@ -65,6 +68,7 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
   /// 与这里共享 ImageCache，不产生二次解码。
   void _resolveImageSize() {
     _removeListener();
+    final path = widget.path;
     try {
       final stream = FileImage(
         File(widget.path),
@@ -82,7 +86,13 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
           }
         },
         onError: (error, stackTrace) {
-          AppLog.e(_tag, '背景图片解码失败', error: error, stackTrace: stackTrace);
+          _imageErrors.report(
+            path,
+            _tag,
+            '背景图片解码失败',
+            error: error,
+            stackTrace: stackTrace,
+          );
           // 解码失败保持空显示，与 Image.errorBuilder 行为一致。
           _removeListener();
         },
@@ -183,7 +193,13 @@ class _BackgroundImageViewState extends State<BackgroundImageView> {
       ),
       colorBlendMode: BlendMode.modulate,
       errorBuilder: (_, error, stackTrace) {
-        AppLog.e(_tag, '背景图片渲染失败', error: error, stackTrace: stackTrace);
+        _imageErrors.report(
+          widget.path,
+          _tag,
+          '背景图片渲染失败',
+          error: error,
+          stackTrace: stackTrace,
+        );
         return const SizedBox.shrink();
       },
     );

@@ -44,6 +44,7 @@ void main() {
     expect(result, 42);
     expect(invalidations, 1);
     expect(logger.entries.single.level, LogLevel.warn);
+    expect(logger.entries.single.stackTrace, isNull);
     logger.clear();
     await expectLater(
       retryOnUnauthenticated(
@@ -54,5 +55,19 @@ void main() {
       throwsA(isA<UnauthenticatedException>()),
     );
     expect(logger.entries.last.level, LogLevel.error);
+  });
+
+  test('HTML 标题仅提取短诊断线索，先解码实体并脱敏', () {
+    final title = responseTitleForLog(
+      '<HTML><TITLE>WAF blocked password&#61;private-secret</TITLE><body>private response</body></HTML>',
+    );
+    expect(title, contains('WAF blocked'));
+    expect(title, isNot(contains('private-secret')));
+    expect(title, isNot(contains('private response')));
+    expect(
+      responseTitleForLog('<title>${'x' * 500}</title>')!.length,
+      lessThanOrEqualTo(160),
+    );
+    expect(responseTitleForLog('{"value":"<title>private</title>"}'), isNull);
   });
 }

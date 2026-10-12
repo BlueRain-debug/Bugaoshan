@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/utils/app_logger.dart';
 
@@ -22,6 +24,12 @@ class AppLog {
   AppLog._();
 
   static final AppLogger bootstrapLogger = AppLogger();
+
+  /// 启动失败页也可使用；DI 未装配时导出启动缓冲。
+  static String exportToText() => _logger.exportToText();
+  static Future<void> flushFileSink() => _logger.flushFileSink();
+  static Future<String> exportToFile(Directory directory) =>
+      _logger.exportToFile(directory);
 
   /// 延迟获取单例：避免在 DI 装配完成前访问 getIt 抛错。
   /// 启动前的日志写入 bootstrapLogger，DI 使用同一实例，避免早期错误丢失。

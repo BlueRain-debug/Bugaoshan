@@ -143,8 +143,8 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
     final ServiceFormDefinition startData;
     try {
       startData = await startDataFuture;
-    } catch (e, logStackTrace) {
-      AppLog.e(_tag, '_fetchSchema 失败', error: e, stackTrace: logStackTrace);
+    } catch (e) {
+      AppLog.w(_tag, '实时表单定义不可用，尝试备用定义', error: e);
       // start-info 的结果已无人消费，吞掉避免悬空的 unhandled error
       startInfoFuture.ignore();
       rethrow;
@@ -244,8 +244,8 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
         }
         data = await getIt<ServiceApiService>().fetchProvinces();
         if (data.isEmpty) throw StateError('empty provinces');
-      } catch (e, logStackTrace) {
-        AppLog.e(_tag, '_loadRegions 失败', error: e, stackTrace: logStackTrace);
+      } catch (e) {
+        AppLog.w(_tag, '在线地区数据不可用，使用本地数据', error: e);
 
         final raw = await rootBundle.loadString('assets/region_data.json');
         data = jsonDecode(raw) as List;

@@ -8,6 +8,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/share_utils.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 
 void showFullScreenImageViewer(
   BuildContext context, {
@@ -40,26 +41,28 @@ class ImageViewerPage extends StatelessWidget {
           Center(
             child: GestureDetector(
               onLongPress: () => _showActions(context, l10n),
-              child: PhotoView(
-                imageProvider: NetworkImage(imageUrl, headers: headers),
-                minScale: PhotoViewComputedScale.contained,
-                maxScale: PhotoViewComputedScale.covered * 3,
-                backgroundDecoration: const BoxDecoration(color: Colors.black),
-                errorBuilder: (context, error, stackTrace) {
-                  AppLog.e(
-                    _tag,
-                    '图片加载失败',
-                    error: error,
-                    stackTrace: stackTrace,
-                  );
-                  return const Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      size: 64,
-                      color: Colors.white54,
-                    ),
-                  );
-                },
+              child: ImageErrorLog(
+                source: imageUrl,
+                tag: _tag,
+                message: '图片加载失败',
+                builder: (report) => PhotoView(
+                  imageProvider: NetworkImage(imageUrl, headers: headers),
+                  minScale: PhotoViewComputedScale.contained,
+                  maxScale: PhotoViewComputedScale.covered * 3,
+                  backgroundDecoration: const BoxDecoration(
+                    color: Colors.black,
+                  ),
+                  errorBuilder: (context, error, stackTrace) {
+                    report(error, stackTrace);
+                    return const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 64,
+                        color: Colors.white54,
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

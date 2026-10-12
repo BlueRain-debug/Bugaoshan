@@ -9,6 +9,7 @@ import 'package:bugaoshan/widgets/common/image_viewer.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 
 class ActivityDetailPage extends StatefulWidget {
   final String activityId;
@@ -286,20 +287,25 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
           showFullScreenImageViewer(context, imageUrl: _activity!.poster),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppShapes.medium),
-        child: Image.network(
-          _activity!.poster,
-          width: double.infinity,
-          height: 200,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            AppLog.e(_tag, '活动图片加载失败', error: error, stackTrace: stackTrace);
-            return Container(
-              width: double.infinity,
-              height: 200,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: const Icon(Icons.image_not_supported, size: 48),
-            );
-          },
+        child: ImageErrorLog(
+          source: _activity!.poster,
+          tag: _tag,
+          message: '活动图片加载失败',
+          builder: (report) => Image.network(
+            _activity!.poster,
+            width: double.infinity,
+            height: 200,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              report(error, stackTrace);
+              return Container(
+                width: double.infinity,
+                height: 200,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.image_not_supported, size: 48),
+              );
+            },
+          ),
         ),
       ),
     );

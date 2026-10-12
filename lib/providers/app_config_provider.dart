@@ -63,6 +63,11 @@ class AppConfigProvider {
   final SharedPreferences _sharedPreferences;
 
   AppConfigProvider(this._sharedPreferences);
+
+  /// 启动期与完整设置装配共用同一开关读取逻辑。
+  static bool readLogPersistenceEnabled(SharedPreferences preferences) =>
+      preferences.getBool(_keyLogPersistenceEnabled) ?? true;
+
   Future<void> init() async {
     await _loadPreferences();
     _addSaveCallback();
@@ -270,8 +275,7 @@ class AppConfigProvider {
 
     reminderEnabled.value =
         _sharedPreferences.getBool(_keyReminderEnabled) ?? false;
-    logPersistenceEnabled.value =
-        _sharedPreferences.getBool(_keyLogPersistenceEnabled) ?? true;
+    logPersistenceEnabled.value = readLogPersistenceEnabled(_sharedPreferences);
     reminderLeadMinutes.value =
         _decodeLeadMinutes(
           _sharedPreferences.getStringList(_keyReminderLeadMinutes),
