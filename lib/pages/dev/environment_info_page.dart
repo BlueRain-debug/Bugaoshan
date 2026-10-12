@@ -1,3 +1,4 @@
+import 'package:bugaoshan/utils/app_log.dart';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -18,6 +19,8 @@ class EnvironmentInfoPage extends StatefulWidget {
 }
 
 class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
+  static const String _tag = 'EnvironmentInfoPageState';
+
   final _provider = getIt<AppInfoProvider>();
   late Future<VersionInfo> _future;
   late Future<Map<String, dynamic>> _deviceInfoFuture;
@@ -27,7 +30,7 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
   void initState() {
     super.initState();
     _future = _provider.getVersionInfo().then((v) => _info = v);
-    _deviceInfoFuture = _getDeviceInfo();
+    _deviceInfoFuture = AppLog.guard(_tag, '读取设备信息', _getDeviceInfo);
   }
 
   Future<Map<String, dynamic>> _getDeviceInfo() async {
@@ -58,10 +61,15 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
     return {};
   }
 
-  void _copyAll() {
+  Future<void> _copyAll() async {
     final info = _info;
     if (info == null) return;
-    Clipboard.setData(ClipboardData(text: info.toString()));
+    await AppLog.guard(
+      _tag,
+      '复制环境信息',
+      () => Clipboard.setData(ClipboardData(text: info.toString())),
+    );
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
@@ -82,6 +90,11 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Failed to load environment info: ${snapshot.error}'),
+            );
+          }
           final info = snapshot.data!;
           return ListView(
             padding: withSystemBottomInset(context, EdgeInsets.all(16)),
@@ -100,6 +113,13 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
                         padding: EdgeInsets.all(16),
                         child: Center(child: CircularProgressIndicator()),
                       ),
+                    );
+                  }
+                  if (deviceSnapshot.hasError) {
+                    return _SectionCard(
+                      title: 'Device',
+                      content:
+                          'Failed to load device info: ${deviceSnapshot.error}',
                     );
                   }
                   final deviceInfo = deviceSnapshot.data ?? {};

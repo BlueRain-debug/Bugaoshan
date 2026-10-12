@@ -485,16 +485,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get forceUpdate => '更新到最新版本（含预览版）';
 
   @override
-  String get authLog => '认证日志';
+  String get appLogTitle => '运行日志';
 
   @override
-  String get viewAuthLog => '查看认证日志';
+  String get viewAppLog => '查看运行日志';
 
   @override
-  String get authLogEmpty => '暂无认证日志。';
+  String get logEmpty => '暂无运行日志。';
 
   @override
-  String authLogLastEntry(String time, String level, String tag) {
+  String logLastEntry(String time, String level, String tag) {
     return '$level · $tag · $time';
   }
 
@@ -3713,6 +3713,120 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get docLoadFailed => '文档加载失败';
+
+  @override
+  String get logPersistenceSwitch => '在本机保留诊断日志';
+
+  @override
+  String get logPersistenceSwitchHint =>
+      '将警告与错误保存为本机日志文件（约 6 MB，自动轮转）。默认开启；关闭后日志仅存于内存，应用退出即丢失。';
+
+  @override
+  String get runtimeLogs => '运行日志';
+
+  @override
+  String get logCopyAll => '复制全部';
+
+  @override
+  String get logSaveShare => '保存并分享';
+
+  @override
+  String get logCopyFolderPath => '复制日志目录路径';
+
+  @override
+  String get logOpenFolder => '打开日志目录';
+
+  @override
+  String get logClearMemory => '清空内存日志';
+
+  @override
+  String get logAll => '全部';
+
+  @override
+  String get logAuthentication => '认证日志';
+
+  @override
+  String get logBusinessErrors => '业务错误';
+
+  @override
+  String get logAllTags => '全部 tag';
+
+  @override
+  String get logNoMatches => '没有符合条件的日志';
+
+  @override
+  String get logCategoryAuthentication => '认证';
+
+  @override
+  String get logCategoryBusiness => '业务';
+
+  @override
+  String get logStackTrace => '错误堆栈';
+
+  @override
+  String get logCopied => '已复制日志到剪贴板';
+
+  @override
+  String get logCopyFailed => '复制日志失败';
+
+  @override
+  String get logShared => '日志快照已导出';
+
+  @override
+  String get logSaveFailed => '保存日志失败';
+
+  @override
+  String get logShareFailed => '分享日志失败，已保存的快照仍可使用。';
+
+  @override
+  String get logClearTitle => '清空内存中的日志？';
+
+  @override
+  String get logClearHint => '仅清空当前进程的内存日志，磁盘上已保存的文件不受影响。';
+
+  @override
+  String get logPersistenceOff => '日志仅保留在内存，应用退出即丢失';
+
+  @override
+  String get logPersistenceActive => '警告与错误会写入 bugaoshan.log（约 6 MB，自动轮转）';
+
+  @override
+  String get logPersistenceRetryHint => '请关闭后重新开启；若仍失败，请检查设备剩余存储空间。';
+
+  @override
+  String logPersistenceUnavailable(String reason) {
+    return '落盘不可用$reason';
+  }
+
+  @override
+  String logDroppedEntries(int count) {
+    return '已丢弃 $count 条待写日志';
+  }
+
+  @override
+  String logDirectoryCopied(String path) {
+    return '已复制目录路径：$path\n点「保存并分享」可导出日志。';
+  }
+
+  @override
+  String logSaved(String path) {
+    return '日志快照已保存至：$path';
+  }
+
+  @override
+  String get logDirectoryOpenFailed => '打开日志目录失败';
+
+  @override
+  String get logStartupTitle => 'Bugaoshan 启动失败';
+
+  @override
+  String get logCopy => '复制日志';
+
+  @override
+  String get logSave => '保存日志';
+
+  @override
+  String get logShare => '分享日志';
 }
 
 /// The translations for Chinese, as used in China, using the Han script (`zh_Hans_CN`).

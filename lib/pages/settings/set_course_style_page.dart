@@ -121,7 +121,8 @@ class SetCourseStylePage extends StatelessWidget {
               Text('${(appConfig.colorOpacity.value * 100).round()}%'),
             ],
           ),
-          Slider(
+          AdaptiveGlassSlider(
+            semanticLabel: localizations.colorOpacity,
             value: appConfig.colorOpacity.value,
             min: 0.3,
             max: 1.0,
@@ -140,7 +141,8 @@ class SetCourseStylePage extends StatelessWidget {
               Text('${appConfig.courseCardFontSize.value.round()}'),
             ],
           ),
-          Slider(
+          AdaptiveGlassSlider(
+            semanticLabel: localizations.fontSize,
             value: appConfig.courseCardFontSize.value,
             min: 8,
             max: 20,
@@ -177,7 +179,8 @@ class SetCourseStylePage extends StatelessWidget {
               Text('${appConfig.courseRowHeight.value.round()}'),
             ],
           ),
-          Slider(
+          AdaptiveGlassSlider(
+            semanticLabel: localizations.courseRowHeight,
             value: appConfig.courseRowHeight.value,
             min: 48,
             max: 120,
@@ -245,8 +248,6 @@ class SetCourseStylePage extends StatelessWidget {
           ButtonWithMaxWidth(
             onPressed: () => _pickBackgroundImage(context, appConfig),
             icon: const Icon(Icons.wallpaper),
-            label: localizations.setBackgroundImage,
-            symbol: 'photo',
             child: Text(localizations.setBackgroundImage),
           ),
           if (appConfig.backgroundImagePath.value != null) ...[
@@ -254,16 +255,12 @@ class SetCourseStylePage extends StatelessWidget {
             ButtonWithMaxWidth(
               onPressed: () => _editBackgroundCrop(context, appConfig),
               icon: const Icon(Icons.crop_free),
-              label: localizations.editBackgroundArea,
-              symbol: 'crop',
               child: Text(localizations.editBackgroundArea),
             ),
             const SizedBox(height: 8),
             ButtonWithMaxWidth(
               onPressed: () => _removeBackgroundImage(appConfig),
               icon: const Icon(Icons.delete_outline),
-              label: localizations.removeBackgroundImage,
-              symbol: 'trash',
               child: Text(localizations.removeBackgroundImage),
             ),
             const SizedBox(height: 8),
@@ -278,7 +275,8 @@ class SetCourseStylePage extends StatelessWidget {
                     ),
                   ],
                 ),
-                Slider(
+                AdaptiveGlassSlider(
+                  semanticLabel: localizations.backgroundImageOpacity,
                   value: appConfig.backgroundImageOpacity.value,
                   min: 0.05,
                   max: 0.8,

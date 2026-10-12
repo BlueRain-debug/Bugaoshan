@@ -7,6 +7,8 @@ import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/calendar_event_utils.dart';
 
 class AcademicCalendarService {
+  static const String _tag = 'AcademicCalendarService';
+
   final SharedPreferences _prefs;
   final http.Client? _client;
 
@@ -108,10 +110,12 @@ class AcademicCalendarService {
     if (cached != null && cached.isNotEmpty) {
       try {
         return _parseCalendarJson(cached);
-      } catch (e) {
-        AppLog.w(
-          'AcademicCalendarService',
-          'Failed to parse cached calendar: $e',
+      } catch (e, logStackTrace) {
+        AppLog.e(
+          _tag,
+          '_loadLocalCalendar 失败',
+          error: e,
+          stackTrace: logStackTrace,
         );
       }
     }
@@ -121,8 +125,14 @@ class AcademicCalendarService {
         'assets/academic_calendar.json',
       );
       return _parseCalendarJson(assetContent);
-    } catch (e) {
-      AppLog.w('AcademicCalendarService', 'Failed to load bundled asset: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        '_loadLocalCalendar 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
+
       return null;
     }
   }
@@ -147,11 +157,8 @@ class AcademicCalendarService {
           return calendar;
         }
       }
-    } catch (e) {
-      AppLog.w(
-        'AcademicCalendarService',
-        'Failed to fetch remote calendar from $url: $e',
-      );
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_tryFetch 失败', error: e, stackTrace: logStackTrace);
     }
     return null;
   }
@@ -199,11 +206,14 @@ class AcademicCalendarService {
         }
       }
       return null;
-    } catch (e) {
-      AppLog.w(
-        'AcademicCalendarService',
-        'Failed to find matching semester: $e',
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        'findTotalWeeksFromCalendar 失败',
+        error: e,
+        stackTrace: logStackTrace,
       );
+
       return null;
     }
   }
@@ -231,11 +241,14 @@ class AcademicCalendarService {
         }
       }
       return null;
-    } catch (e) {
-      AppLog.w(
-        'AcademicCalendarService',
-        'Failed to find matching semester: $e',
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        'findMatchingSemester 失败',
+        error: e,
+        stackTrace: logStackTrace,
       );
+
       return null;
     }
   }

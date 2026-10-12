@@ -1,9 +1,12 @@
-﻿import 'package:flutter/foundation.dart' show kDebugMode, kIsWasm, kIsWeb;
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWasm, kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:bugaoshan/models/version_info.dart';
 import 'package:bugaoshan/providers/environment_info/native.dart';
 
 class AppInfoProvider {
+  static const String _tag = 'AppInfoProvider';
+
   /// 已知 F-Droid 客户端的包名。
   ///
   /// 从这些渠道安装的包由 F-Droid 负责更新。由于 F-Droid 版采用可复制构建，
@@ -41,23 +44,25 @@ class AppInfoProvider {
       gitCommit.length >= 7 ? gitCommit.substring(0, 7) : gitCommit;
 
   Future<VersionInfo> getVersionInfo() async {
-    return VersionInfo(
-      app:
-          "AppName: ${packageInfo.appName}\n"
-          "BuildNumber: ${packageInfo.buildNumber}\n"
-          "Version: ${packageInfo.version}\n"
-          "Signature: ${packageInfo.buildSignature}\n"
-          "Installer: ${packageInfo.installerStore}\n"
-          "PackageName: ${packageInfo.packageName}",
-      environment: await getEnvironmentInfo(),
-      flag:
-          "Web: $kIsWeb\n"
-          "WASM: $kIsWasm\n"
-          "Debug: $kDebugMode",
-      build:
-          "Tag: $gitTag\n"
-          "Commit: $shortCommit\n"
-          "CommitDate: $gitCommitDateRaw",
-    );
+    return AppLog.guard(_tag, '读取运行环境', () async {
+      return VersionInfo(
+        app:
+            "AppName: ${packageInfo.appName}\n"
+            "BuildNumber: ${packageInfo.buildNumber}\n"
+            "Version: ${packageInfo.version}\n"
+            "Signature: ${packageInfo.buildSignature}\n"
+            "Installer: ${packageInfo.installerStore}\n"
+            "PackageName: ${packageInfo.packageName}",
+        environment: await getEnvironmentInfo(),
+        flag:
+            "Web: $kIsWeb\n"
+            "WASM: $kIsWasm\n"
+            "Debug: $kDebugMode",
+        build:
+            "Tag: $gitTag\n"
+            "Commit: $shortCommit\n"
+            "CommitDate: $gitCommitDateRaw",
+      );
+    });
   }
 }

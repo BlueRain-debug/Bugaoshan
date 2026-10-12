@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/repair.dart';
@@ -36,6 +37,8 @@ class RepairDetailPage extends StatefulWidget {
 }
 
 class _RepairDetailPageState extends State<RepairDetailPage> {
+  static const String _tag = 'RepairDetailPageState';
+
   late final ZhhqRepairProvider _provider;
   RepairTicketDetail? _detail;
   Object? _error;
@@ -60,7 +63,8 @@ class _RepairDetailPageState extends State<RepairDetailPage> {
       });
       // 状态为待撤回/处理中时查询是否可撤回
       await _maybeCheckWithdraw(detail);
-    } catch (e) {
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_load 失败', error: e, stackTrace: logStackTrace);
       if (!mounted) return;
       setState(() => _error = e);
     }
@@ -112,7 +116,8 @@ class _RepairDetailPageState extends State<RepairDetailPage> {
       // 撤回按钮消失（_operatorVisible 按最新详情重算）。
       await _load();
       return true;
-    } catch (e) {
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_withdraw 失败', error: e, stackTrace: logStackTrace);
       if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
@@ -439,6 +444,8 @@ class _EvaluateDialog extends StatefulWidget {
 }
 
 class _EvaluateDialogState extends State<_EvaluateDialog> {
+  static const String _tag = 'EvaluateDialogState';
+
   /// 每项评价的星级（默认 5 星），key 为评价项 id。
   late final Map<String, int> _scores;
   final _contentController = TextEditingController();
@@ -553,7 +560,8 @@ class _EvaluateDialogState extends State<_EvaluateDialog> {
         _contentController.text.trim(),
       );
       if (mounted) Navigator.of(context).pop(ok);
-    } catch (e) {
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_submit 失败', error: e, stackTrace: logStackTrace);
       // 评价接口失败：不关闭对话框，提示后允许重试
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

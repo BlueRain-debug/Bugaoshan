@@ -1,3 +1,4 @@
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
@@ -9,7 +10,7 @@ import 'package:bugaoshan/widgets/common/image_viewer.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/utils/app_log.dart';
-import 'package:bugaoshan/utils/system_insets.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 
 class ActivityDetailPage extends StatefulWidget {
   final String activityId;
@@ -21,6 +22,8 @@ class ActivityDetailPage extends StatefulWidget {
 }
 
 class _ActivityDetailPageState extends State<ActivityDetailPage> {
+  static const String _tag = 'ActivityDetailPageState';
+
   bool _loading = true;
   LoadErrorType? _error;
   CyclActivity? _activity;
@@ -53,8 +56,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         _signedUp = result.signUp;
         _loading = false;
       });
-    } catch (e) {
-      AppLog.e('CcylActivityDetail', 'Detail load error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_loadData 失败', error: e, stackTrace: logStackTrace);
+
       if (!mounted) return;
       setState(() {
         _error = LoadErrorType.ccylActivityLoadFailed;
@@ -104,8 +108,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
         widget.activityId,
         selectedType.code ?? '',
       );
-    } catch (e) {
-      AppLog.e('CcylActivityDetail', 'Sign up error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_signUp 失败', error: e, stackTrace: logStackTrace);
+
       if (!mounted) return;
       setState(() => _actionLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,8 +139,9 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     try {
       final provider = getIt<CcylProvider>();
       await provider.service.cancelSignUp(widget.activityId);
-    } catch (e) {
-      AppLog.e('CcylActivityDetail', 'Cancel sign up error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_cancelSignUp 失败', error: e, stackTrace: logStackTrace);
+
       if (!mounted) return;
       setState(() => _actionLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -282,19 +288,25 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
           showFullScreenImageViewer(context, imageUrl: _activity!.poster),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppShapes.medium),
-        child: Image.network(
-          _activity!.poster,
-          width: double.infinity,
-          height: 200,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: double.infinity,
-              height: 200,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: const Icon(Icons.image_not_supported, size: 48),
-            );
-          },
+        child: ImageErrorLog(
+          source: _activity!.poster,
+          tag: _tag,
+          message: '活动图片加载失败',
+          builder: (report) => Image.network(
+            _activity!.poster,
+            width: double.infinity,
+            height: 200,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              report(error, stackTrace);
+              return Container(
+                width: double.infinity,
+                height: 200,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.image_not_supported, size: 48),
+              );
+            },
+          ),
         ),
       ),
     );
