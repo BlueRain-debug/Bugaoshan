@@ -34,6 +34,8 @@ main ─────── 合并即自动发 vX.Y.Z 正式版（Latest Release 
 
 branch-policy 只做一条硬校验：**`main` 只能接收来自 `preview` 的 PR**；`preview` 接受任意来源分支。该检查仅存在于 PR 事件，真正的强制落地还需要 GitHub 侧把 pre-flight 配置为 required status check（见 §4.4）。
 
+平台构建验证与 pre-flight 并行：`build-android.yml`、`build-windows.yml` 和 `build-macos.yml` 对目标为 `main` / `preview` 且命中各自 `paths` 的 PR 自动编译，并支持独立 `workflow_dispatch`。Android / Windows 的路径筛选覆盖各自平台目录、`lib/`、应用资源、法律文档资源、CHANGELOG、pubspec、本地化配置、公共 setup 和 git 元数据脚本；Android PR 跳过发布 keystore 与 `key.properties`，构建未签名 universal / split-per-ABI release APK，Windows PR 执行 release 构建并补齐 WebView2Loader.dll。PR 验证制品分别命名为 `android-validation-unsigned`、`windows-validation` 和 `macos-validation-unsigned`，保留 7 天；发布调用仍使用 `android-apk` / `windows-release` 并沿用仓库默认保留期。
+
 ## 2. 一次变更的完整生命周期
 
 以功能分支 `feat/foo` 为例：
@@ -167,7 +169,9 @@ pre-flight 的 `unittest discover -s .github/scripts/` 会把 `tests/` 子目录
 |---|---|
 | `.github/workflows/pre-flight.yml` | PR/push 质量门禁与分支策略 |
 | `.github/workflows/release.yml` | 双通道发布：版本推导、打 tag、构建、发布 |
-| `.github/workflows/build-android.yml` / `build-windows.yml` | 双端构建（可独立 workflow_call 复用） |
+| `.github/workflows/build-android.yml` | Android 的 PR 编译验证、手动构建与发布构建复用；PR 触发构建为未签名 release APK，不依赖发布 keystore |
+| `.github/workflows/build-windows.yml` | Windows 的 PR 编译验证、手动构建与发布构建复用 |
+| `.github/workflows/build-macos.yml` | macOS 未签名 universal 验证构建，支持 PR / 手动触发与发布流程复用 |
 | `.github/actions/setup/action.yml` | 公共环境：钉版 Flutter、镜像 pub get、代码生成、git 元数据 |
 | `.github/scripts/resolve_release_version.py` | 通道判定、tag 推导、幂等守卫 |
 | `.github/scripts/release_tags.py` / `release_changelog.py` / `release_body.py` / `release_prepare.py` | 发布说明与产物整理 |
