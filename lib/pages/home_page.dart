@@ -251,8 +251,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return page;
     }
     // 其余自定义业务入口由外层整页抬起一块 Dock 高度的空间，保留表单与 FAB
-    // 的可操作区域，同时屏蔽被 extendBody 注入的底部 padding：页面自带底栏
-    // （如第二课堂的 NavigationBar）或内层滚动组件若再消费一次，就会多留出
+    // 的可操作区域，同时屏蔽被 extendBody 注入的底部 padding：若页面自带底栏
+    // （如改造前第二课堂的 NavigationBar）或内层滚动组件再消费一次，就会多留出
     // 一整个 Dock 高度的空白 (#376)。已适配的三张主页不走这里，它们把这段
     // 空间放到滚动内容末尾，而非裁短 viewport。
     return Builder(
