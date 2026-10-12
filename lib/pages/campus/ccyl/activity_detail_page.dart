@@ -1,3 +1,4 @@
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/injection/injector.dart';
@@ -257,7 +258,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: withSystemBottomInset(context, EdgeInsets.all(16)),
         children: [
           _buildPoster(l10n),
           const SizedBox(height: 16),

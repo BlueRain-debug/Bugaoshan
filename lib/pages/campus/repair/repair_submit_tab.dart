@@ -202,7 +202,7 @@ class _SubmitTabState extends State<_SubmitTab> {
     _messenger = ScaffoldMessenger.of(context);
     _errorColor = Theme.of(context).colorScheme.error;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: withSystemBottomInset(context, EdgeInsets.all(16)),
       children: [
         CardWithTitle(
           title: l10n.repairAddress,

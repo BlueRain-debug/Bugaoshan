@@ -4,6 +4,7 @@ import 'package:bugaoshan/widgets/common/image_error_log.dart';
 import 'package:bugaoshan/services/dynamic_icon_service.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
 
 class SetAppIconPage extends StatefulWidget {
@@ -115,7 +116,10 @@ class _SetAppIconPageState extends State<SetAppIconPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: withSystemBottomInset(
+                context,
+                EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
               children: [
                 _IconOption(
                   iconAsset: 'assets/icon.png',

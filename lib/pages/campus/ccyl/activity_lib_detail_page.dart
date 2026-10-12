@@ -12,6 +12,7 @@ import 'package:bugaoshan/widgets/common/icon_info_row.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class ActivityLibDetailPage extends StatefulWidget {
   final String activityLibraryId;
@@ -189,7 +190,7 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: withSystemBottomInset(context, EdgeInsets.all(16)),
         children: [
           _buildHeader(l10n),
           const SizedBox(height: 16),

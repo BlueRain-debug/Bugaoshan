@@ -9,6 +9,7 @@ import 'package:bugaoshan/utils/constants.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/theme_shape.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class SetDockPage extends StatefulWidget {
   const SetDockPage({super.key});
@@ -257,7 +258,10 @@ class _SetDockPageState extends State<SetDockPage> {
               // Items list
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: withSystemBottomInset(
+                    context,
+                    EdgeInsets.symmetric(horizontal: 16),
+                  ),
                   children: [
                     // Visible items (reorderable)
                     visibleItems,

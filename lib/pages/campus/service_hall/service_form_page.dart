@@ -21,6 +21,7 @@ import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/pages/campus/service_hall/service_app_catalog.dart';
 import 'package:bugaoshan/pages/campus/service_hall/service_field_widgets.dart';
 import 'package:bugaoshan/pages/campus/service_hall/service_form_controller.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 /// 办事大厅通用动态表单页。
 ///
@@ -392,7 +393,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
       return _errorState(l10n);
     }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: withSystemBottomInset(context, EdgeInsets.all(16)),
       children: [
         _buildInfoCard(l10n),
         const SizedBox(height: 12),

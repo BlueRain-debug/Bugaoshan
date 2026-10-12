@@ -7,6 +7,7 @@ import 'package:bugaoshan/providers/zhhq_repair_provider.dart';
 import 'package:bugaoshan/theme_shape.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 /// 报修工单详情页。
 ///
@@ -183,7 +184,7 @@ class _RepairDetailPageState extends State<RepairDetailPage> {
     // 列表传入的中文状态。
     final statusText = _detailStatusText(detail, widget.initialStatus, l10n);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: withSystemBottomInset(context, EdgeInsets.all(16)),
       children: [
         // 状态 + 标题
         StyledCard(

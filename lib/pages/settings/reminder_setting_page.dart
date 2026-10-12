@@ -10,6 +10,7 @@ import 'package:bugaoshan/widgets/common/info_card.dart';
 import 'package:bugaoshan/widgets/common/section_title.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
 import 'package:bugaoshan/widgets/common/styled_tile.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
 
 /// 「通知与提醒」设置页面。
@@ -163,7 +164,10 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
     return Scaffold(
       appBar: AppBar(title: Text(l10n.reminderSettingsTitle)),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: withSystemBottomInset(
+          context,
+          EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
         children: [
           // 权限状态卡片置顶展示：未授权状态下优先引导用户完成权限配置。
           if (!_isGranted) ...[

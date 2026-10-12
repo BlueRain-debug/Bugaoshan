@@ -22,6 +22,7 @@ import 'package:bugaoshan/widgets/dialog/download_progress_dialog.dart';
 import 'package:bugaoshan/widgets/dialog/update_dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/services/dynamic_icon_service.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -192,7 +193,10 @@ class _AboutPageState extends State<AboutPage> {
     return Scaffold(
       appBar: AppBar(title: Text(localizations.about)),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: withSystemBottomInset(
+          context,
+          EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
         children: [
           // Header section with icon and app name
           _buildHeader(theme, primaryColor, onSurfaceVariant, localizations),

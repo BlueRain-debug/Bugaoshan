@@ -9,6 +9,7 @@ import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/models/version_info.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class EnvironmentInfoPage extends StatefulWidget {
   const EnvironmentInfoPage({super.key});
@@ -96,7 +97,7 @@ class _EnvironmentInfoPageState extends State<EnvironmentInfoPage> {
           }
           final info = snapshot.data!;
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: withSystemBottomInset(context, EdgeInsets.all(16)),
             children: [
               _SectionCard(title: 'APP', content: info.app),
               _SectionCard(title: 'Environment', content: info.environment),

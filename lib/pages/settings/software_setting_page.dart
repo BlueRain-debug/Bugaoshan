@@ -24,6 +24,7 @@ import 'package:bugaoshan/widgets/common/section_title.dart';
 import 'package:bugaoshan/widgets/common/styled_tile.dart';
 import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
+import 'package:bugaoshan/utils/system_insets.dart';
 
 class SoftwareSettingPage extends StatelessWidget {
   const SoftwareSettingPage({super.key});
@@ -36,7 +37,10 @@ class SoftwareSettingPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(localizations.softwareSetting)),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: withSystemBottomInset(
+          context,
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
         children: [
           SectionTitle(title: localizations.settingsGeneral),
           InfoCard(
