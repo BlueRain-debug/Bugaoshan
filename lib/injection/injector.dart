@@ -59,10 +59,13 @@ import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:bugaoshan/services/update_service.dart';
 import 'package:bugaoshan/services/widget_update_service.dart';
 import 'package:bugaoshan/services/api/academic_calendar_service.dart';
-import 'package:bugaoshan/utils/auth_logger.dart';
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'injector.config.dart';
+
+const String _tag = 'Injector';
 
 final getIt = GetIt.instance;
 
@@ -75,7 +78,11 @@ void configureDependencies() {
   getIt.init();
   getIt.registerSingleton<ExitService>(ExitService());
   getIt.registerSingleton<DownloadManager>(DownloadManager());
-  getIt.registerLazySingleton<AuthLogger>(() => AuthLogger());
+  // 复用 AppLog 的启动缓冲实例，而非新建：DI 装配完成前（getIt 尚未能
+  // 提供实例）的启动日志已经写进这个缓冲，若此处另建实例，那批日志将无人
+  // 观察——而启动失败恰恰是最需要留痕的时刻。
+  // 移植自 PR #369（moranfanhua）。
+  getIt.registerLazySingleton<AppLogger>(() => AppLog.bootstrapLogger);
   // 忘记密码流程不依赖登录态，纯 HTTP 工具，同步注册即可
   getIt.registerLazySingleton<ForgotPasswordService>(
     () => ForgotPasswordService(),
@@ -397,8 +404,11 @@ void _configureAsyncDependencies() {
     final appConfig = getIt<AppConfigProvider>();
     final service = WidgetUpdateService();
     courseProvider.onCoursesChanged = () {
-      service.updateWidgetData().catchError((e) {
-        // Ignore widget update errors to prevent unhandled async errors
+      service.updateWidgetData().catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        AppLog.e(_tag, '课表变更后同步小组件失败', error: error, stackTrace: stackTrace);
       });
     };
 
@@ -414,8 +424,8 @@ void _configureAsyncDependencies() {
             density: appConfig.widgetDensity.value,
           );
         }
-      } catch (e) {
-        debugPrint('Failed to sync initial widget setting: $e');
+      } catch (error, stackTrace) {
+        AppLog.e(_tag, '初始化小组件设置失败', error: error, stackTrace: stackTrace);
       }
     }
 

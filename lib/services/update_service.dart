@@ -66,6 +66,8 @@ class UpdateCheckResult {
 }
 
 class UpdateService {
+  static const String _tag = 'UpdateService';
+
   static const _channel = kUpdateMethodChannel;
 
   final SharedPreferences _prefs;
@@ -227,15 +229,25 @@ class UpdateService {
                     name.startsWith('bugaoshan_update'))) {
               try {
                 await ent.delete();
-              } catch (e) {
-                AppLog.w('UpdateService', 'Cleanup delete error: $e');
+              } catch (e, logStackTrace) {
+                AppLog.e(
+                  _tag,
+                  'cleanupOldPackages 失败',
+                  error: e,
+                  stackTrace: logStackTrace,
+                );
               }
             }
           }
         }
       }
-    } catch (e) {
-      AppLog.w('UpdateService', 'CleanupOldPackages error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        'cleanupOldPackages 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
     }
     await _prefs.setString(_keyLastInstalledVersion, _currentVersion);
   }
@@ -249,7 +261,13 @@ class UpdateService {
         return UpdateCheckResult.hasUpdate(latest);
       }
       return UpdateCheckResult.noUpdate();
-    } catch (e) {
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        'checkStableUpdate 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
       return UpdateCheckResult.error(e.toString());
     }
   }
@@ -266,7 +284,13 @@ class UpdateService {
         return UpdateCheckResult.hasUpdate(release);
       }
       return UpdateCheckResult.noUpdate();
-    } catch (e) {
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        'checkPreviewUpdate 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
       return UpdateCheckResult.error(e.toString());
     }
   }

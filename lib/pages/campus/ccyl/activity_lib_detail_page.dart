@@ -33,6 +33,8 @@ class ActivityLibDetailPage extends StatefulWidget {
 }
 
 class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
+  static const String _tag = 'ActivityLibDetailPageState';
+
   bool _loading = true;
   LoadErrorType? _error;
   CyclActivityLib? _activityLib;
@@ -70,8 +72,9 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
           mergeCcylSeriesPhases(_activities),
         );
       }
-    } catch (e) {
-      AppLog.e('CcylActivityLibDetail', 'Detail load error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_loadData 失败', error: e, stackTrace: logStackTrace);
+
       if (!mounted) return;
       setState(() {
         _error = LoadErrorType.ccylActivityLoadFailed;
@@ -105,8 +108,14 @@ class _ActivityLibDetailPageState extends State<ActivityLibDetailPage> {
           ),
         ),
       );
-    } catch (e) {
-      AppLog.e('CcylActivityLibDetail', 'Subscription action error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(
+        _tag,
+        '_toggleSubscription 失败',
+        error: e,
+        stackTrace: logStackTrace,
+      );
+
       if (!mounted) return;
       setState(() => _actionLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(

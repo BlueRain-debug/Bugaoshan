@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bugaoshan/widgets/common/image_error_log.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/widgets/common/image_viewer.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
@@ -15,6 +16,8 @@ class CalendarEntry {
 }
 
 class OfficialCalendarView extends StatelessWidget {
+  static const String _tag = 'OfficialCalendarView';
+
   final List<CalendarEntry> entries;
   final CalendarEntry? selected;
   final bool loading;
@@ -101,50 +104,56 @@ class OfficialCalendarView extends StatelessWidget {
             child: StyledCard(
               child:
                   imageBuilder?.call(context, imageUrl) ??
-                  Image.network(
-                    imageUrl,
-                    fit: BoxFit.fitWidth,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        height: 200,
-                        alignment: Alignment.center,
-                        child: CircularProgressIndicator(
-                          value: progress.expectedTotalBytes != null
-                              ? progress.cumulativeBytesLoaded /
-                                    progress.expectedTotalBytes!
-                              : null,
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 200,
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.broken_image,
-                              size: 48,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.loadFailed,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  ImageErrorLog(
+                    source: imageUrl,
+                    tag: _tag,
+                    message: '校历图片加载失败',
+                    builder: (report) => Image.network(
+                      imageUrl,
+                      fit: BoxFit.fitWidth,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 200,
+                          alignment: Alignment.center,
+                          child: CircularProgressIndicator(
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        report(error, stackTrace);
+                        return Container(
+                          height: 200,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.loadFailed,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
             ),
           ),

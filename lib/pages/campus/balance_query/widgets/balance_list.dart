@@ -14,6 +14,8 @@ class BalanceList extends StatefulWidget {
 }
 
 class _BalanceListState extends State<BalanceList> {
+  static const String _tag = 'BalanceListState';
+
   @override
   void initState() {
     super.initState();
@@ -77,9 +79,9 @@ class _BalanceListState extends State<BalanceList> {
     for (final type in [kBalanceTypeElectric, kBalanceTypeAc]) {
       try {
         await widget.provider.refreshBalance(type);
-      } catch (e) {
+      } catch (e, logStackTrace) {
+        AppLog.e(_tag, '_refreshAll 失败', error: e, stackTrace: logStackTrace);
         failed = true;
-        AppLog.e('BalanceList', 'Refresh error: $e');
       }
     }
     if (!failed || !context.mounted) return;

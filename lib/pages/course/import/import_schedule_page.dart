@@ -58,6 +58,8 @@ class ImportSchedulePage extends StatefulWidget {
 }
 
 class _ImportSchedulePageState extends State<ImportSchedulePage> {
+  static const String _tag = 'ImportSchedulePageState';
+
   final _controller = TextEditingController();
   bool _loading = false;
   int _currentProgress = 0;
@@ -194,8 +196,9 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
       if (mounted) {
         _showSuccessAndPop();
       }
-    } catch (e) {
-      AppLog.e('ImportSchedulePage', 'Import from share error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_import 失败', error: e, stackTrace: logStackTrace);
+
       if (mounted) {
         unawaited(
           showInfoDialog(
@@ -236,14 +239,16 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
           break;
         }
       }
-    } on ScuException catch (e) {
+    } on ScuException catch (e, logStackTrace) {
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
       }
       if (mounted) setState(() => _loading = false);
       return;
-    } catch (e) {
-      AppLog.e('ImportSchedulePage', 'Import online error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
+
       if (mounted) {
         unawaited(
           showInfoDialog(title: l10n.importFailed, content: l10n.importFailed),
@@ -483,7 +488,13 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
                 await widget.courseProvider.updateScheduleConfig(updated);
               }
             }
-          } catch (_) {
+          } catch (logError, logStackTrace) {
+            AppLog.e(
+              _tag,
+              '_importOnline 失败',
+              error: logError,
+              stackTrace: logStackTrace,
+            );
             // 单个匹配失败不阻断，继续下一个
           }
         }
@@ -498,12 +509,14 @@ class _ImportSchedulePageState extends State<ImportSchedulePage> {
           Navigator.of(logicRootContext).pop();
         }
       }
-    } on ScuException catch (e) {
+    } on ScuException catch (e, logStackTrace) {
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
       if (mounted) {
         unawaited(showInfoDialog(title: l10n.importFailed, content: e.message));
       }
-    } catch (e) {
-      AppLog.e('ImportSchedulePage', 'Import from jwxt error: $e');
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, '_importOnline 失败', error: e, stackTrace: logStackTrace);
+
       if (mounted) {
         unawaited(
           showInfoDialog(title: l10n.importFailed, content: l10n.importFailed),
