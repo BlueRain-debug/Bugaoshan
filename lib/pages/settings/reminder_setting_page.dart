@@ -6,6 +6,7 @@ import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/models/reminder_plan.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/services/reminder/reminder_service.dart';
+import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:bugaoshan/widgets/common/info_card.dart';
 import 'package:bugaoshan/widgets/common/section_title.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
@@ -29,8 +30,8 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   final _appConfig = getIt<AppConfigProvider>();
   final _service = getIt<ReminderService>();
 
-  /// 系统通知权限状态标识，为 null 时表示尚未完成查询。取值与原生平台返回枚举一致。
-  String? _permissionStatus;
+  /// 系统通知权限状态，为 null 时表示尚未完成查询。
+  ReminderPermissionStatus? _permissionStatus;
   bool _requestingPermission = false;
   int? _pendingCount;
   bool _refreshing = false;
@@ -77,13 +78,18 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
     });
   }
 
-  bool get _isGranted =>
-      _permissionStatus == 'authorized' || _permissionStatus == 'provisional';
+  bool get _isGranted => _permissionStatus?.isGranted ?? false;
+
+  /// 当前平台不具备本地提醒投递能力，授权引导无意义。
+  bool get _isPermissionUnsupported =>
+      _permissionStatus == ReminderPermissionStatus.unsupported;
 
   Future<void> _toggleMaster(bool enabled) async {
     _appConfig.reminderEnabled.value = enabled;
     // 开启主开关且处于未决定授权状态时，主动请求系统权限以完成引导流程。
-    if (enabled && !_isGranted && _permissionStatus == 'notDetermined') {
+    if (enabled &&
+        !_isGranted &&
+        _permissionStatus == ReminderPermissionStatus.notDetermined) {
       await _requestPermission();
       return;
     }
@@ -94,7 +100,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     // 权限被系统明确拒绝后无法重复触发授权弹窗，直接引导跳转系统设置页面。
-    if (_permissionStatus == 'denied') {
+    if (_permissionStatus == ReminderPermissionStatus.denied) {
       final opened = await _service.openNotificationSettings();
       if (!opened && mounted) {
         messenger.showSnackBar(
@@ -194,9 +200,16 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
 
   Widget _buildPermissionCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    final denied = _permissionStatus == 'denied';
+    final denied = _permissionStatus == ReminderPermissionStatus.denied;
     // 采用中性背景容器搭配错误强调色，避免深色模式下大面积高饱和容器过度强调。
     final accent = theme.colorScheme.error;
+    final hint = switch (_permissionStatus) {
+      ReminderPermissionStatus.denied => l10n.reminderPermissionDeniedHint,
+      // 平台不支持投递时给出说明，但不提供无法生效的授权入口。
+      ReminderPermissionStatus.unsupported =>
+        l10n.reminderPermissionUnsupportedHint,
+      _ => l10n.reminderPermissionNotDeterminedHint,
+    };
     return StyledCard(
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
@@ -218,30 +231,30 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    denied
-                        ? l10n.reminderPermissionDeniedHint
-                        : l10n.reminderPermissionNotDeterminedHint,
+                    hint,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  FilledButton.tonal(
-                    onPressed: _requestingPermission
-                        ? null
-                        : _requestPermission,
-                    child: _requestingPermission
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            denied
-                                ? l10n.reminderPermissionOpenSettings
-                                : l10n.reminderPermissionRequest,
-                          ),
-                  ),
+                  if (!_isPermissionUnsupported) ...[
+                    const SizedBox(height: 10),
+                    FilledButton.tonal(
+                      onPressed: _requestingPermission
+                          ? null
+                          : _requestPermission,
+                      child: _requestingPermission
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              denied
+                                  ? l10n.reminderPermissionOpenSettings
+                                  : l10n.reminderPermissionRequest,
+                            ),
+                    ),
+                  ],
                 ],
               ),
             ),

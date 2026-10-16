@@ -3478,10 +3478,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderHostProbePermissionProvisional => '临时授权（安静投递）';
 
   @override
+  String get reminderHostProbePermissionEphemeral => '临时授权（Ephemeral）';
+
+  @override
   String get reminderHostProbePermissionDeniedLabel => '已被系统设置拒绝';
 
   @override
   String get reminderHostProbePermissionNotDetermined => '尚未请求';
+
+  @override
+  String get reminderHostProbePermissionUnsupported => '当前平台不支持';
 
   @override
   String get reminderHostProbeRequestPermission => '请求授权';
@@ -3606,6 +3612,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reminderPermissionNotDeterminedHint => '需要授予通知权限，提醒才能送达。';
+
+  @override
+  String get reminderPermissionUnsupportedHint => '当前平台暂不支持本地提醒。';
 
   @override
   String get reminderPermissionRequest => '去授权';

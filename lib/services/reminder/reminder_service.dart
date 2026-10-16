@@ -241,12 +241,15 @@ class ReminderService {
     }
   }
 
-  /// 查询当前系统的通知授权状态（如 authorized、provisional、denied、notDetermined、unknown）。
-  Future<String> permissionStatus() async {
+  /// 查询当前系统的通知授权状态。
+  ///
+  /// 平台不支持本地提醒投递（原生通道未接线或 Noop 通道）时返回
+  /// [ReminderPermissionStatus.unsupported]，调用方据此隐藏授权引导。
+  Future<ReminderPermissionStatus> permissionStatus() async {
     try {
       return await _transport.getPermissionStatus();
     } on ReminderTransportUnavailable {
-      return MethodChannelReminderTransport.permissionUnknown;
+      return ReminderPermissionStatus.unsupported;
     }
   }
 

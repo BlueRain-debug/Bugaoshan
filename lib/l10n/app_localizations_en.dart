@@ -3593,11 +3593,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Provisional (quiet delivery)';
 
   @override
+  String get reminderHostProbePermissionEphemeral =>
+      'Ephemeral (temporary authorization)';
+
+  @override
   String get reminderHostProbePermissionDeniedLabel =>
       'Denied in system settings';
 
   @override
   String get reminderHostProbePermissionNotDetermined => 'Not requested yet';
+
+  @override
+  String get reminderHostProbePermissionUnsupported =>
+      'Unsupported on this platform';
 
   @override
   String get reminderHostProbeRequestPermission => 'Request';
@@ -3729,6 +3737,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reminderPermissionNotDeterminedHint =>
       'Grant the permission so reminders can reach you.';
+
+  @override
+  String get reminderPermissionUnsupportedHint =>
+      'This platform does not support local reminders.';
 
   @override
   String get reminderPermissionRequest => 'Allow';

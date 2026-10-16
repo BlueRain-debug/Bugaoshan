@@ -26,8 +26,8 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
   bool _requesting = false;
 
   /// 系统通知授权状态，为 null 表示尚未查询。
-  /// 用于区分直接触发权限请求弹窗与引导跳转系统设置页面的交互分支。
-  String? _permissionStatus;
+  /// 用于区分直接触发权限请求弹窗、引导跳转系统设置页面与平台不支持三种交互分支。
+  ReminderPermissionStatus? _permissionStatus;
 
   @override
   void initState() {
@@ -46,7 +46,7 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
     final service = getIt<ReminderService>();
 
     // 权限被拒后系统不再弹窗提示，引导跳转至系统设置界面进行手动授权。
-    if (_permissionStatus == 'denied') {
+    if (_permissionStatus == ReminderPermissionStatus.denied) {
       final opened = await service.openNotificationSettings();
       if (!opened && mounted) {
         messenger.showSnackBar(
@@ -123,14 +123,25 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
   /// 保持 ListTile 默认 contentPadding，确保左侧图标列与同级列表项视觉对齐。
   Widget _buildPermissionRow(AppLocalizations l10n, ThemeData theme) {
     final status = _permissionStatus;
-    final granted = status == 'authorized' || status == 'provisional';
+    final granted = status?.isGranted ?? false;
+    // 平台不支持投递时不提供请求入口：该平台不存在可授予的通知权限。
+    final unsupported = status == ReminderPermissionStatus.unsupported;
     final label = switch (status) {
       null => l10n.reminderHostProbePermissionUnknown,
-      'authorized' => l10n.reminderHostProbePermissionAuthorized,
-      'provisional' => l10n.reminderHostProbePermissionProvisional,
-      'denied' => l10n.reminderHostProbePermissionDeniedLabel,
-      'notDetermined' => l10n.reminderHostProbePermissionNotDetermined,
-      _ => l10n.reminderHostProbePermissionUnknown,
+      ReminderPermissionStatus.authorized =>
+        l10n.reminderHostProbePermissionAuthorized,
+      ReminderPermissionStatus.provisional =>
+        l10n.reminderHostProbePermissionProvisional,
+      ReminderPermissionStatus.ephemeral =>
+        l10n.reminderHostProbePermissionEphemeral,
+      ReminderPermissionStatus.denied =>
+        l10n.reminderHostProbePermissionDeniedLabel,
+      ReminderPermissionStatus.notDetermined =>
+        l10n.reminderHostProbePermissionNotDetermined,
+      ReminderPermissionStatus.unsupported =>
+        l10n.reminderHostProbePermissionUnsupported,
+      ReminderPermissionStatus.unknown =>
+        l10n.reminderHostProbePermissionUnknown,
     };
 
     return ListTile(
@@ -140,7 +151,9 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
       ),
       title: Text(l10n.reminderHostProbePermissionTitle),
       subtitle: Text(label, style: theme.textTheme.bodySmall),
-      trailing: _requesting
+      trailing: unsupported
+          ? null
+          : _requesting
           ? const SizedBox(
               width: 18,
               height: 18,
@@ -150,7 +163,7 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
               onPressed: _requestPermission,
               child: Text(
                 // 权限处于被拒状态时切换按钮文案为引导打开系统设置。
-                status == 'denied'
+                status == ReminderPermissionStatus.denied
                     ? l10n.reminderHostProbeOpenSettings
                     : l10n.reminderHostProbeRequestPermission,
               ),

@@ -6691,6 +6691,12 @@ abstract class AppLocalizations {
   /// **'Provisional (quiet delivery)'**
   String get reminderHostProbePermissionProvisional;
 
+  /// No description provided for @reminderHostProbePermissionEphemeral.
+  ///
+  /// In en, this message translates to:
+  /// **'Ephemeral (temporary authorization)'**
+  String get reminderHostProbePermissionEphemeral;
+
   /// No description provided for @reminderHostProbePermissionDeniedLabel.
   ///
   /// In en, this message translates to:
@@ -6702,6 +6708,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not requested yet'**
   String get reminderHostProbePermissionNotDetermined;
+
+  /// No description provided for @reminderHostProbePermissionUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported on this platform'**
+  String get reminderHostProbePermissionUnsupported;
 
   /// No description provided for @reminderHostProbeRequestPermission.
   ///
@@ -6918,6 +6930,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Grant the permission so reminders can reach you.'**
   String get reminderPermissionNotDeterminedHint;
+
+  /// No description provided for @reminderPermissionUnsupportedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This platform does not support local reminders.'**
+  String get reminderPermissionUnsupportedHint;
 
   /// No description provided for @reminderPermissionRequest.
   ///
