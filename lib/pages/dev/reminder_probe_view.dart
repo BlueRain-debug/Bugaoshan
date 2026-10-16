@@ -8,18 +8,20 @@ import 'package:bugaoshan/services/reminder/reminder_transport.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// 开发者选项中的本地提醒排期探针组件。
+/// 本地提醒排期探针视图。
 ///
 /// 用于调试并观测本地提醒状态：展示授权状态、排期计划摘要与系统挂起计数，
 /// 并通过真实调度链路发送短延迟探针通知，以隔离排期计算异常与宿主平台投递异常。
-class ReminderProbeTile extends StatefulWidget {
-  const ReminderProbeTile({super.key});
+///
+/// 仅提供内容本体，由 [ProbePage] 与实时活动探针同页渲染。
+class ReminderProbeView extends StatefulWidget {
+  const ReminderProbeView({super.key});
 
   @override
-  State<ReminderProbeTile> createState() => _ReminderProbeTileState();
+  State<ReminderProbeView> createState() => _ReminderProbeViewState();
 }
 
-class _ReminderProbeTileState extends State<ReminderProbeTile> {
+class _ReminderProbeViewState extends State<ReminderProbeView> {
   bool _sending = false;
   bool _requesting = false;
 
@@ -156,6 +158,73 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
     );
   }
 
+  /// 构建计划明细区：摘要（含复制入口）、丢弃数、挂起计数与最近提醒。
+  Widget _buildPlanDetail(
+    AppLocalizations l10n,
+    ThemeData theme,
+    ReminderService service,
+    ReminderPlan plan,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 摘要与复制入口同一行，顶部对齐。
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                l10n.reminderPlanSummary(
+                  plan.reminders.length,
+                  _formatDateTime(plan.windowEnd),
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _copyPlan(plan),
+              icon: const Icon(Icons.copy, size: 16),
+              label: Text(l10n.reminderPlanCopy),
+            ),
+          ],
+        ),
+        if (plan.droppedCount > 0)
+          Text(
+            l10n.reminderPlanDropped(plan.droppedCount),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        FutureBuilder<int>(
+          future: service.pendingCount(),
+          builder: (context, snapshot) => snapshot.hasData
+              ? Text(
+                  l10n.reminderPlanPending(snapshot.data!),
+                  style: theme.textTheme.bodySmall,
+                )
+              : const SizedBox.shrink(),
+        ),
+        if (plan.reminders.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              plan.reminders
+                  .take(3)
+                  .map((r) => '${_formatDateTime(r.fireAt)} ${r.title}')
+                  .join('\n'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 「M/D HH:MM」格式化，摘要与提醒列表共用。
+  static String _formatDateTime(DateTime t) =>
+      '${t.month}/${t.day} '
+      '${t.hour.toString().padLeft(2, '0')}:'
+      '${t.minute.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -196,61 +265,7 @@ class _ReminderProbeTileState extends State<ReminderProbeTile> {
                       l10n.reminderPlanEmpty,
                       style: theme.textTheme.bodySmall,
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.reminderPlanSummary(
-                            plan.reminders.length,
-                            '${plan.windowEnd.month}/${plan.windowEnd.day} '
-                            '${plan.windowEnd.hour.toString().padLeft(2, '0')}:'
-                            '${plan.windowEnd.minute.toString().padLeft(2, '0')}',
-                          ),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        if (plan.droppedCount > 0)
-                          Text(
-                            l10n.reminderPlanDropped(plan.droppedCount),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.error,
-                            ),
-                          ),
-                        FutureBuilder<int>(
-                          future: service.pendingCount(),
-                          builder: (context, snapshot) => snapshot.hasData
-                              ? Text(
-                                  l10n.reminderPlanPending(snapshot.data!),
-                                  style: theme.textTheme.bodySmall,
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                        if (plan.reminders.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              plan.reminders
-                                  .take(3)
-                                  .map(
-                                    (r) =>
-                                        '${r.fireAt.month}/${r.fireAt.day} '
-                                        '${r.fireAt.hour.toString().padLeft(2, '0')}:'
-                                        '${r.fireAt.minute.toString().padLeft(2, '0')} '
-                                        '${r.title}',
-                                  )
-                                  .join('\n'),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () => _copyPlan(plan),
-                            icon: const Icon(Icons.copy, size: 16),
-                            label: Text(l10n.reminderPlanCopy),
-                          ),
-                        ),
-                      ],
-                    ),
+                  : _buildPlanDetail(l10n, theme, service, plan),
             );
           },
         ),
