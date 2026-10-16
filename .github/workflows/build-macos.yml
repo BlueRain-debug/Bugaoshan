@@ -45,13 +45,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-          BUILD_NAME: ${{ inputs.build_name }}
-          BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
           python3 .github/scripts/macos_signing.py fetch --tag "$RELEASE_TAG" --sha "$GITHUB_SHA" \
-            --version "$BUILD_NAME" --build "$BUILD_NUMBER" --output macos-release
+            --output macos-release
           python3 tool/macos_dmg.py verify --tag "$RELEASE_TAG" --sha "$GITHUB_SHA" \
-            --version "$BUILD_NAME" --build "$BUILD_NUMBER" --output macos-release
+            --output macos-release
       - uses: actions/upload-artifact@v4
         with:
           name: macos-release

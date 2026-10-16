@@ -71,7 +71,7 @@ class MacDistributionTest(unittest.TestCase):
                 with self.assertRaises(TimeoutError):
                     macos_signing.fetch(args)
 
-    def test_preview_version_uses_its_stable_ancestor_not_a_later_release(self):
+    def test_mac_store_and_dmg_use_the_explicit_mac_version_not_android_preview_version(self):
         with tempfile.TemporaryDirectory() as temporary:
             source = Path(temporary)
             def git(*args):
@@ -80,7 +80,7 @@ class MacDistributionTest(unittest.TestCase):
             git("config", "user.name", "Test")
             git("config", "user.email", "test@example.invalid")
             (source / ".github").mkdir()
-            (source / ".github/macos-signing.json").write_text('{"schema":1}')
+            (source / ".github/macos-signing.json").write_text('{"schema":1,"version":"2.5.4","build":"20513"}')
             (source / "pubspec.yaml").write_text("version: 2.5.3+20503\n")
             git("add", ".")
             git("commit", "-qm", "stable")
@@ -104,8 +104,8 @@ class MacDistributionTest(unittest.TestCase):
             with patch.object(macos_signing, "run", side_effect=missing_release):
                 result = macos_signing.select(source, "v2.5.4-preview.13")
             self.assertEqual(result["sha"], expected_sha)
-            self.assertEqual(result["version"], "2.5.3")
-            self.assertEqual(result["build"], "20503")
+            self.assertEqual(result["version"], "2.5.4")
+            self.assertEqual(result["build"], "20513")
 
 
 if __name__ == "__main__":

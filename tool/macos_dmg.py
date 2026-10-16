@@ -35,6 +35,12 @@ def asset_name(tag):
     return f"bugaoshan_{tag[1:]}_macos_universal.dmg"
 
 
+def distribution_version(config):
+    require(bool(re.fullmatch(r"\d+\.\d+\.\d+", config.get("version", ""))), "Invalid Mac distribution version")
+    require(bool(re.fullmatch(r"[1-9]\d*", config.get("build", ""))), "Invalid Mac distribution build")
+    return config["version"], config["build"]
+
+
 def check_manifest(manifest, dmg, tag, sha, version, build):
     expected = {"schema": 1, "source_repository": SOURCE_REPOSITORY,
                 "source_tag": tag, "source_sha": sha, "version": version,
@@ -180,8 +186,8 @@ def main():
     parser.add_argument("mode", choices=["sign", "verify"])
     parser.add_argument("--tag", required=True)
     parser.add_argument("--sha", required=True)
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--build", required=True)
+    parser.add_argument("--version")
+    parser.add_argument("--build")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--bundle", type=Path)
     parser.add_argument("--source", type=Path, default=Path("."))
@@ -192,6 +198,8 @@ def main():
     parser.add_argument("--notary-key-id", default=os.environ.get("NOTARY_KEY_ID"))
     parser.add_argument("--notary-issuer", default=os.environ.get("NOTARY_ISSUER_ID"))
     args = parser.parse_args()
+    if not args.version or not args.build:
+        args.version, args.build = distribution_version(json.loads((args.source / ".github/macos-signing.json").read_text()))
     if args.mode == "sign":
         sign(args)
     else:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Local signed archive/export; CI only compiles an unsigned validation bundle.
+# Local App Store archive/export and unsigned CI input for Developer ID signing.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,8 +27,10 @@ flutter gen-l10n
 
 args=(--release --config-only)
 if [ "$mode" = archive ]; then
-  : "${MACOS_BUILD_NAME:?Set the App Store version, e.g. 2.5.3}"
-  : "${MACOS_BUILD_NUMBER:?Set an unused, increasing App Store build number}"
+  # Share the release pair with the notarized DMG; Android preview numbering is
+  # independent and must not downgrade an already released Mac store version.
+  MACOS_BUILD_NAME="${MACOS_BUILD_NAME:-$(python3 -c 'import json; print(json.load(open(".github/macos-signing.json"))["version"])')}"
+  MACOS_BUILD_NUMBER="${MACOS_BUILD_NUMBER:-$(python3 -c 'import json; print(json.load(open(".github/macos-signing.json"))["build"])')}"
 fi
 if [ -n "${MACOS_BUILD_NAME:-}" ]; then args+=(--build-name "$MACOS_BUILD_NAME"); fi
 if [ -n "${MACOS_BUILD_NUMBER:-}" ]; then args+=(--build-number "$MACOS_BUILD_NUMBER"); fi

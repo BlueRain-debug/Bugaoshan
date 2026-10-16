@@ -3,14 +3,13 @@
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tool"))
-from macos_dmg import SOURCE_REPOSITORY, TAG_RE, asset_name, check_manifest
+from macos_dmg import TAG_RE, asset_name, check_manifest, distribution_version
 
 SIGNING_REPOSITORY = "wjlfish/Bugaoshan-macos"
 
@@ -36,13 +35,6 @@ def select(source, requested):
         if not TAG_RE.fullmatch(requested) or requested not in tags:
             raise ValueError("Requested upstream tag does not exist")
         tags = [requested]
-    stable = sorted((tag for tag in tags if re.fullmatch(r"v\d+\.\d+\.\d+", tag)),
-                    key=lambda tag: tuple(map(int, tag[1:].split("."))), reverse=True)
-    # When selecting a specific preview, still resolve stable ancestors from all tags.
-    if requested:
-        stable = sorted((tag for tag in git(source, "tag", "-l").splitlines()
-                         if re.fullmatch(r"v\d+\.\d+\.\d+", tag)),
-                        key=lambda tag: tuple(map(int, tag[1:].split("."))), reverse=True)
     for tag in tags:
         if not TAG_RE.fullmatch(tag):
             continue
@@ -58,17 +50,11 @@ def select(source, requested):
         if not any(run("git", "merge-base", "--is-ancestor", sha, f"origin/{branch}",
                        cwd=source, check=False).returncode == 0 for branch in ("main", "preview")):
             raise ValueError("Release tag is outside upstream main/preview")
-        raw = next(line.split(":", 1)[1].strip() for line in git(source, "show", f"{tag}:pubspec.yaml").splitlines()
-                   if line.startswith("version:"))
-        version = raw.split("+")[0]
-        if "-" in tag:
-            for formal in stable:
-                if run("git", "merge-base", "--is-ancestor", formal, sha, cwd=source, check=False).returncode == 0:
-                    version = formal[1:]
-                    break
-        major, minor, patch = map(int, version.split("."))
+        # The store's released Mac version/build may already exceed Android's
+        # preview baseline. Both Mac channels share this explicit release pair.
+        version, build = distribution_version(json.loads(marker.stdout))
         return {"tag": tag, "sha": sha, "version": version,
-                "build": str(major * 10000 + minor * 100 + patch), "ready": "true"}
+                "build": build, "ready": "true"}
     return {"ready": "false"}
 
 
@@ -108,6 +94,8 @@ def main():
     if args.mode == "select":
         output(select(args.source, args.tag))
     else:
+        if not args.version or not args.build:
+            args.version, args.build = distribution_version(json.loads(Path(".github/macos-signing.json").read_text()))
         fetch(args)
 
 

@@ -20,8 +20,8 @@ Flutter 维护选中入口与开关值，原生层仅回传稳定入口 ID、开
 
 ```bash
 export PUB_HOSTED_URL=https://pub.flutter-io.cn
-export MACOS_BUILD_NAME=2.5.3
-export MACOS_BUILD_NUMBER=<App-Store-Connect-中未使用的递增构建号>
+# 先更新 .github/macos-signing.json 中 Mac 专用的 version / build。
+# build 必须是 App Store Connect 中未使用的递增构建号。
 bash tool/macos_distribution.sh archive
 bash tool/macos_distribution.sh export
 ```
@@ -37,6 +37,8 @@ bash tool/macos_distribution.sh export
 PR 与 build-only 调用 `build-macos.yml` 的无证书 universal 构建，验证制品保留 7 天。商店归档、安装器签名和上传通过上述本机流程处理。
 
 站外安装使用独立的 Developer ID Application 证书（团队 `2MDTD66RDG`），并为主应用和 Widget 分别嵌入 Developer ID 描述文件。App Store 签名不能直接用于 GitHub DMG。专用仓库 [wjlfish/Bugaoshan-macos](https://github.com/wjlfish/Bugaoshan-macos) 的默认分支 `macos-signing` 保存发布工具，每 10 分钟同步上游 `main` / `preview` 并寻找尚未签名的新 tag；同步不会覆盖签名分支。仅接受上游发布分支已包含、且带有 `.github/macos-signing.json` 的 tag，旧版不自动补发。
+
+Mac 商店归档与 DMG 共用 `.github/macos-signing.json` 的 `version` / `build`，与 Android 的预览版版本号规则独立。每次 Mac 商店更新前递增该文件；DMG tag / 源码仍与上游 Release 严格匹配，包内 Mac 版本以 manifest 为准。`MACOS_BUILD_NAME` / `MACOS_BUILD_NUMBER` 仅用于本地诊断覆盖，实际商店发布使用该文件的值。
 
 `signed-macos-release.yml` 将无凭据构建与签名分为两个 job。签名 job 使用专用分支上的工具，临时钥匙串导入证书，逐层签名所有 Mach-O、Framework、Widget 和主应用，启用 Hardened Runtime 与安全时间戳。随后分别公证并装订 app / DMG，执行 `codesign` / `stapler` / Gatekeeper 校验。签名仓库发布 `macos-vX.Y.Z...` 暂存 Release，包含 universal DMG 和记录上游 tag / commit / 构建版本 / SHA-256 / 公证状态的 `macos-manifest.json`。
 
