@@ -9,6 +9,8 @@ on:
       - 'pubspec*'
       - 'tool/macos_distribution.sh'
       - 'tool/verify_macos_bundle.py'
+      - 'tool/macos_dmg.py'
+      - '.github/scripts/macos_signing.py'
       - '.github/workflows/build-macos.yml'
   workflow_call:
     inputs:
@@ -18,14 +20,47 @@ on:
       build_number:
         type: string
         required: false
+      release_tag:
+        type: string
+        required: false
+      signed_release:
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  signed-macos:
+    name: Verify notarized macOS release
+    if: inputs.signed_release == true
+    runs-on: macos-15
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch exact upstream tag and commit from signing repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          BUILD_NAME: ${{ inputs.build_name }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          python3 .github/scripts/macos_signing.py fetch --tag "$RELEASE_TAG" --sha "$GITHUB_SHA" \
+            --version "$BUILD_NAME" --build "$BUILD_NUMBER" --output macos-release
+          python3 tool/macos_dmg.py verify --tag "$RELEASE_TAG" --sha "$GITHUB_SHA" \
+            --version "$BUILD_NAME" --build "$BUILD_NUMBER" --output macos-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: macos-release/*
+          if-no-files-found: error
+
   validate-macos:
     name: macOS universal build validation
+    if: inputs.signed_release != true
     runs-on: macos-15
     timeout-minutes: 45
     env:

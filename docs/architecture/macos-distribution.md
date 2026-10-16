@@ -2,7 +2,7 @@
 
 macOS 与 iOS 共用 App Store Connect 应用记录 `6813305962`。主应用 Bundle ID 为 `io.github.thebrotherhoodofscu.bugaoshan.ios`，Widget 为该 ID 加 `.CourseWidget`，两者使用 `group.io.github.thebrotherhoodofscu.bugaoshan.ios` 共享课表数据库与显示设置。共用商店条目不代表跨设备同步课表；iPhone 与 Mac 各自保存本地数据。
 
-最低系统为 macOS 13，课表小组件需要 macOS 14。应用、小组件及 Flutter 引擎以 universal binary 支持 Apple Silicon 和 Intel。签名团队与 iOS 一致；证书、私钥、描述文件与 Apple 账户留在本机，不提交仓库。
+最低系统为 macOS 13，课表小组件需要 macOS 14。应用、小组件及 Flutter 引擎以 universal binary 支持 Apple Silicon 和 Intel。签名团队与 iOS 一致；私钥和描述文件只存入本机受限目录及专用签名仓库的 GitHub Secrets，不提交 Git。
 
 ## Liquid Glass
 
@@ -34,7 +34,17 @@ bash tool/macos_distribution.sh export
 
 ## CI 与既有安装
 
-`build-macos.yml` 在发布流水线中执行不需要证书的 universal release 构建与包检查，保留 7 天验证制品。`release_prepare.py` 只整理 Android 与 Windows 安装包，Mac 未签名验证包不上传到 GitHub Release。商店归档、安装器签名和上传通过上述本机流程处理。
+PR 与 build-only 调用 `build-macos.yml` 的无证书 universal 构建，验证制品保留 7 天。商店归档、安装器签名和上传通过上述本机流程处理。
+
+站外安装使用独立的 Developer ID Application 证书（团队 `2MDTD66RDG`），并为主应用和 Widget 分别嵌入 Developer ID 描述文件。App Store 签名不能直接用于 GitHub DMG。专用仓库 [wjlfish/Bugaoshan-macos](https://github.com/wjlfish/Bugaoshan-macos) 的默认分支 `macos-signing` 保存发布工具，每 10 分钟同步上游 `main` / `preview` 并寻找尚未签名的新 tag；同步不会覆盖签名分支。仅接受上游发布分支已包含、且带有 `.github/macos-signing.json` 的 tag，旧版不自动补发。
+
+`signed-macos-release.yml` 将无凭据构建与签名分为两个 job。签名 job 使用专用分支上的工具，临时钥匙串导入证书，逐层签名所有 Mach-O、Framework、Widget 和主应用，启用 Hardened Runtime 与安全时间戳。随后分别公证并装订 app / DMG，执行 `codesign` / `stapler` / Gatekeeper 校验。签名仓库发布 `macos-vX.Y.Z...` 暂存 Release，包含 universal DMG 和记录上游 tag / commit / 构建版本 / SHA-256 / 公证状态的 `macos-manifest.json`。
+
+所需 Secrets：`MACOS_CERTIFICATE_P12_BASE64`、`MACOS_CERTIFICATE_PASSWORD`、`MACOS_APP_PROFILE_BASE64`、`MACOS_WIDGET_PROFILE_BASE64`、`NOTARY_KEY_P8`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`。公证使用独立的 App Store Connect **团队 API 密钥**（Developer 角色）；个人 API 密钥不能用于 notarytool。无需把 GitHub 个人 PAT 交给上游或签名仓库。
+
+原仓库变量 `MACOS_SIGNING_ENABLED=true` 启用必需的签名制品门禁。`build-macos.yml` 等待专用仓库发布同一 tag / commit 的 DMG，复核 manifest、校验和、Developer ID、双架构、实际包内版本与公证票据，通过后才上传 `macos-release` 制品。`release.yml` 在发布 Release 前将 DMG 与 Android / Windows 安装包一起上传；超时、错版本、错签名、缺失公证均阻止发布，不回退未签名包。变量未启用时只执行原有构建验证。可通过签名工作流的 `tag` 输入重试待处理 tag。
+
+macOS 凭据统一使用 Data Protection Keychain，服务名独立于插件默认值，权限由签名和描述文件中的 access group 决定。旧实现 `usesDataProtectionKeychain: false` 使用登录钥匙串，其 ACL 绑定旧应用签名，更新后会对多个凭据反复弹授权。新版不自动读取、删除或迁移旧钥匙串项目；既有 Mac 用户需重新登录一次，本地课表和设置保留。iOS 的服务名和可访问性设置保持原样。
 
 旧 Mac 包名为 `io.github.thebrotherhoodofscu.bugaoshan`，App Group 和签名团队也不同。共用条目版使用新的容器，无法直接读取旧容器或 Keychain；旧版用户应先导出课表，再在新版导入并重新登录。不要为迁移删除旧版数据或放宽 Sandbox。共用 Bundle ID 的 iOS 与 macOS App Group 名称一致，但不会自动跨设备共享数据库。
 
