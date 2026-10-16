@@ -4,6 +4,8 @@ macOS 与 iOS 共用 App Store Connect 应用记录 `6813305962`。主应用 Bun
 
 最低系统为 macOS 13，课表小组件需要 macOS 14。应用、小组件及 Flutter 引擎以 universal binary 支持 Apple Silicon 和 Intel。签名团队与 iOS 一致；私钥和描述文件只存入本机受限目录及专用签名仓库的 GitHub Secrets，不提交 Git。
 
+安装后的主应用为 `不高山上.app`，`CFBundleName` 与 `CFBundleDisplayName` 均为「不高山上」，供 Finder、Dock、菜单栏、窗口标题和系统授权页面使用。内部可执行文件仍为 `Bugaoshan`；Bundle ID、签名身份和数据容器保持连续。商店导出包为 `不高山上.pkg`，CI 的 unsigned ZIP 与公开 DMG 文件名保留既有 ASCII 命名规则。
+
 ## Liquid Glass
 
 `Runner/LiquidGlass.swift` 使用 `NSHostingView` 承载 SwiftUI 控件，通过 `AppKitView` 接入 Flutter。macOS 26+ 只对导航、开关与滑块采用原生呈现：设置使用系统 Toggle / Slider，宽窗口使用系统 List 侧栏，图标与文案横排且只有当前入口高亮；窄窗口使用可横向滚动的导航，并用 `GlassEffectContainer` 管理玻璃按钮。课程、表单及列表内容继续由 Flutter 绘制。
@@ -13,6 +15,12 @@ Flutter 维护选中入口与开关值，原生层仅回传稳定入口 ID、开
 拖动期间保留系统滑块的当前位置，延迟的 Flutter 回传不能把滑块拉回旧值；范围或主题变更仍会同步，松手后恢复以 Flutter 业务值为准。普通控件配置与同值回传不额外启动 SwiftUI 动画。
 
 桥接单测使用模拟通道，不能证明真实材质、鼠标或键盘行为。`tool/test_macos_glass_state.py --framework-dir <FlutterMacOS.framework 的父目录>` 在 macOS 26+ 编译并执行实际 Swift 状态模型，覆盖开关同值回传、滑块拖动期间的旧值回传、开始/结束回调去重与中途禁用。发布前在签名 release 应用中检查宽窄窗口、导航、设置值同步、滚动、弹窗及路由切换；旧 macOS 与 Intel 的实际运行需要相应设备验收。
+
+## 本地提醒
+
+`Runner/ReminderChannel.swift` 注册 `bugaoshan/reminder`，实现授权、权限查询、计划替换、取消、待投递数量和系统通知设置跳转。只有用户主动点击授权或首次开启提醒时请求权限，启动及排期同步只查询状态。`UNUserNotificationCenter` 在应用关闭后仍负责已登记的提醒，前台提醒也显示横幅与声音；展示受系统通知设置和专注模式控制。
+
+同步与取消串行执行，仅替换 `bugaoshan.reminder.` 命名空间的通知。计划格式先验证再撤销旧请求，登记错误返回 Dart 层；宿主缺失或系统接口错误不能转换为“授权被拒绝”。重新授权会清除计划短路缓存并重新登记当前课表。开发者页的 15 秒提醒探针可验证真实投递；通道单测不能代替签名应用的系统授权与投递验收。
 
 ## 构建与签名
 

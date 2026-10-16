@@ -90,7 +90,7 @@ def verify_dmg(dmg, version, build):
         mount = Path(temporary) / "volume"
         run("hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", mount, dmg)
         try:
-            app = mount / "Bugaoshan.app"
+            app = mount / "不高山上.app"
             verify(app, signed=True, version=version, build=str(build))
             for target in (app, app / "Contents/PlugIns/CourseWidgetExtension.appex"):
                 verify_developer_id(target)
@@ -166,7 +166,7 @@ def sign(args):
         shutil.copytree(app, staging / app.name, symlinks=True)
         (staging / "Applications").symlink_to("/Applications")
         dmg = args.output / asset_name(args.tag)
-        run("hdiutil", "create", "-volname", "不高山", "-srcfolder", staging, "-format", "UDZO", dmg)
+        run("hdiutil", "create", "-volname", "不高山上", "-srcfolder", staging, "-format", "UDZO", dmg)
         run("codesign", "--sign", identity, "--keychain", args.keychain, "--timestamp", dmg)
         receipt = notarize(dmg, credentials)
         run("xcrun", "stapler", "staple", dmg)

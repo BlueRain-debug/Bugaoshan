@@ -147,7 +147,7 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
-          python3 signing/tool/macos_dmg.py sign --bundle unsigned/Bugaoshan.app --source signing \
+          python3 signing/tool/macos_dmg.py sign --bundle unsigned/不高山上.app --source signing \
             --tag "$SOURCE_TAG" --sha "$SOURCE_SHA" --version "$BUILD_NAME" --build "$BUILD_NUMBER" \
             --keychain "$RUNNER_TEMP/signing/release.keychain-db" \
             --app-profile "$RUNNER_TEMP/signing/app.provisionprofile" \
