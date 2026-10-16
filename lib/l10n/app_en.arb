@@ -2023,7 +2023,7 @@
   "reminderLeadTimeMultiHint": "You can pick more than one. Each adds a separate notification.",
   "reminderQuietSection": "Quiet hours",
   "reminderQuietEnabled": "Quiet hours",
-  "reminderQuietHint": "Reminders inside this window are dropped, not delayed",
+  "reminderQuietHint": "Reminders inside this window are dropped",
   "reminderQuietStart": "From",
   "reminderQuietEnd": "To",
   "reminderStatusSection": "Scheduling status",
@@ -2040,7 +2040,7 @@
   "reminderPermissionGrantedToast": "Notification permission granted",
   "reminderPermissionDeniedToast": "Permission denied",
   "reminderPermissionFailed": "Permission request failed",
-  "reminderPrivacyHint": "Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher's name, it stays hidden here too.",
+  "reminderPrivacyHint": "Lock-screen reminders also follow the Show Teacher switch under Course Style: turn it off there and the teacher's name won't appear in reminders.",
   "@reminderPlanPending": {
     "placeholders": {
       "count": {

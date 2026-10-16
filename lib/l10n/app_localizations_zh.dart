@@ -3584,7 +3584,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderQuietEnabled => '免打扰时段';
 
   @override
-  String get reminderQuietHint => '落在该时段内的提醒会被丢弃，而不是延后';
+  String get reminderQuietHint => '落在该时段内的提醒会被丢弃';
 
   @override
   String get reminderQuietStart => '开始';
@@ -3635,7 +3635,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderPermissionFailed => '请求权限失败';
 
   @override
-  String get reminderPrivacyHint => '提醒会显示在锁屏上，因此与隐私开关联动：关掉了「显示教师姓名」，锁屏上也不会出现。';
+  String get reminderPrivacyHint =>
+      '锁屏上的提醒也遵循「课程表样式」里的「显示教师」开关：在那里关掉后，提醒里就不会出现老师名字。';
 
   @override
   String get reminderPlanCopy => '复制计划 JSON';

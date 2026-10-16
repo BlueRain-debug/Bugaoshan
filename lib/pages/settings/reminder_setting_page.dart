@@ -270,7 +270,8 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
     return ValueListenableBuilder<bool>(
       valueListenable: _appConfig.reminderEnabled,
       builder: (context, enabled, _) => AdaptiveGlassSwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        // 与卡片内 IconTile 的 20 水平内边距对齐，避免内容贴住卡片边缘。
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         title: Text(l10n.reminderMasterSwitch),
         subtitle: Text(
           l10n.reminderMasterSwitchHint,
@@ -406,8 +407,9 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
                             return Column(
                               children: [
                                 AdaptiveGlassSwitchListTile(
+                                  // 与下方 IconTile 的 20 水平内边距对齐，保持同一卡片内视觉一致。
                                   contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
+                                    horizontal: 20,
                                   ),
                                   title: Text(l10n.reminderQuietEnabled),
                                   subtitle: Text(
@@ -593,24 +595,28 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
 
   Widget _buildPrivacyHint(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.lock_outline,
-          size: 16,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            l10n.reminderPrivacyHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    // 与上方卡片内容的 16 水平内边距对齐，避免提示文字比卡片内容更靠左。
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lock_outline,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.reminderPrivacyHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

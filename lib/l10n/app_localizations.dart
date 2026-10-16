@@ -6874,7 +6874,7 @@ abstract class AppLocalizations {
   /// No description provided for @reminderQuietHint.
   ///
   /// In en, this message translates to:
-  /// **'Reminders inside this window are dropped, not delayed'**
+  /// **'Reminders inside this window are dropped'**
   String get reminderQuietHint;
 
   /// No description provided for @reminderQuietStart.
@@ -6976,7 +6976,7 @@ abstract class AppLocalizations {
   /// No description provided for @reminderPrivacyHint.
   ///
   /// In en, this message translates to:
-  /// **'Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher\'s name, it stays hidden here too.'**
+  /// **'Lock-screen reminders also follow the Show Teacher switch under Course Style: turn it off there and the teacher\'s name won\'t appear in reminders.'**
   String get reminderPrivacyHint;
 
   /// No description provided for @reminderPlanCopy.

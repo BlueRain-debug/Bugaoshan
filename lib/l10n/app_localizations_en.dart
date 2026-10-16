@@ -3706,8 +3706,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderQuietEnabled => 'Quiet hours';
 
   @override
-  String get reminderQuietHint =>
-      'Reminders inside this window are dropped, not delayed';
+  String get reminderQuietHint => 'Reminders inside this window are dropped';
 
   @override
   String get reminderQuietStart => 'From';
@@ -3763,7 +3762,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reminderPrivacyHint =>
-      'Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher\'s name, it stays hidden here too.';
+      'Lock-screen reminders also follow the Show Teacher switch under Course Style: turn it off there and the teacher\'s name won\'t appear in reminders.';
 
   @override
   String get reminderPlanCopy => 'Copy plan JSON';
