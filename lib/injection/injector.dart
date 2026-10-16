@@ -53,6 +53,7 @@ import 'package:bugaoshan/services/background_cache_service.dart';
 import 'package:bugaoshan/services/database_service.dart';
 import 'package:bugaoshan/services/download_manager.dart';
 import 'package:bugaoshan/services/exit_service.dart';
+import 'package:bugaoshan/services/github_resource_service.dart';
 import 'package:bugaoshan/services/reminder/live_activity_coordinator.dart';
 import 'package:bugaoshan/services/reminder/reminder_service.dart';
 import 'package:bugaoshan/services/reminder/reminder_transport.dart';
@@ -100,6 +101,12 @@ void _configureAsyncDependencies() {
     final instance = AppConfigProvider(prefs);
     await instance.init();
     return instance;
+  });
+
+  // GitHub 资源统一访问入口：镜像/直连选择与回退内聚于 service 内部。
+  getIt.registerSingletonAsync<GithubResourceService>(() async {
+    await getIt.isReady<AppConfigProvider>();
+    return GithubResourceService(getIt<AppConfigProvider>());
   });
   getIt.registerSingletonAsync<PackageInfo>(() => PackageInfo.fromPlatform());
   getIt.registerSingletonAsync<AppInfoProvider>(() async {
@@ -374,9 +381,11 @@ void _configureAsyncDependencies() {
   getIt.registerSingletonAsync<UpdateService>(() async {
     await getIt.isReady<SharedPreferences>();
     await getIt.isReady<AppInfoProvider>();
+    await getIt.isReady<GithubResourceService>();
     return UpdateService(
       getIt<SharedPreferences>(),
       getIt<AppInfoProvider>().currentVersion,
+      getIt<GithubResourceService>(),
     );
   });
   getIt.registerSingletonAsync<UpdateProvider>(() async {
@@ -395,7 +404,11 @@ void _configureAsyncDependencies() {
   });
   getIt.registerSingletonAsync<AcademicCalendarService>(() async {
     await getIt.isReady<SharedPreferences>();
-    return AcademicCalendarService(getIt<SharedPreferences>());
+    await getIt.isReady<GithubResourceService>();
+    return AcademicCalendarService(
+      getIt<SharedPreferences>(),
+      getIt<GithubResourceService>(),
+    );
   });
   getIt.registerSingletonAsync<WidgetUpdateService>(() async {
     await getIt.isReady<CourseProvider>();

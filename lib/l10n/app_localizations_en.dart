@@ -448,6 +448,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Affects only the automatic checks on the home and about pages. The test page always checks both channels.';
 
   @override
+  String get networkProxy => 'Network Proxy';
+
+  @override
+  String get ghProxyMirror => 'GitHub Mirror';
+
+  @override
+  String get ghProxyMirrorHint =>
+      'Download GitHub resources (app updates, academic calendar) via the gh-proxy.org mirror; falls back to direct connection on failure.';
+
+  @override
   String get forceCaptchaForDownload => 'Force CAPTCHA for Download';
 
   @override
