@@ -437,7 +437,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ghProxyMirrorHint =>
-      '通过 gh-proxy.org 镜像下载 GitHub 资源（软件更新、校历），失败时自动回退直连。';
+      '通过 gh-proxy 镜像下载 GitHub 资源（软件更新、校历），失败时自动回退直连。';
 
   @override
   String get forceCaptchaForDownload => '强制下载验证码';

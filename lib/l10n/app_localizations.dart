@@ -922,7 +922,7 @@ abstract class AppLocalizations {
   /// No description provided for @ghProxyMirrorHint.
   ///
   /// In en, this message translates to:
-  /// **'Download GitHub resources (app updates, academic calendar) via the gh-proxy.org mirror; falls back to direct connection on failure.'**
+  /// **'Download GitHub resources (app updates, academic calendar) via the gh-proxy mirror; falls back to direct connection on failure.'**
   String get ghProxyMirrorHint;
 
   /// Toggle in the developer page to force the CAPTCHA dialog when downloading attachments, for testing the CAPTCHA flow.

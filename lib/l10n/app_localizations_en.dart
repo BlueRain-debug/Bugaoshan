@@ -455,7 +455,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ghProxyMirrorHint =>
-      'Download GitHub resources (app updates, academic calendar) via the gh-proxy.org mirror; falls back to direct connection on failure.';
+      'Download GitHub resources (app updates, academic calendar) via the gh-proxy mirror; falls back to direct connection on failure.';
 
   @override
   String get forceCaptchaForDownload => 'Force CAPTCHA for Download';
