@@ -39,6 +39,7 @@ class RecordingTransport implements ReminderTransport {
   @override
   Future<bool> requestAuthorization({bool provisional = false}) async {
     if (unavailable) throw const ReminderTransportUnavailable();
+    if (failWith != null) throw failWith!;
     return !denied;
   }
 
@@ -189,6 +190,49 @@ void main() {
 
   tearDown(() {
     service.dispose();
+  });
+
+  group('通知授权', () {
+    test('宿主不可用不返回授权被拒绝，也不改变权限状态', () async {
+      await setUpService();
+      transport.unavailable = true;
+
+      await expectLater(
+        service.requestPermission(),
+        throwsA(isA<ReminderTransportUnavailable>()),
+      );
+      expect(service.needsPermission.value, isFalse);
+      expect(transport.synced, isEmpty);
+    });
+
+    test('系统接口失败保持异常，不返回授权被拒绝', () async {
+      await setUpService();
+      final failure = StateError('native authorization failed');
+      transport.failWith = failure;
+
+      await expectLater(service.requestPermission(), throwsA(same(failure)));
+      expect(service.needsPermission.value, isFalse);
+    });
+
+    test('系统实际拒绝权限才返回 false', () async {
+      await setUpService();
+      transport.denied = true;
+
+      expect(await service.requestPermission(), isFalse);
+      expect(service.needsPermission.value, isTrue);
+      expect(transport.synced, isEmpty);
+    });
+
+    test('重新授权会重新登记未改变的课表计划', () async {
+      await setUpService();
+      await service.reschedule(force: true);
+      final previous = transport.synced.single;
+
+      expect(await service.requestPermission(), isTrue);
+      expect(service.needsPermission.value, isFalse);
+      expect(transport.synced, hasLength(2));
+      expect(transport.synced.last.planId, previous.planId);
+    });
   });
 
   group('排期触发', () {

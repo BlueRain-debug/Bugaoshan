@@ -93,11 +93,16 @@ class MethodChannelReminderTransport implements ReminderTransport {
         'requestAuthorization',
         {'provisional': provisional},
       );
-      return granted ?? false;
+      if (granted == null) throw const ReminderTransportUnavailable();
+      return granted;
     } on MissingPluginException {
       throw const ReminderTransportUnavailable();
-    } on PlatformException {
-      return false;
+    } on PlatformException catch (e) {
+      if (e.code == unsupportedPlatformCode) {
+        throw const ReminderTransportUnavailable();
+      }
+      // A host/API failure is not a user denying notification permission.
+      rethrow;
     }
   }
 
@@ -185,7 +190,8 @@ class NoopReminderTransport implements ReminderTransport {
   Future<void> cancelAll() async {}
 
   @override
-  Future<bool> requestAuthorization({bool provisional = false}) async => false;
+  Future<bool> requestAuthorization({bool provisional = false}) async =>
+      throw const ReminderTransportUnavailable();
 
   @override
   Future<String> getPermissionStatus() async =>
