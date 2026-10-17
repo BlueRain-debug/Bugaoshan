@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
 import 'package:bugaoshan/providers/app_info_provider.dart';
+import 'package:bugaoshan/services/github_resource_service.dart';
 import 'package:bugaoshan/services/update_asset_selector.dart';
 import 'package:bugaoshan/services/update_checker.dart';
 import 'package:crypto/crypto.dart' as crypto;
@@ -73,7 +74,10 @@ class UpdateService {
   final SharedPreferences _prefs;
   final String _currentVersion;
 
-  UpdateService(this._prefs, this._currentVersion);
+  /// GitHub 资源访问入口：更新包下载的镜像/直连选择与回退内聚于此。
+  final GithubResourceService _resource;
+
+  UpdateService(this._prefs, this._currentVersion, this._resource);
 
   bool get supportsInAppUpdate =>
       // F-Droid 渠道安装的包由 F-Droid 负责更新，应用内自更新对其隐藏。
@@ -348,31 +352,20 @@ class UpdateService {
     }
     onStatus?.call('Downloading update...');
 
-    final client = http.Client();
-    List<int> chunks;
-    try {
-      final request = http.Request('GET', Uri.parse(downloadUrl));
-      final response = await client.send(request);
+    // 镜像/直连选择与回退由 GithubResourceService 内聚处理；拿到响应后
+    // 字节流的进度上报与取消检查仍在本地完成。
+    final response = await _resource.getStreamed(downloadUrl);
+    final contentLength = response.contentLength ?? 0;
+    final chunks = <int>[];
+    int received = 0;
 
-      if (response.statusCode != 200) {
-        throw Exception('Download failed: ${response.statusCode}');
+    await for (final chunk in response.stream) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw UpdateCancelledException();
       }
-
-      final contentLength = response.contentLength ?? 0;
-      chunks = [];
-      int received = 0;
-
-      await for (final chunk in response.stream) {
-        if (cancelToken?.isCancelled ?? false) {
-          client.close();
-          throw UpdateCancelledException();
-        }
-        chunks.addAll(chunk);
-        received += chunk.length;
-        onProgress?.call(received, contentLength);
-      }
-    } finally {
-      client.close();
+      chunks.addAll(chunk);
+      received += chunk.length;
+      onProgress?.call(received, contentLength);
     }
 
     if (cancelToken?.isCancelled ?? false) {

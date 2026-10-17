@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 诊断日志新增本机保留：警告与错误会写入 `bugaoshan.log`（自动轮转，总量约 6 MB），默认开启；可在「设置 → 软件设置」或开发者页面中关闭，关闭时同时删除已保存的日志文件
 - 开发者页面新增落盘开关与日志压测入口（压测仅 debug 构建可见）
 - 崩溃与未捕获异常现会记入日志，便于反馈问题时提供现场信息
+- 统一Github网络加速设置，可以在设置中调整是否启用
 
 ### Fixed
 - Mac 安装后的应用名称、Dock、菜单和窗口标题统一为「不高山上」
