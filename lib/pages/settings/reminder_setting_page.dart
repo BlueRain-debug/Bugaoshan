@@ -66,10 +66,15 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
   }
 
   Future<void> _refreshStatus() async {
-    // 先强制重排再查询：否则 pendingCount 读到的是上一轮同步的结果，
-    // 用户刚改完设置、返回本页时看到的仍是改动前的状态。
-    await _service.reschedule(force: true);
     final status = await _service.permissionStatus();
+    if ((status == 'authorized' || status == 'provisional') && !_isGranted) {
+      // Returning from system settings must restore requests even if the plan
+      // itself has not changed since permission was revoked.
+      await _service.onPermissionGranted();
+    } else {
+      await _service.reschedule(force: true);
+    }
+    // Query pending requests after scheduling, so the count is current.
     final pending = await _service.pendingCount();
     if (!mounted) return;
     setState(() {
@@ -123,6 +128,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('${l10n.reminderPermissionFailed}: $e')),
       );

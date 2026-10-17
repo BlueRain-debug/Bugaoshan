@@ -150,7 +150,7 @@ preview 通道的并发组开启取消（cancel-in-progress）：短时间连续
 setup action 里 `build_runner` 带 `|| true`，生成器配置坏了不会让 setup 显式失败，只能靠漂移检查与测试兜底。
 
 ### 4.19 Apple 平台下载与签名边界
-`release_body.py` 指向 iOS/macOS 共用的 App Store 条目，商店版本与 GitHub tag 独立，Mac 可下载状态以商店为准。Mac CI 制品只供构建验证，`release_prepare.py` 不整理或发布未签名 Mac 包。iOS 旧测试 IPA 外链仍指向 `Visio-Vanitas/Bugaoshan`（#285 的 mirror 决策），不是本流水线上传的产物。Mac 商店签名、导出及上传见 [macOS 分发](macos-distribution.md)。
+`release_body.py` 指向 iOS/macOS 共用的 App Store 条目，商店版本与 GitHub tag 独立，Mac 可下载状态以商店为准。启用 `MACOS_SIGNING_ENABLED=true` 后，macOS job 必须从专用签名仓库取得同一 tag / commit 的 Developer ID universal DMG，验证源码、实际包内版本、校验和、签名与 Apple 公证后，才随 Android / Windows 一起上传并发布；失败会阻止发布，未签名验证包始终不进入 Release。变量未启用时保持原有验证流程且不显示 DMG 链接。iOS 旧测试 IPA 外链仍指向 `Visio-Vanitas/Bugaoshan`（#285 的 mirror 决策），不是本流水线上传的产物。配置与凭据见 [macOS 分发](macos-distribution.md)。
 
 ### 4.20 Python 单测重复发现
 pre-flight 的 `unittest discover -s .github/scripts/` 会把 `tests/` 子目录的用例再发现并执行一遍，用例双跑属无害冗余，分析 CI 时长时勿据此误判。

@@ -430,6 +430,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get usePreviewUpdateSourceHint => '仅影响首页和关于页面的自动检查；测试页面始终同时检查两个渠道。';
 
   @override
+  String get networkProxy => '网络代理';
+
+  @override
+  String get ghProxyMirror => 'GitHub 加速';
+
+  @override
+  String get ghProxyMirrorHint =>
+      '通过 gh-proxy 镜像下载 GitHub 资源（软件更新、校历），失败时自动回退直连。';
+
+  @override
   String get forceCaptchaForDownload => '强制下载验证码';
 
   @override

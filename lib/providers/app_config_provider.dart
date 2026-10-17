@@ -33,6 +33,7 @@ const String _keyWidgetShowTomorrow = 'widget_show_tomorrow';
 const String _keyWidgetColorStyle = 'widget_color_style';
 const String _keyWidgetDensity = 'widget_density';
 const String _keyUsePreviewUpdateSource = 'usePreviewUpdateSource';
+const String _keyUseGithubProxy = 'useGithubProxy';
 const String _keyShowTeacherName = 'showTeacherName';
 const String _keyShowLocation = 'showLocation';
 const String _keyShowCourseWeeks = 'showCourseWeeks';
@@ -114,6 +115,13 @@ class AppConfigProvider {
   final ValueNotifier<WidgetDensity> widgetDensity =
       ValueNotifier<WidgetDensity>(WidgetDensity.standard);
   final ValueNotifier<bool> usePreviewUpdateSource = ValueNotifier<bool>(false);
+
+  /// GitHub 资源（软件更新包、校历）是否走 gh-proxy 镜像。**默认开启**。
+  ///
+  /// 开启：镜像优先，请求失败自动回退直连（由 [GithubResourceService] 统一
+  /// 处理，对消费方透明）；关闭：严格直连，不使用镜像。默认值与历史行为
+  /// 一致——更新包下载此前被无条件加 gh-proxy 前缀。
+  final ValueNotifier<bool> useGithubProxy = ValueNotifier<bool>(true);
   final ValueNotifier<bool> useGoogleFonts = ValueNotifier<bool>(true);
   final ValueNotifier<bool> showTeacherName = ValueNotifier<bool>(true);
   final ValueNotifier<bool> showLocation = ValueNotifier<bool>(true);
@@ -248,6 +256,8 @@ class AppConfigProvider {
         : WidgetDensity.standard;
     usePreviewUpdateSource.value =
         _sharedPreferences.getBool(_keyUsePreviewUpdateSource) ?? false;
+    useGithubProxy.value =
+        _sharedPreferences.getBool(_keyUseGithubProxy) ?? true;
     useGoogleFonts.value =
         _sharedPreferences.getBool(_keyUseGoogleFonts) ?? true;
     showTeacherName.value =
@@ -418,6 +428,9 @@ class AppConfigProvider {
         _keyUsePreviewUpdateSource,
         usePreviewUpdateSource.value,
       );
+    });
+    useGithubProxy.addListener(() {
+      _sharedPreferences.setBool(_keyUseGithubProxy, useGithubProxy.value);
     });
     useGoogleFonts.addListener(() {
       _sharedPreferences.setBool(_keyUseGoogleFonts, useGoogleFonts.value);

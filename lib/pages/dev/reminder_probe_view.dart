@@ -59,6 +59,7 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
     setState(() => _requesting = true);
     try {
       final granted = await service.requestPermission();
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -69,6 +70,7 @@ class _ReminderProbeViewState extends State<ReminderProbeView> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('${l10n.reminderHostProbeFailed}: $e')),
       );

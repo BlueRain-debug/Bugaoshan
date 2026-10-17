@@ -218,7 +218,11 @@ class ReminderService {
   );
 
   /// 通知权限授予后的回调入口，用于强制触发即时排期同步。
-  Future<void> onPermissionGranted() => reschedule(force: true);
+  Future<void> onPermissionGranted() async {
+    // The OS may have discarded requests while permission was revoked.
+    _lastPushedPlanId = null;
+    await reschedule(force: true);
+  }
 
   /// 请求通知权限并在获取成功后执行排期同步。
   ///
@@ -228,16 +232,25 @@ class ReminderService {
       final granted = await _transport.requestAuthorization(
         provisional: provisional,
       );
+      if (!_canWrite) return granted;
       if (granted) {
         needsPermission.value = false;
-        await reschedule(force: true);
+        await onPermissionGranted();
       } else {
         needsPermission.value = true;
       }
       return granted;
     } on ReminderTransportUnavailable catch (e) {
       AppLog.w('ReminderService', 'requestPermission 跳过：$e');
-      return false;
+      rethrow;
+    } catch (e, stack) {
+      AppLog.e(
+        'ReminderService',
+        'requestPermission FAILED',
+        error: e,
+        stackTrace: stack,
+      );
+      rethrow;
     }
   }
 

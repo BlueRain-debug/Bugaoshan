@@ -907,6 +907,24 @@ abstract class AppLocalizations {
   /// **'Affects only the automatic checks on the home and about pages. The test page always checks both channels.'**
   String get usePreviewUpdateSourceHint;
 
+  /// Settings entry title for GitHub mirror / proxy configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Network Proxy'**
+  String get networkProxy;
+
+  /// Toggle that routes GitHub resource downloads through the gh-proxy mirror.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Mirror'**
+  String get ghProxyMirror;
+
+  /// No description provided for @ghProxyMirrorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Download GitHub resources (app updates, academic calendar) via the gh-proxy mirror; falls back to direct connection on failure.'**
+  String get ghProxyMirrorHint;
+
   /// Toggle in the developer page to force the CAPTCHA dialog when downloading attachments, for testing the CAPTCHA flow.
   ///
   /// In en, this message translates to:
