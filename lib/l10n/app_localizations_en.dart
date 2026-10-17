@@ -3603,11 +3603,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Provisional (quiet delivery)';
 
   @override
+  String get reminderHostProbePermissionEphemeral =>
+      'Ephemeral (temporary authorization)';
+
+  @override
   String get reminderHostProbePermissionDeniedLabel =>
       'Denied in system settings';
 
   @override
   String get reminderHostProbePermissionNotDetermined => 'Not requested yet';
+
+  @override
+  String get reminderHostProbePermissionUnsupported =>
+      'Unsupported on this platform';
 
   @override
   String get reminderHostProbeRequestPermission => 'Request';
@@ -3708,8 +3716,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderQuietEnabled => 'Quiet hours';
 
   @override
-  String get reminderQuietHint =>
-      'Reminders inside this window are dropped, not delayed';
+  String get reminderQuietHint => 'Reminders inside this window are dropped';
 
   @override
   String get reminderQuietStart => 'From';
@@ -3741,6 +3748,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Grant the permission so reminders can reach you.';
 
   @override
+  String get reminderPermissionUnsupportedHint =>
+      'This platform does not support local reminders.';
+
+  @override
   String get reminderPermissionRequest => 'Allow';
 
   @override
@@ -3761,7 +3772,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reminderPrivacyHint =>
-      'Reminders appear on the lock screen, so they follow your privacy switches: if you hide the teacher\'s name, it stays hidden here too.';
+      'Lock-screen reminders also follow the Show Teacher switch under Course Style: turn it off there and the teacher\'s name won\'t appear in reminders.';
 
   @override
   String get reminderPlanCopy => 'Copy plan JSON';

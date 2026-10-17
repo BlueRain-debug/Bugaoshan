@@ -44,9 +44,12 @@ class RecordingTransport implements ReminderTransport {
   }
 
   @override
-  Future<String> getPermissionStatus() async => unavailable
-      ? MethodChannelReminderTransport.permissionUnknown
-      : (denied ? 'denied' : 'authorized');
+  Future<ReminderPermissionStatus> getPermissionStatus() async {
+    if (unavailable) throw const ReminderTransportUnavailable();
+    return denied
+        ? ReminderPermissionStatus.denied
+        : ReminderPermissionStatus.authorized;
+  }
 
   @override
   Future<int> getPendingCount() async =>
@@ -364,6 +367,26 @@ void main() {
       await service.onPermissionGranted();
       expect(service.needsPermission.value, isFalse);
       expect(transport.synced, hasLength(1));
+    });
+
+    test('permissionStatus 返回枚举，平台不可用时映射为 unsupported', () async {
+      await setUpService();
+
+      expect(
+        await service.permissionStatus(),
+        ReminderPermissionStatus.authorized,
+      );
+
+      // 权限被拒时透传原生拒绝状态，而非压缩成其他值。
+      transport.denied = true;
+      expect(await service.permissionStatus(), ReminderPermissionStatus.denied);
+
+      // 原生通道不可用（未接线 / 平台不支持）时映射为 unsupported，供 UI 隐藏授权引导。
+      transport.unavailable = true;
+      expect(
+        await service.permissionStatus(),
+        ReminderPermissionStatus.unsupported,
+      );
     });
 
     test('dispose 之后不再排期', () async {

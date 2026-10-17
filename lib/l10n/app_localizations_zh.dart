@@ -3488,10 +3488,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderHostProbePermissionProvisional => '临时授权（安静投递）';
 
   @override
+  String get reminderHostProbePermissionEphemeral => '临时授权（Ephemeral）';
+
+  @override
   String get reminderHostProbePermissionDeniedLabel => '已被系统设置拒绝';
 
   @override
   String get reminderHostProbePermissionNotDetermined => '尚未请求';
+
+  @override
+  String get reminderHostProbePermissionUnsupported => '当前平台不支持';
 
   @override
   String get reminderHostProbeRequestPermission => '请求授权';
@@ -3588,7 +3594,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderQuietEnabled => '免打扰时段';
 
   @override
-  String get reminderQuietHint => '落在该时段内的提醒会被丢弃，而不是延后';
+  String get reminderQuietHint => '落在该时段内的提醒会被丢弃';
 
   @override
   String get reminderQuietStart => '开始';
@@ -3618,6 +3624,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderPermissionNotDeterminedHint => '需要授予通知权限，提醒才能送达。';
 
   @override
+  String get reminderPermissionUnsupportedHint => '当前平台暂不支持本地提醒。';
+
+  @override
   String get reminderPermissionRequest => '去授权';
 
   @override
@@ -3636,7 +3645,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderPermissionFailed => '请求权限失败';
 
   @override
-  String get reminderPrivacyHint => '提醒会显示在锁屏上，因此与隐私开关联动：关掉了「显示教师姓名」，锁屏上也不会出现。';
+  String get reminderPrivacyHint =>
+      '锁屏上的提醒也遵循「课程表样式」里的「显示教师」开关：在那里关掉后，提醒里就不会出现老师名字。';
 
   @override
   String get reminderPlanCopy => '复制计划 JSON';

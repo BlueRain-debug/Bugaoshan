@@ -9,9 +9,8 @@ import 'package:bugaoshan/pages/dev/logs/log_tile.dart';
 import 'package:bugaoshan/pages/dev/logs/log_persistence_tile.dart';
 import 'package:bugaoshan/pages/dev/changelog/changelog_tile.dart';
 import 'package:bugaoshan/pages/dev/environment_info_tile.dart';
-import 'package:bugaoshan/pages/dev/live_activity_probe_tile.dart';
+import 'package:bugaoshan/pages/dev/probe_tile.dart';
 import 'package:bugaoshan/pages/dev/log_stress_tile.dart';
-import 'package:bugaoshan/pages/dev/reminder_probe_tile.dart';
 import 'package:bugaoshan/pages/dev/update_card.dart';
 import 'package:bugaoshan/pages/dev/wizard_reset_tile.dart';
 import 'package:bugaoshan/providers/app_config_provider.dart';
@@ -157,9 +156,7 @@ class _DevPageState extends State<DevPage> {
           const Divider(),
           const LogStressTile(),
           const Divider(),
-          const ReminderProbeTile(),
-          const Divider(),
-          const LiveActivityProbeTile(),
+          const ProbeTile(),
           const Divider(),
           const UiTile(),
           const Divider(),
