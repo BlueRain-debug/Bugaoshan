@@ -67,7 +67,7 @@ class _ReminderSettingPageState extends State<ReminderSettingPage>
 
   Future<void> _refreshStatus() async {
     final status = await _service.permissionStatus();
-    if ((status == 'authorized' || status == 'provisional') && !_isGranted) {
+    if (status.isGranted && !_isGranted) {
       // Returning from system settings must restore requests even if the plan
       // itself has not changed since permission was revoked.
       await _service.onPermissionGranted();
