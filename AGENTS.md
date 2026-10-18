@@ -148,7 +148,8 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
 │       ├── 0006-sunday-first-course-week.md
 │       ├── 0007-global-student-type-switch.md
 │       ├── 0008-reminder-scheduling-in-dart.md
-│       └── 0009-export-schedule-as-image.md
+│       ├── 0009-export-schedule-as-image.md
+│       └── 0010-remove-linux-native-webview.md
 └── .github/
     ├── actions/setup/          # composite action: install Flutter 3.44, gen-l10n, git metadata
     ├── scripts/                # Python release automation
@@ -443,4 +444,4 @@ The auto-changelog flow:
 
 ## Platform Support
 
-`flutter_launcher_icons` 为所有 6 个平台生成图标;`flutter_secure_storage` 在所有平台都可用;`sqflite_common_ffi` 处理桌面端 SQLite. UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机/平板/桌面. 主 release pipeline(参见 `release.yml`)打包 **Android (split-per-ABI APK)** 和 **Windows (zip)**;Linux 仅支持本地构建,不再由 CI 发布. Linux 分发与 WPE 边界见 `docs/architecture/linux-distribution.md`;新增发布平台时务必同时更新 `release.yml`、`release_prepare.py` 和发布正文.
+`flutter_launcher_icons` 为所有 6 个平台生成图标;`flutter_secure_storage` 在所有平台都可用;`sqflite_common_ffi` 处理桌面端 SQLite. UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机/平板/桌面. 主 release pipeline(参见 `release.yml`)打包 **Android (split-per-ABI APK)** 和 **Windows (zip)**;Linux 仅支持本地构建,不再由 CI 发布. Linux 分发与网页视图边界见 `docs/architecture/linux-distribution.md`;新增发布平台时务必同时更新 `release.yml`、`release_prepare.py` 和发布正文.
