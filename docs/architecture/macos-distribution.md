@@ -52,7 +52,7 @@ Mac 商店归档与 DMG 共用 `.github/macos-signing.json` 的 `version` / `bui
 
 所需 Secrets：`MACOS_CERTIFICATE_P12_BASE64`、`MACOS_CERTIFICATE_PASSWORD`、`MACOS_APP_PROFILE_BASE64`、`MACOS_WIDGET_PROFILE_BASE64`、`NOTARY_KEY_P8`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`。公证使用独立的 App Store Connect **团队 API 密钥**（Developer 角色）；个人 API 密钥不能用于 notarytool。无需把 GitHub 个人 PAT 交给上游或签名仓库。
 
-这 7 项凭据仅存于 `macos-signing` Environment，删除同名 repository secrets；不能在仓库级保留副本，否则任意可写分支的 workflow 仍能访问。Environment 的 required reviewer 仅为证书持有人 `wjlfish`，关闭管理员绕过审批；为允许唯一审批人手动发起发布后审批，不启用 prevent self-review。部署分支策略仅允许类型为 branch 的 `main` / `preview`，不允许 feature 分支或 tag。审批前需核对运行提交和签名代码，不能仅看工作流名称。Environment 管理权限仍属于仓库管理员，无法阻止管理员主动改动这些设置；若管理员本身不可信，需恢复独立权限域的签名仓库。
+这 7 项凭据仅存于 `macos-signing` Environment，删除同名 repository secrets；不能在仓库级保留副本，否则任意可写分支的 workflow 仍能访问。Environment 不设置 required reviewer，团队成员可直接使用签名流程，不因人工审批阻塞版本发布；部署分支策略仅允许类型为 branch 的 `main` / `preview`，不允许 feature 分支或 tag。Environment 管理权限仍属于仓库管理员，无法阻止管理员主动改动这些设置；若管理员本身不可信，需恢复独立权限域的签名仓库。
 
 主仓库变量 `MACOS_SIGNING_ENABLED=true` 启用签名发布；两个签名发布 job 的 `if` 同时限制仓库与 `refs/heads/main` / `refs/heads/preview`，`release.yml` 无需透传仓库 Secrets。tag 触发签名发布会在元数据阶段失败并提示从 `main` / `preview` 手动执行，避免后续缺制品才报错。缺凭据、签名或公证失败会直接阻止本次 Release，不再等待外部仓库 90 分钟，也不回退未签名包。PR 和 build-only 只执行无凭据构建验证。
 
