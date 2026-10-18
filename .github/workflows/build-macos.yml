@@ -30,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       signed_release:
-        description: 'Build and notarize from main/preview after macos-signing approval'
+        description: 'Build and notarize from trusted main/preview code'
         type: boolean
         default: false
       release_tag:
