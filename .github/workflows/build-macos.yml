@@ -67,7 +67,7 @@ jobs:
           from tool.macos_dmg import distribution_version
           version, build = distribution_version(json.load(open('.github/macos-signing.json')))
           with open(os.environ['GITHUB_ENV'], 'a') as stream:
-              stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\n')
+              stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\nMACOS_BUILD_NAME={version}\nMACOS_BUILD_NUMBER={build}\n')
           PYTHON
       - run: bash tool/macos_distribution.sh unsigned
       - uses: actions/upload-artifact@v4
@@ -98,7 +98,7 @@ jobs:
           from tool.macos_dmg import distribution_version
           version, build = distribution_version(json.load(open('.github/macos-signing.json')))
           with open(os.environ['GITHUB_ENV'], 'a') as stream:
-              stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\n')
+              stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\nMACOS_BUILD_NAME={version}\nMACOS_BUILD_NUMBER={build}\n')
           PYTHON
       - uses: actions/download-artifact@v4
         with:
