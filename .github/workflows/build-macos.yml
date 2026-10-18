@@ -63,8 +63,9 @@ jobs:
       - name: Read Mac distribution version
         run: |
           python3 - <<'PYTHON'
-          import json, os
-          from tool.macos_dmg import distribution_version
+          import json, os, sys
+          sys.path.insert(0, "tool")
+          from macos_dmg import distribution_version
           version, build = distribution_version(json.load(open('.github/macos-signing.json')))
           with open(os.environ['GITHUB_ENV'], 'a') as stream:
               stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\nMACOS_BUILD_NAME={version}\nMACOS_BUILD_NUMBER={build}\n')
@@ -94,8 +95,9 @@ jobs:
       - name: Read Mac distribution version
         run: |
           python3 - <<'PYTHON'
-          import json, os
-          from tool.macos_dmg import distribution_version
+          import json, os, sys
+          sys.path.insert(0, "tool")
+          from macos_dmg import distribution_version
           version, build = distribution_version(json.load(open('.github/macos-signing.json')))
           with open(os.environ['GITHUB_ENV'], 'a') as stream:
               stream.write(f'BUILD_NAME={version}\nBUILD_NUMBER={build}\nMACOS_BUILD_NAME={version}\nMACOS_BUILD_NUMBER={build}\n')
