@@ -2425,6 +2425,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String dateMonthDayCompact(int month, int day) {
+    return '$month/$day';
+  }
+
+  @override
+  String dateYearMonthDay(int year, int month, int day) {
+    return '$month/$day/$year';
+  }
+
+  @override
   String get holidayLabel => 'Hol';
 
   @override
