@@ -113,6 +113,14 @@ jobs:
       build_name: ${{ needs.resolve-metadata.outputs.build_version }}
       build_number: ${{ needs.resolve-metadata.outputs.build_number }}
 
+  build-linux:
+    name: Linux Build
+    needs: resolve-metadata
+    if: needs.resolve-metadata.outputs.should_release == 'true' || needs.resolve-metadata.outputs.build_only == 'true'
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      version: ${{ needs.resolve-metadata.outputs.tag }}
+
   build-macos:
     name: macOS Build
     needs: resolve-metadata
@@ -126,7 +134,7 @@ jobs:
 
   publish-release:
     name: Publish Release
-    needs: [resolve-metadata, build-android, build-windows, build-macos]
+    needs: [resolve-metadata, build-android, build-windows, build-linux, build-macos]
     if: needs.resolve-metadata.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -147,6 +155,12 @@ jobs:
         with:
           name: windows-release
           path: windows-release
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: linux-release
 
       - name: Download verified notarized macOS DMG
         if: vars.MACOS_SIGNING_ENABLED == 'true'
@@ -251,7 +265,7 @@ jobs:
             --draft \
             "${GOPTS[@]}"
 
-          assets=(bugaoshan_*.apk bugaoshan_*.zip)
+          assets=(bugaoshan_*.apk bugaoshan_*.zip bugaoshan_*.tar.gz)
           if [ "$MACOS_SIGNED" = true ]; then
             assets+=(bugaoshan_*.dmg macos-manifest.json)
           fi

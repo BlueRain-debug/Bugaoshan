@@ -11,7 +11,7 @@
 | 渠道 | 当前状态 | 架构 | 网页视图后端 |
 |---|---|---|---|
 | 源码构建 | 可用 | 在当前 Linux 系统执行 `flutter build linux` | 无（纯 Dart 占位） |
-| GitHub Release tar.gz | 已移除，不再随 GitHub Release 发布 | x64（历史） | 无（历史） |
+| GitHub Release tar.gz | 可用，随正式与预览发布一起分发 | x64，CI 在 `debian:13` 容器内构建 | 无（纯 Dart 占位） |
 | Flatpak | 有 source/generated manifest 和本地构建流程，未接入 CI | Freedesktop 25.08 容器 | 无（纯 Dart 占位） |
 | AUR | 仅有设计说明 | 尚无 `PKGBUILD` / `.SRCINFO` | 无（计划） |
 | Debian `.deb` | 未实现 | 尚无 `debian/` 控制文件或构建流程 | 无 |
@@ -53,17 +53,13 @@ Linux 端不再提供原生 WebView（见 [ADR-0010](../decisions/0010-remove-li
 
 源码构建所需的主要开发组件列在 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)：GTK 3、libsecret、libepoxy 和 Wayland。
 
-## 4. GitHub Linux tar.gz（已移除）
+## 4. GitHub Linux tar.gz
 
-Linux 构建发布 action 已移除：`build-linux.yml` 已删除，`release.yml` 只构建 Android 与 Windows，Release 正文不再提供 Linux 下载链接。
+Linux 构建由 [`.github/workflows/build-linux.yml`](../../.github/workflows/build-linux.yml) 提供：在 `debian:13`（当前稳定版，而不是滚动的 `debian:testing`，以便钉住 glibc / GTK 基线）容器内安装 Flutter Linux 构建依赖（GTK 3、libsecret、libepoxy、libwayland；不再需要 WPE 相关开发包），调用公共 setup action 装配 Flutter、生成代码与 git 元数据，执行 `flutter build linux --release`，把 `build/linux/x64/release/bundle` 打包为 `linux-release.tar.gz` 并上传为 artifact。
 
-用户仍可在本地 Linux 系统执行 `flutter build linux --release` 得到第 2 节描述的 bundle，但仓库不再自动：
+[`release.yml`](../../.github/workflows/release.yml) 在正式与预览两条通道上都调用它，发布阶段下载为 `linux-release/`；[`release_prepare.py`](../../.github/scripts/release_prepare.py) 将其重命名为 `bugaoshan_<version>_linux_x64.tar.gz` 后随 Release 上传，[`release_body.py`](../../.github/scripts/release_body.py) 在发布正文固定给出该下载链接。
 
-- 生成并发布 `bugaoshan_<version>_linux_x64.tar.gz`；
-- 由 CI 验证 bundle 的 `ldd` 依赖可从系统解析；
-- 在 Release 正文固定 Linux 下载链接。
-
-若未来恢复正式 Linux 发布，应重新引入构建工作流、`release_prepare.py` 重命名、Release 正文链接以及本节原有的动态链接验证检查。
+制品是第 2 节描述的裸 bundle：解压后运行 `./Bugaoshan`，没有 desktop entry、依赖声明或 PATH 启动器，目标系统需要自备 GTK 3、libsecret、libepoxy、Wayland 等运行库。当前工作流不额外校验 `ldd` 依赖可解析，也不校验 bundle 内是否残留网页视图原生库（见第 9 节）。
 
 ## 5. Flatpak
 
@@ -126,8 +122,8 @@ debian/changelog
 
 | 事项 | tar.gz | Flatpak | AUR | Debian `.deb` |
 |---|---|---|---|---|
-| 当前构建入口 | 无（已移除 CI） | 本地 manifest，未由 CI 验证 | 无 | 无 |
-| 正式 Release 自动发布 | 否 | 否 | 否 | 否 |
+| 当前构建入口 | `build-linux.yml`（CI） | 本地 manifest，未由 CI 验证 | 无 | 无 |
+| 正式 Release 自动发布 | 是 | 否 | 否 | 否 |
 | 网页视图后端 | 无 | 无 | 无 | 无 |
 | 声明系统依赖 | 否 | manifest | 尚未实现 | 尚未实现 |
 | desktop/AppStream 安装 | 否 | 是 | 尚未实现 | 尚未实现 |
@@ -135,8 +131,8 @@ debian/changelog
 
 ## 9. 已知技术债
 
-1. GitHub tar.gz 渠道已移除；若恢复，需重新设计针对稳定发行版的最低 ABI 基线测试。
-2. 若恢复 tar.gz，裸 bundle 没有运行依赖说明或启动前检查，缺库时通常只表现为 loader 错误。
+1. Linux 构建只做 `flutter build linux --release` 与打包：不校验 `ldd` 依赖可解析，也不校验 bundle 内是否残留网页视图原生库；最低 ABI 基线仍只靠用户实测。
+2. 裸 bundle 没有运行依赖说明或启动前检查，缺库时通常只表现为 loader 错误。
 3. Flatpak source manifest 与 generated manifest 需要人工同步；两者当前固定旧应用 commit，不会直接构建当前 HEAD。
 4. Flatpak Flutter `3.44.4` 与 CI Flutter `3.44.6` 不一致。
 5. AppStream metainfo 最新 release 仍为 `2.1.1`，落后于 `pubspec.yaml` 的 `2.2.0`。

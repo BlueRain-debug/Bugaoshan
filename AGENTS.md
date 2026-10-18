@@ -162,6 +162,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `f
     │   ├── release.yml         # releases on push to main/preview, target-gated tags, or manual dispatch
     │   ├── build-android.yml   # workflow_call → APK (split per ABI, obfuscated)
     │   ├── build-windows.yml   # workflow_call → Windows zip
+    │   ├── build-linux.yml     # workflow_call → Linux x64 tar.gz (debian:13 container)
     └── ISSUE_TEMPLATE/feature_request.yml
 ```
 
@@ -388,7 +389,7 @@ Two labels drive automation / review routing on pull requests:
 - **`release.yml` (Release Pipeline)**:
   - Triggers on pushes to `main` / `preview`, tags matching `v*.*.*` (published only when the tag targets the main/preview head), and `workflow_dispatch` (build-only on other branches).
   - Version/tag rules via `.github/scripts/resolve_release_version.py` (formal: pubspec, idempotent; preview: anchored to the last formal tag with a patch increment `-preview[.N]`; the `/release` prep phase switches to `-rc` naming; preview builds inject the last formal versionName/versionCode).
-  - Triggers `build-android.yml` (universal + split APKs with Java 21) and `build-windows.yml` (Windows zip with dynamic WebView2Loader).
+  - Triggers `build-android.yml` (universal + split APKs with Java 21), `build-windows.yml` (Windows zip with dynamic WebView2Loader) and `build-linux.yml` (Linux x64 tar.gz, built in a `debian:13` container).
   - Publishes GitHub Releases with safe Draft -> Upload -> Publish ordering to support Immutable Releases.
 - **`close-linked-issues.yml` (Issue Auto-Close)**:
   - Triggers on `pull_request: [closed]`, only runs when the PR was merged.
@@ -444,4 +445,4 @@ The auto-changelog flow:
 
 ## Platform Support
 
-`flutter_launcher_icons` 为所有 6 个平台生成图标;`flutter_secure_storage` 在所有平台都可用;`sqflite_common_ffi` 处理桌面端 SQLite. UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机/平板/桌面. 主 release pipeline(参见 `release.yml`)打包 **Android (split-per-ABI APK)** 和 **Windows (zip)**;Linux 仅支持本地构建,不再由 CI 发布. Linux 分发与网页视图边界见 `docs/architecture/linux-distribution.md`;新增发布平台时务必同时更新 `release.yml`、`release_prepare.py` 和发布正文.
+`flutter_launcher_icons` 为所有 6 个平台生成图标;`flutter_secure_storage` 在所有平台都可用;`sqflite_common_ffi` 处理桌面端 SQLite. UI 通过 `LayoutBuilder`/`MediaQuery` 适配手机/平板/桌面. 主 release pipeline(参见 `release.yml`)打包 **Android (split-per-ABI APK)**、**Windows (zip)** 和 **Linux (x64 tar.gz)**;Linux 仍支持本地构建. Linux 分发与网页视图边界见 `docs/architecture/linux-distribution.md`;新增发布平台时务必同时更新 `release.yml`、`release_prepare.py` 和发布正文.

@@ -51,13 +51,13 @@ branch-policy 只做一条硬校验：**`main` 只能接收来自 `preview` 的 
 3. **合并进 `preview`**：push 事件同时触发 pre-flight 重跑与 release.yml preview 通道——
    - 预览 tag 与 pubspec 解耦：脚本取「最新正式 tag」严格递增 Z 位（X、Y 不动），推导 `vX.Y.Z-preview`（首次）或递增序号 `vX.Y.Z-preview.N`（如上一正式版 v2.5.1 → v2.5.2-preview.2）；
    - workflow 自动打 tag（`resolve-metadata` job，需要 `contents: write`，推送失败立即终止本次发布）；
-   - `build-android.yml`（universal + split-per-ABI，混淆，JDK 21）、`build-windows.yml`（zip）与 `build-macos.yml`（未签名 universal 验证包）并行构建；Mac 商店包单独签名上传，验证包不进入 GitHub Release；
+   - `build-android.yml`（universal + split-per-ABI，混淆，JDK 21）、`build-windows.yml`（zip）、`build-linux.yml`（Linux x64 tar.gz，`debian:13` 容器）与 `build-macos.yml`（未签名 universal 验证包）并行构建；Mac 商店包单独签名上传，验证包不进入 GitHub Release；
    - 发布走 **Draft → 上传产物 → Publish** 顺序，兼容仓库的不可变 Release 策略，标记为 prerelease；
    - 预览版的 release notes 取 `CHANGELOG.md` 第一个章节（约定为 `[Unreleased]`；该取法的已知问题见 §4.8），对比范围为上一个**正式** tag。tag 在构建开始前就已推送，构建/发布失败时 tag 会留存（见 §4.12）。
 4. **周期内迭代**：后续变更继续以 PR 合入 `preview`，预览版序号自动递增（`.2`、`.3`…）。周期内 `pubspec.yaml` 的版本号保持上一正式版不变，预览产物的 versionName 与 tag 不同名是设计使然。
 5. **准备正式版（`/release X.Y.Z`）**：bump `pubspec.yaml` 版本（保留 `+buildNumber`）、将 `[Unreleased]` 重命名为 `[X.Y.Z] - 日期`、更新 F-Droid 元数据（`metadata/*.yml` 的 versionName/versionCode + `metadata_changelog.py` 生成多语言 changelogs）、本地跑严格模式 `pre_release_check.py X.Y.Z`，提交推送 `preview`——这会先触发一轮预览版发布（tag 按 §3 规则切换为 `vX.Y.Z-rc`，直接使用即将发布的版本号；若 RC 之后仍有合并进 preview，后续轮次为 `vX.Y.Z-rc1`、`-rc2`…；产物版本号与其余预览一致，构建时注入的是上一正式版的版本号，pubspec 的 bump 不影响预览构建；内容与正式版一致，性质等同发布候选）——随后创建 `preview → main` 的发布 PR，合并后才发正式版。
 6. **合并进 `main`**：release.yml formal 通道——
-   - 基础版本读自 pubspec；远端不存在 `vX.Y.Z` → 打 tag、双端构建、发布正式 Release（`--latest`）；
+   - 基础版本读自 pubspec；远端不存在 `vX.Y.Z` → 打 tag、多端构建、发布正式 Release（`--latest`）；
    - F-Droid changelog 由 `metadata_changelog.py --skip-existing` 生成并兜底提交回 `main`；
    - `vX.Y.Z` 已存在 → `should_release=false`，秒级跳过，不会重复发布。
 7. **事后**：main 的 push 再触发一次 pre-flight（结构性检查照常硬拦截；时机类检查在两个版本之间的正常状态下为 WARN，不会长期挂红）。
@@ -171,6 +171,7 @@ pre-flight 的 `unittest discover -s .github/scripts/` 会把 `tests/` 子目录
 | `.github/workflows/release.yml` | 双通道发布：版本推导、打 tag、构建、发布 |
 | `.github/workflows/build-android.yml` | Android 的 PR 编译验证、手动构建与发布构建复用；PR 触发构建为未签名 release APK，不依赖发布 keystore |
 | `.github/workflows/build-windows.yml` | Windows 的 PR 编译验证、手动构建与发布构建复用 |
+| `.github/workflows/build-linux.yml` | Linux x64 tar.gz 的发布构建复用；在 `debian:13` 容器内构建，无 PR 触发 |
 | `.github/workflows/build-macos.yml` | macOS 未签名 universal 验证构建，支持 PR / 手动触发与发布流程复用 |
 | `.github/actions/setup/action.yml` | 公共环境：钉版 Flutter、镜像 pub get、代码生成、git 元数据 |
 | `.github/scripts/resolve_release_version.py` | 通道判定、tag 推导、幂等守卫 |

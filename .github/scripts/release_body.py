@@ -14,10 +14,11 @@ def main():
     body = f"""## ⬇️ 下载 (Downloads)
 - Android: [arm64-Apk]({repo}/releases/download/v{version}/bugaoshan_{version}_arm64-v8a.apk)
 - Windows: [x64 Zip]({repo}/releases/download/v{version}/bugaoshan_{version}_windows_x64.zip)
+- Linux: [x64 Tar.gz]({repo}/releases/download/v{version}/bugaoshan_{version}_linux_x64.tar.gz)
 - macOS: {macos}
 - iOS: [App Store](https://apps.apple.com/app/id6813305962) · [TestFlight](https://testflight.apple.com/join/Vyenb6gC)；另提供 [ipa](https://github.com/Visio-Vanitas/Bugaoshan/releases/download/v{version}/bugaoshan_{version}_ios_unsigned.ipa)（ipa仅供理解有关技术的同学测试使用，非技术背景同学请勿下载）
 
-> 💡 **Note**: 当前项目优先保障 Android 端的稳定与体验。 Windows 版本可能存在部分兼容性或体验问题。
+> 💡 **Note**: 当前项目优先保障移动平台的稳定与体验。 Windows、Linux 版本可能存在部分兼容性或体验问题。
 
 {changelog}
 
