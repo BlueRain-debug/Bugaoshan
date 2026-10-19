@@ -62,6 +62,10 @@ def prepare_release_files(version, root=Path("."), macos_signed=False):
 
     print(f"Archived windows artifact -> {zip_base_name}.zip")
 
+    linux_src = root / "linux-release" / "linux-release.tar.gz"
+    shutil.copy2(linux_src, root / f"bugaoshan_{version}_linux_x64.tar.gz")
+    print(f"Copied linux artifact -> bugaoshan_{version}_linux_x64.tar.gz")
+
     if macos_signed:
         # This directory is produced only by the macOS job after Gatekeeper,
         # stapler, Developer ID identity and source-commit verification.
