@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:bugaoshan/utils/app_log.dart';
 import 'dart:ui';
 
+import 'package:bugaoshan/utils/app_log.dart';
+import 'package:flutter/foundation.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
@@ -30,7 +31,7 @@ class WindowStateService with WindowListener {
     final w = prefs.getDouble(_keyW);
     final h = prefs.getDouble(_keyH);
     final size = w != null && h != null ? Size(w, h) : null;
-    // 位置以物理像素保存，尺寸仍是逻辑值。
+    // Windows 下位置以物理像素保存，其他桌面平台为逻辑坐标；尺寸均为逻辑值。
     final position = x != null && y != null ? Offset(x, y) : null;
 
     // Validate saved position against current screen layout.
@@ -50,10 +51,12 @@ class WindowStateService with WindowListener {
     );
 
     if (clampedPosition != null) {
-      // setPosition 会再乘一次窗口当前屏的 DPR，这里先除回去，
+      // Windows：setPosition 会再乘一次窗口当前屏的 DPR，这里先除回去，
       // 保证最终落点是保存时的物理像素坐标。
-      final currentDpr = _normalizeDpr(windowManager.getDevicePixelRatio());
-      await windowManager.setPosition(clampedPosition / currentDpr);
+      final position = _usesPhysicalCoordinates
+          ? clampedPosition / _normalizeDpr(windowManager.getDevicePixelRatio())
+          : clampedPosition;
+      await windowManager.setPosition(position);
     }
 
     // 接管关闭流程：onWindowClose 只是通知，窗口随后立即销毁，
@@ -64,29 +67,36 @@ class WindowStateService with WindowListener {
     return service;
   }
 
+  /// Windows 的窗口坐标是“物理像素 ÷ 窗口所在屏 DPR”，混合 DPI 下各屏
+  /// 坐标空间不一致，需要保存物理像素才能跨屏还原；macOS/Linux 使用统一
+  /// 的逻辑坐标空间，直接存取逻辑值即可。
+  static bool get _usesPhysicalCoordinates =>
+      defaultTargetPlatform == TargetPlatform.windows;
+
   static double _normalizeDpr(num? dpr) {
     return dpr != null && dpr > 0 ? dpr.toDouble() : 1.0;
   }
 
-  /// 位置 [pos] 为物理像素，尺寸 [size] 为逻辑值。
-  /// 同一窗口落在不同缩放比例的屏幕上时物理尺寸不同，因此每个屏幕都按
-  /// 自己的 scaleFactor 单独换算后再比较。
+  /// 位置 [pos] 在 Windows 下为物理像素、其他平台为逻辑坐标；
+  /// 尺寸 [size] 始终为逻辑值。
+  /// Windows 下同一窗口落在不同缩放比例的屏幕上时物理尺寸不同，因此每个
+  /// 屏幕都按自己的 scaleFactor 单独换算后再比较。
   ///
-  /// 返回原位置（窗口已可见）或钳制后的物理位置；
+  /// 返回原位置（窗口已可见）或钳制后的位置；
   /// 屏幕信息不可用时返回 `null`，由调用方居中。
   static Future<Offset?> _clampToScreen(Offset pos, Size size) async {
     try {
       final displays = await screenRetriever.getAllDisplays();
       if (displays.isEmpty) return pos;
 
-      // 窗口落在该屏幕时对应的物理尺寸。
-      Size physicalSizeOn(Display display) {
-        final scale = _normalizeDpr(display.scaleFactor);
+      // 窗口落在该屏幕时、在与 [pos] 相同的坐标空间下的尺寸。
+      Size windowSizeOn(Display display) {
+        final scale = _displayScale(display);
         return Size(size.width * scale, size.height * scale);
       }
 
       Rect windowRectOn(Display display) {
-        final windowSize = physicalSizeOn(display);
+        final windowSize = windowSizeOn(display);
         return Rect.fromLTWH(
           pos.dx,
           pos.dy,
@@ -134,7 +144,7 @@ class WindowStateService with WindowListener {
       if (target == null) return pos;
 
       final screen = _displayRect(target);
-      final windowSize = physicalSizeOn(target);
+      final windowSize = windowSizeOn(target);
       // If the window is larger than the screen, pin to screen origin.
       final maxX = screen.right - windowSize.width;
       final maxY = screen.bottom - windowSize.height;
@@ -157,10 +167,15 @@ class WindowStateService with WindowListener {
     }
   }
 
+  /// Windows 下 screen_retriever 给出的坐标已按各屏 scaleFactor 换算成
+  /// 逻辑值，乘回去得到物理像素，才能与窗口的物理坐标比较；
+  /// macOS/Linux 的坐标本身就是统一的逻辑坐标，保持不变。
+  static double _displayScale(Display display) {
+    return _usesPhysicalCoordinates ? _normalizeDpr(display.scaleFactor) : 1.0;
+  }
+
   static Rect _displayRect(Display display) {
-    // screen_retriever 给出的坐标已按各自屏幕的 scaleFactor 换算成逻辑值，
-    // 乘回去得到物理像素，才能与 window_manager 换算后的窗口坐标比较。
-    final scale = _normalizeDpr(display.scaleFactor);
+    final scale = _displayScale(display);
     return Rect.fromLTWH(
       (display.visiblePosition?.dx ?? 0) * scale,
       (display.visiblePosition?.dy ?? 0) * scale,
@@ -176,10 +191,12 @@ class WindowStateService with WindowListener {
 
   Future<void> _saveNow() async {
     try {
-      // getPosition/getSize 返回的是按窗口当前所在屏 DPR 换算后的逻辑值，
-      // 位置乘回 DPR 保存为物理像素，避免窗口在不同缩放比例的屏幕间
-      // 移动后重启时偏移。
-      final dpr = _normalizeDpr(windowManager.getDevicePixelRatio());
+      // Windows：getPosition 返回物理像素除以当前屏 DPR 后的逻辑值，
+      // 乘回 DPR 保存为物理像素，避免窗口在不同缩放比例的屏幕间移动后
+      // 重启时偏移；macOS/Linux 直接保存逻辑坐标。
+      final dpr = _usesPhysicalCoordinates
+          ? _normalizeDpr(windowManager.getDevicePixelRatio())
+          : 1.0;
       final pos = await windowManager.getPosition();
       final size = await windowManager.getSize();
       await _prefs.setDouble(_keyX, pos.dx * dpr);
