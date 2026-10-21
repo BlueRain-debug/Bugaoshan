@@ -1,5 +1,7 @@
 package io.github.the_brotherhood_of_scu.bugaoshan
 
+import android.content.Intent
+import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -21,6 +23,12 @@ import io.github.the_brotherhood_of_scu.bugaoshan.widget.WidgetUpdateWorker
 private const val UPDATE_CHANNEL = "bugaoshan/update"
 private const val DOWNLOAD_CANCEL_EVENT_CHANNEL = "bugaoshan/download_cancel"
 private const val DYNAMIC_ICON_CHANNEL = "bugaoshan/dynamic_icon"
+
+/**
+ * F-Droid 客户端注册的「添加软件源」scheme：官方只注册复数形式，
+ * Droid-ify 等第三方单复数都有，所以两者都探。
+ */
+private val FDROID_REPO_SCHEMES = listOf("fdroidrepo", "fdroidrepos")
 
 /**
  * 应用入口 Activity。仅负责 FlutterEngine 配置与各 channel 的注册分发,
@@ -143,6 +151,20 @@ class MainActivity : FlutterActivity() {
                 }
                 "isIgnoringBatteryOptimizations" -> {
                     result.success(batteryOptimization.isIgnoring())
+                }
+                // 安装来源是否为 F-Droid 系客户端：探测 installer 包是否注册了
+                // F-Droid 的添加仓库 scheme。探测 installer 而不是「设备上有没有
+                // F-Droid」，从 GitHub 安装的用户不受影响。
+                "isFdroidInstaller" -> {
+                    val installer = call.argument<String>("installer")
+                    result.success(
+                        installer != null && FDROID_REPO_SCHEMES.any { scheme ->
+                            packageManager.queryIntentActivities(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("$scheme://")),
+                                0,
+                            ).any { it.activityInfo.packageName == installer }
+                        },
+                    )
                 }
                 "requestNotificationPermission" -> {
                     notificationPermission.requestPermission(result)

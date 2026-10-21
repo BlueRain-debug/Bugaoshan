@@ -112,7 +112,12 @@ void _configureAsyncDependencies() {
   getIt.registerSingletonAsync<AppInfoProvider>(() async {
     await getIt.isReady<PackageInfo>();
     final packageInfo = getIt<PackageInfo>();
-    return AppInfoProvider(packageInfo);
+    return AppInfoProvider(
+      packageInfo,
+      isFdroidInstall: await AppInfoProvider.resolveFdroidInstall(
+        packageInfo.installerStore,
+      ),
+    );
   });
   getIt.registerSingletonAsync<DatabaseService>(() async {
     final db = DatabaseService();
