@@ -53,7 +53,7 @@ class WindowStateService with WindowListener {
     if (clampedPosition != null) {
       // Windows：setPosition 会再乘一次窗口当前屏的 DPR，这里先除回去，
       // 保证最终落点是保存时的物理像素坐标。
-      final position = _usesPhysicalCoordinates
+      final position = _isWindows
           ? clampedPosition / _normalizeDpr(windowManager.getDevicePixelRatio())
           : clampedPosition;
       await windowManager.setPosition(position);
@@ -69,9 +69,8 @@ class WindowStateService with WindowListener {
 
   /// Windows 的窗口坐标是“物理像素 ÷ 窗口所在屏 DPR”，混合 DPI 下各屏
   /// 坐标空间不一致，需要保存物理像素才能跨屏还原；macOS/Linux 使用统一
-  /// 的逻辑坐标空间，直接存取逻辑值即可。
-  static bool get _usesPhysicalCoordinates =>
-      defaultTargetPlatform == TargetPlatform.windows;
+  /// 的逻辑坐标空间，直接存取逻辑值即可。关闭时的隐藏处理也仅 Windows 需要。
+  static bool get _isWindows => defaultTargetPlatform == TargetPlatform.windows;
 
   static double _normalizeDpr(num? dpr) {
     return dpr != null && dpr > 0 ? dpr.toDouble() : 1.0;
@@ -171,7 +170,7 @@ class WindowStateService with WindowListener {
   /// 逻辑值，乘回去得到物理像素，才能与窗口的物理坐标比较；
   /// macOS/Linux 的坐标本身就是统一的逻辑坐标，保持不变。
   static double _displayScale(Display display) {
-    return _usesPhysicalCoordinates ? _normalizeDpr(display.scaleFactor) : 1.0;
+    return _isWindows ? _normalizeDpr(display.scaleFactor) : 1.0;
   }
 
   static Rect _displayRect(Display display) {
@@ -194,7 +193,7 @@ class WindowStateService with WindowListener {
       // Windows：getPosition 返回物理像素除以当前屏 DPR 后的逻辑值，
       // 乘回 DPR 保存为物理像素，避免窗口在不同缩放比例的屏幕间移动后
       // 重启时偏移；macOS/Linux 直接保存逻辑坐标。
-      final dpr = _usesPhysicalCoordinates
+      final dpr = _isWindows
           ? _normalizeDpr(windowManager.getDevicePixelRatio())
           : 1.0;
       final pos = await windowManager.getPosition();
@@ -221,9 +220,13 @@ class WindowStateService with WindowListener {
     try {
       await _saveNow();
     } finally {
-      // destroy 只结束消息循环，引擎销毁期间窗口仍会留在屏幕上，
+      // Windows 的 destroy 只结束消息循环，引擎销毁期间窗口仍会留在屏幕上，
       // 先隐藏再销毁避免用户看到“点了关闭没反应”。
-      await windowManager.hide();
+      // Linux/macOS 关闭窗口会立即销毁视图，先隐藏反而会干扰 embedder 的
+      // view 移除流程。
+      if (_isWindows) {
+        await windowManager.hide();
+      }
       await windowManager.destroy();
     }
   }
@@ -241,4 +244,16 @@ class WindowStateService with WindowListener {
 
   @override
   void onWindowResized() => _save();
+
+  // Linux 的 window_manager 只发 move/resize（拖拽过程中持续触发），
+  // 没有 moved/resized 结束事件，在这里触发保存（由 300ms 防抖合并）。
+  @override
+  void onWindowMove() {
+    if (defaultTargetPlatform == TargetPlatform.linux) _save();
+  }
+
+  @override
+  void onWindowResize() {
+    if (defaultTargetPlatform == TargetPlatform.linux) _save();
+  }
 }
