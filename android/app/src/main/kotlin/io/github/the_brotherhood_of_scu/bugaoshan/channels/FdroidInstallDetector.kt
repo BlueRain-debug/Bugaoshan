@@ -45,10 +45,10 @@ class FdroidInstallDetector(private val context: Context) {
         return try {
             val packageManager = context.packageManager
             REPO_SCHEMES.any { scheme ->
+                // setPackage 直接把查询限定到 installer 包本身，不用全局查完再比包名
                 val probe = Intent(Intent.ACTION_VIEW, Uri.parse("$scheme://"))
-                queryHandlers(packageManager, probe).any {
-                    it.activityInfo.packageName == installerPackage
-                }
+                    .setPackage(installerPackage)
+                queryHandlers(packageManager, probe).isNotEmpty()
             }
         } catch (e: Exception) {
             Log.w(TAG, "探测安装来源失败: $installerPackage", e)
