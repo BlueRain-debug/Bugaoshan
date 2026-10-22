@@ -6,6 +6,25 @@ import 'package:bugaoshan/utils/json_utils.dart';
 /// `topic/resource-list` 的 `d.data[].base` 与 `site/resource/detail` 的 `d`
 /// 里是同一套字段（2026-10-23 抓包确认）。
 
+/// 解析 `topic/resource-list` 的 `d`（不是整个信封）。
+///
+/// 抓包结构：
+/// ```json
+/// {"data": [{"base": {...}, "time": [], "appointmen_list_info": []}],
+///  "resources": [], "total": 17, "page": 1, "perpage": 100}
+/// ```
+/// `data` **直接就是数组**，每项的 `base` 才是资源定义。
+List<ReservationResource> reservationResourcesFromJson(Object? json) {
+  if (json is! Map) return const [];
+  final rows = json['data'];
+  if (rows is! List) return const [];
+
+  return [
+    for (final row in rows)
+      if (row is Map) ?ReservationResource.fromJson(row['base']),
+  ];
+}
+
 /// 资源的某个属性（容量 / 校区 / 分区 / 楼栋）。
 ///
 /// `type == 0` 时 [value] 是纯文本（如「28」）；`type == 1` 时是

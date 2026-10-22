@@ -339,35 +339,77 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   /// 日期 × 时段的网格：行为时段，列为日期。
+  ///
+  /// 时段列固定在左侧，只有日期列横向滚动——否则横滑后连「几点到几点」
+  /// 都被滚走，用户不知道看的是哪一行。
   Widget _buildCalendarGrid(ReservationCalendar calendar, AppLocalizations l10n) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: AppShapes.large,
-        headingRowHeight: 44,
-        dataRowMinHeight: 44,
-        dataRowMaxHeight: 56,
-        columns: [
-          DataColumn(label: Text(l10n.reservationTimeColumn)),
-          for (final day in calendar.days)
-            DataColumn(label: Text(_dayLabel(day))),
-        ],
-        rows: [
-          for (final slot in calendar.slots)
-            DataRow(
-              cells: [
-                DataCell(Text(slot.label)),
+    final scheme = Theme.of(context).colorScheme;
+    final textStyle = Theme.of(context).textTheme.bodyMedium;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 固定列：时段
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 44,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  l10n.reservationTimeColumn,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ),
+            ),
+            for (final slot in calendar.slots)
+              SizedBox(
+                height: 48,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(slot.label, style: textStyle),
+                ),
+              ),
+          ],
+        ),
+        Container(
+          width: 1,
+          height: 44 + calendar.slots.length * 48,
+          color: scheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        // 可滚动列：日期
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: AppShapes.large,
+              horizontalMargin: AppShapes.small,
+              headingRowHeight: 44,
+              dataRowMinHeight: 48,
+              dataRowMaxHeight: 48,
+              columns: [
                 for (final day in calendar.days)
-                  DataCell(
-                    _SlotCell(
-                      state: calendar.stateOf(day, slot.id),
-                      onTap: () => _onSlotTap(day, slot, calendar),
-                    ),
+                  DataColumn(label: Text(_dayLabel(day))),
+              ],
+              rows: [
+                for (final slot in calendar.slots)
+                  DataRow(
+                    cells: [
+                      for (final day in calendar.days)
+                        DataCell(
+                          _SlotCell(
+                            state: calendar.stateOf(day, slot.id),
+                            onTap: () => _onSlotTap(day, slot, calendar),
+                          ),
+                        ),
+                    ],
                   ),
               ],
             ),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 

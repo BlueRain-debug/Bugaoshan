@@ -48,14 +48,8 @@ class ReservationApiService implements ReservationApi {
           'pageSize': '100',
         },
       );
-      final data = json['data'];
-      final rows = data is Map ? data['data'] : null;
-      if (rows is! List) return const <ReservationResource>[];
-
-      return [
-        for (final row in rows)
-          if (row is Map) ?ReservationResource.fromJson(row['base']),
-      ];
+      // 抓包结构：`d = {data: [ {base: {...}} ], resources: [], total, ... }`。
+      return reservationResourcesFromJson(json);
     });
   }
 

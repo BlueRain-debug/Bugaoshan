@@ -2,6 +2,72 @@ import 'package:bugaoshan/pages/campus/reservation/models/reservation_models.dar
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('reservationResourcesFromJson（真实信封形状）', () {
+    // 2026-10-23 抓包：`d.data` 直接是数组，每项带 `base`。
+    Map<String, dynamic> envelope() => {
+      'data': [
+        {
+          'base': {
+            'id': 493,
+            'name': '党建活动室',
+            'type': 1,
+            'attribute': [
+              {
+                'name': '容量/人数',
+                'type': 0,
+                'enable': 1,
+                'data': '28',
+              },
+            ],
+            'config': {'book': true},
+          },
+          'time': const [],
+          'appointmen_list_info': const [],
+        },
+        {
+          'base': {'id': 490, 'name': '学术交流室', 'config': {'book': true}},
+          'time': const [],
+          'appointmen_list_info': const [],
+        },
+      ],
+      'resources': const [],
+      'total': 17,
+      'page': 1,
+      'perpage': 100,
+    };
+
+    test('从 d.data[].base 解析出资源列表', () {
+      final resources = reservationResourcesFromJson(envelope());
+
+      expect(resources, hasLength(2));
+      expect(resources.first.id, '493');
+      expect(resources.first.name, '党建活动室');
+      expect(resources.first.attributeValue('容量/人数'), '28');
+      expect(resources.last.id, '490');
+    });
+
+    test('缺 data / data 非数组时返回空列表，不抛异常', () {
+      expect(reservationResourcesFromJson(const {}), isEmpty);
+      expect(reservationResourcesFromJson(const {'data': null}), isEmpty);
+      expect(reservationResourcesFromJson(const {'data': 'oops'}), isEmpty);
+      expect(reservationResourcesFromJson(null), isEmpty);
+    });
+
+    test('跳过没有 base 或 base 缺 id 的脏行', () {
+      final resources = reservationResourcesFromJson({
+        'data': [
+          {'base': {'id': 1, 'name': '有效'}},
+          {'time': const []},
+          {'base': {'name': '无 id'}},
+          'oops',
+        ],
+      });
+
+      expect(resources, hasLength(1));
+      expect(resources.single.id, '1');
+    });
+  });
+
   group('ReservationCalendar', () {
     // 2026-10-23 抓包样本（脱敏：仅保留结构与数值）。
     Map<String, dynamic> sample() => {
