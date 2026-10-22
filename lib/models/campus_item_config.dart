@@ -19,6 +19,7 @@ import 'package:bugaoshan/pages/campus/passpoint/passpoint_page.dart';
 import 'package:bugaoshan/pages/campus/notice/notice_page.dart';
 import 'package:bugaoshan/pages/campus/plan_completion/plan_completion_page.dart';
 import 'package:bugaoshan/pages/campus/repair/repair_page.dart';
+import 'package:bugaoshan/pages/campus/reservation/reservation_page.dart';
 import 'package:bugaoshan/pages/campus/train_program/train_program_page.dart';
 import 'package:bugaoshan/pages/campus_page/campus_page.dart';
 import 'package:bugaoshan/pages/course/main/course_page.dart';
@@ -228,6 +229,20 @@ final campusItemExamPlan = CampusItemConfig(
   audience: StudentType.undergraduate,
 );
 
+/// 望江校区研究生活动室预约（只读查询 + 跳官方页面提交）。
+///
+/// 入口按需求只对研究生开放（`audience: StudentType.graduate`）。
+final campusItemReservation = CampusItemConfig(
+  id: dockIdReservation,
+  icon: Icons.meeting_room_outlined,
+  selectedIcon: Icons.meeting_room,
+  dockLabel: (l10n) => l10n.dockLabelReservation,
+  dockFullLabel: (l10n) => l10n.reservationTitle,
+  desc: (l10n) => l10n.reservationDesc,
+  page: () => const ReservationPage(),
+  audience: StudentType.graduate,
+);
+
 final campusItemNotice = CampusItemConfig(
   id: dockIdNotice,
   icon: Icons.campaign_outlined,
@@ -339,6 +354,7 @@ final campusSections = [
       campusItemPasspoint,
       campusItemBalanceQuery,
       campusItemRepair,
+      campusItemReservation,
       campusItemAcademicCalendar,
       campusItemZysc,
       campusItemLeave,

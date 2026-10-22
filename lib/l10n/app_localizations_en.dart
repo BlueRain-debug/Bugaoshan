@@ -2884,6 +2884,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockLabelLeave => 'Service Hall';
 
   @override
+  String get dockLabelReservation => 'Rooms';
+
+  @override
   String get dockLabelRepair => 'Repair';
 
   @override
@@ -3101,6 +3104,70 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get leaveDesc =>
       'Handle leave requests, check-ins and more in the service hall';
+
+  @override
+  String get reservationTitle => 'Room Reservation';
+
+  @override
+  String get reservationDesc => 'Check free slots of Wangjiang activity rooms';
+
+  @override
+  String get reservationChooseRoom => 'Choose a room';
+
+  @override
+  String get reservationAvailability => 'Free slots';
+
+  @override
+  String get reservationTimeColumn => 'Time';
+
+  @override
+  String get reservationNoResources => 'No rooms available';
+
+  @override
+  String get reservationNoSlots => 'No bookable slots in this range';
+
+  @override
+  String get reservationSessionExpired =>
+      'The reservation session is missing or expired. Please sign in with the unified identity first.';
+
+  @override
+  String get reservationPreviousWeek => 'Previous 7 days';
+
+  @override
+  String get reservationNextWeek => 'Next 7 days';
+
+  @override
+  String reservationRemaining(int count) {
+    return '$count left';
+  }
+
+  @override
+  String get reservationStatusAvailable => 'Available';
+
+  @override
+  String get reservationStatusFull => 'Full';
+
+  @override
+  String get reservationStatusUnavailable => 'Unavailable';
+
+  @override
+  String get reservationNeedsApproval => 'Approval required';
+
+  @override
+  String reservationDailyLimit(int count) {
+    return 'Up to $count slots per day';
+  }
+
+  @override
+  String get reservationGoOfficial => 'Book on the official page';
+
+  @override
+  String get reservationGoOfficialTitle => 'Go to the official page';
+
+  @override
+  String reservationGoOfficialBody(String slot) {
+    return '\"$slot\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?';
+  }
 
   @override
   String get leaveApply => 'Apply';

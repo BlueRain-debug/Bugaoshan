@@ -1410,6 +1410,11 @@
     "description": "Short dock label for the service hall entry.",
     "type": "text"
   },
+  "dockLabelReservation": "Rooms",
+  "@dockLabelReservation": {
+    "description": "Short dock label for the activity room reservation entry.",
+    "type": "text"
+  },
   "dockLabelRepair": "Repair",
   "@dockLabelRepair": {
     "description": "Short dock label for the online repair entry.",
@@ -1760,6 +1765,113 @@
   "@leaveDesc": {
     "description": "Description shown on the campus entry card for the service hall.",
     "type": "text"
+  },
+  "reservationTitle": "Room Reservation",
+  "@reservationTitle": {
+    "description": "Title of the Wangjiang activity room reservation page.",
+    "type": "text"
+  },
+  "reservationDesc": "Check free slots of Wangjiang activity rooms",
+  "@reservationDesc": {
+    "description": "Description shown on the campus entry card for room reservation.",
+    "type": "text"
+  },
+  "reservationChooseRoom": "Choose a room",
+  "@reservationChooseRoom": {
+    "description": "Heading of the room picker section.",
+    "type": "text"
+  },
+  "reservationAvailability": "Free slots",
+  "@reservationAvailability": {
+    "description": "Heading of the availability table.",
+    "type": "text"
+  },
+  "reservationTimeColumn": "Time",
+  "@reservationTimeColumn": {
+    "description": "First column header of the availability table.",
+    "type": "text"
+  },
+  "reservationNoResources": "No rooms available",
+  "@reservationNoResources": {
+    "description": "Empty state when the topic has no resources.",
+    "type": "text"
+  },
+  "reservationNoSlots": "No bookable slots in this range",
+  "@reservationNoSlots": {
+    "description": "Empty state when the calendar returns no slots.",
+    "type": "text"
+  },
+  "reservationSessionExpired": "The reservation session is missing or expired. Please sign in with the unified identity first.",
+  "@reservationSessionExpired": {
+    "description": "Shown when the reservation session is invalid.",
+    "type": "text"
+  },
+  "reservationPreviousWeek": "Previous 7 days",
+  "@reservationPreviousWeek": {
+    "description": "Tooltip of the previous range button.",
+    "type": "text"
+  },
+  "reservationNextWeek": "Next 7 days",
+  "@reservationNextWeek": {
+    "description": "Tooltip of the next range button.",
+    "type": "text"
+  },
+  "reservationRemaining": "{count} left",
+  "@reservationRemaining": {
+    "description": "Remaining capacity shown on a bookable slot.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reservationStatusAvailable": "Available",
+  "@reservationStatusAvailable": {
+    "description": "Legend: bookable.",
+    "type": "text"
+  },
+  "reservationStatusFull": "Full",
+  "@reservationStatusFull": {
+    "description": "Legend: fully booked.",
+    "type": "text"
+  },
+  "reservationStatusUnavailable": "Unavailable",
+  "@reservationStatusUnavailable": {
+    "description": "Legend: not open / expired / disabled.",
+    "type": "text"
+  },
+  "reservationNeedsApproval": "Approval required",
+  "@reservationNeedsApproval": {
+    "description": "Chip on the resource info card.",
+    "type": "text"
+  },
+  "reservationDailyLimit": "Up to {count} slots per day",
+  "@reservationDailyLimit": {
+    "description": "Chip showing the daily slot limit.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reservationGoOfficial": "Book on the official page",
+  "@reservationGoOfficial": {
+    "description": "Button opening the official reservation page.",
+    "type": "text"
+  },
+  "reservationGoOfficialTitle": "Go to the official page",
+  "@reservationGoOfficialTitle": {
+    "description": "Title of the dialog shown after tapping a bookable slot.",
+    "type": "text"
+  },
+  "reservationGoOfficialBody": "\"{slot}\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?",
+  "@reservationGoOfficialBody": {
+    "description": "Body of the dialog, {slot} is the date and time range.",
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
   },
   "leaveApply": "Apply",
   "@leaveApply": {

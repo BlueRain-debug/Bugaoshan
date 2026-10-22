@@ -22,6 +22,7 @@ import 'package:bugaoshan/providers/graduate_grades_provider.dart';
 import 'package:bugaoshan/providers/graduate_train_plan_provider.dart';
 import 'package:bugaoshan/providers/network_device_provider.dart';
 import 'package:bugaoshan/providers/passpoint_provider.dart';
+import 'package:bugaoshan/providers/reservation_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/providers/service_applications_provider.dart';
 import 'package:bugaoshan/providers/update_provider.dart';
@@ -32,6 +33,7 @@ import 'package:bugaoshan/services/api/forgot_password_service.dart';
 import 'package:bugaoshan/services/api/gs_api_service.dart';
 import 'package:bugaoshan/services/api/new_service_api_service.dart';
 import 'package:bugaoshan/services/api/payapp_api_service.dart';
+import 'package:bugaoshan/services/api/reservation_api_service.dart';
 import 'package:bugaoshan/services/api/service_api_service.dart';
 import 'package:bugaoshan/services/api/wfw_api_service.dart';
 import 'package:bugaoshan/services/api/zhhq_api_service.dart';
@@ -43,6 +45,7 @@ import 'package:bugaoshan/services/auth/fitness_auth.dart';
 import 'package:bugaoshan/services/auth/gs_auth.dart';
 import 'package:bugaoshan/services/auth/new_service_auth.dart';
 import 'package:bugaoshan/services/auth/payapp_auth.dart';
+import 'package:bugaoshan/services/auth/reservation_auth.dart';
 import 'package:bugaoshan/services/auth/scu_auth.dart';
 import 'package:bugaoshan/services/auth/service_auth.dart';
 import 'package:bugaoshan/services/auth/wfw_auth.dart';
@@ -187,6 +190,7 @@ void _configureAsyncDependencies() {
     await getIt.isReady<ZhhqAuth>();
     await getIt.isReady<NewServiceAuth>();
     await getIt.isReady<GsAuth>();
+    await getIt.isReady<ReservationAuth>();
     return AuthCoordinator([
       getIt<ZhjwAuth>(),
       getIt<WfwAuth>(),
@@ -197,6 +201,7 @@ void _configureAsyncDependencies() {
       getIt<ZhhqAuth>(),
       getIt<NewServiceAuth>(),
       getIt<GsAuth>(),
+      getIt<ReservationAuth>(),
     ]);
   });
 
@@ -252,6 +257,20 @@ void _configureAsyncDependencies() {
   getIt.registerSingletonAsync<GraduateTrainPlanProvider>(() async {
     await getIt.isReady<GsApiService>();
     return GraduateTrainPlanProvider(getIt<GsApiService>());
+  });
+
+  // ── 预约系统（service.scu.edu.cn/reservation，活动室预约）────────
+  getIt.registerSingletonAsync<ReservationAuth>(() async {
+    await getIt.isReady<ScuAuth>();
+    return ReservationAuth(getIt<ScuAuth>());
+  });
+  getIt.registerSingletonAsync<ReservationApiService>(() async {
+    await getIt.isReady<ReservationAuth>();
+    return ReservationApiService(getIt<ReservationAuth>());
+  });
+  getIt.registerSingletonAsync<ReservationProvider>(() async {
+    await getIt.isReady<ReservationApiService>();
+    return ReservationProvider(getIt<ReservationApiService>());
   });
 
   // ── Provider ────────────────────────────────────────────────────
