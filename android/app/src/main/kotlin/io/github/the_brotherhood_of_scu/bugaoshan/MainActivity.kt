@@ -1,7 +1,5 @@
 package io.github.the_brotherhood_of_scu.bugaoshan
 
-import android.content.Intent
-import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -9,6 +7,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.ApkInstaller
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.BatteryOptimizationHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.DynamicIconHandler
+import io.github.the_brotherhood_of_scu.bugaoshan.channels.FdroidInstallDetector
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.IcsImportHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.NotificationPermissionHandler
 import io.github.the_brotherhood_of_scu.bugaoshan.channels.WidgetPinHandler
@@ -25,12 +24,6 @@ private const val DOWNLOAD_CANCEL_EVENT_CHANNEL = "bugaoshan/download_cancel"
 private const val DYNAMIC_ICON_CHANNEL = "bugaoshan/dynamic_icon"
 
 /**
- * F-Droid 客户端注册的「添加软件源」scheme：官方只注册复数形式，
- * Droid-ify 等第三方单复数都有，所以两者都探。
- */
-private val FDROID_REPO_SCHEMES = listOf("fdroidrepo", "fdroidrepos")
-
-/**
  * 应用入口 Activity。仅负责 FlutterEngine 配置与各 channel 的注册分发,
  * 具体业务逻辑均委托给 [channels] / [update] / [widget] 子包中的 handler / service。
  */
@@ -40,6 +33,7 @@ class MainActivity : FlutterActivity() {
     private lateinit var dynamicIcon: DynamicIconHandler
     private lateinit var icsImport: IcsImportHandler
     private lateinit var batteryOptimization: BatteryOptimizationHandler
+    private lateinit var fdroidInstallDetector: FdroidInstallDetector
     private lateinit var apkInstaller: ApkInstaller
     private lateinit var widgetPin: WidgetPinHandler
     private lateinit var reminderChannel: ReminderChannel
@@ -54,6 +48,7 @@ class MainActivity : FlutterActivity() {
         dynamicIcon = DynamicIconHandler(this)
         icsImport = IcsImportHandler(this)
         batteryOptimization = BatteryOptimizationHandler(this)
+        fdroidInstallDetector = FdroidInstallDetector(this)
         apkInstaller = ApkInstaller(this)
         widgetPin = WidgetPinHandler(this)
 
@@ -152,18 +147,11 @@ class MainActivity : FlutterActivity() {
                 "isIgnoringBatteryOptimizations" -> {
                     result.success(batteryOptimization.isIgnoring())
                 }
-                // 安装来源是否为 F-Droid 系客户端：探测 installer 包是否注册了
-                // F-Droid 的添加仓库 scheme。探测 installer 而不是「设备上有没有
-                // F-Droid」，从 GitHub 安装的用户不受影响。
                 "isFdroidInstaller" -> {
-                    val installer = call.argument<String>("installer")
                     result.success(
-                        installer != null && FDROID_REPO_SCHEMES.any { scheme ->
-                            packageManager.queryIntentActivities(
-                                Intent(Intent.ACTION_VIEW, Uri.parse("$scheme://")),
-                                0,
-                            ).any { it.activityInfo.packageName == installer }
-                        },
+                        fdroidInstallDetector.isFdroidInstaller(
+                            call.argument<String>("installer"),
+                        ),
                     )
                 }
                 "requestNotificationPermission" -> {

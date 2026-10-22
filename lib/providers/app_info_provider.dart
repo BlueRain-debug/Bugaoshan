@@ -1,5 +1,6 @@
 import 'package:bugaoshan/utils/app_log.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWasm, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kDebugMode, kIsWasm, kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:bugaoshan/models/version_info.dart';
 import 'package:bugaoshan/providers/environment_info/native.dart';
@@ -29,6 +30,8 @@ class AppInfoProvider {
   static Future<bool> resolveFdroidInstall(String? installerStore) async {
     if (installerStore == null || installerStore.isEmpty) return false;
     if (_fdroidInstallerStores.contains(installerStore)) return true;
+    // installer 包概念只存在于 Android，其它平台的 channel 没有这个方法
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
     try {
       final probed = await kUpdateMethodChannel.invokeMethod<bool>(
         'isFdroidInstaller',
