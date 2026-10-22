@@ -11,6 +11,7 @@ import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
 import 'package:bugaoshan/widgets/common/stat_item.dart';
 import 'package:bugaoshan/widgets/common/styled_card.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:flutter/material.dart';
 
@@ -87,7 +88,7 @@ class _GraduateGradesPageState extends State<GraduateGradesPage> {
           leading: IconButton(
             icon: const Icon(Icons.close),
             tooltip: l10n.close,
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => popDialog(),
           ),
           actions: [
             if (getIt<ScuAuthProvider>().isLoggedIn &&

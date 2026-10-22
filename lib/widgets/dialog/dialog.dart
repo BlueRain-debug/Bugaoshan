@@ -209,6 +209,12 @@ Future showLoadingDialogWithErrorString({
   );
 }
 
+/// 关闭由 [popupOrNavigate] 以弹窗形式承载的页面（或任意根导航器上的弹窗）。
+///
+/// 宽屏 / 横屏下 [popupOrNavigate] 把页面放进 `Dialog` 的内层 `Navigator`，
+/// 页面内直接 `Navigator.of(context).pop()` 只会弹掉内层路由，外层
+/// `Dialog` 与遮罩仍在（#331 研究生课表导入）。这里统一 pop 根导航器，
+/// 弹窗与手机竖屏直接 push 两种打开方式都正确关闭当前页。
 void popDialog([dynamic result]) {
   if (logicRootContext.mounted) {
     Navigator.of(logicRootContext).pop(result);

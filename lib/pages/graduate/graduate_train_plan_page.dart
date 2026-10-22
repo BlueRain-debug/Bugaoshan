@@ -11,6 +11,7 @@ import 'package:bugaoshan/utils/graduate_train_plan_progress.dart';
 import 'package:bugaoshan/widgets/common/loading_widgets.dart';
 import 'package:bugaoshan/widgets/common/login_required_widget.dart';
 import 'package:bugaoshan/widgets/common/retryable_error_widget.dart';
+import 'package:bugaoshan/widgets/dialog/dialog.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:bugaoshan/utils/system_insets.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +99,7 @@ class _GraduateTrainPlanPageState extends State<GraduateTrainPlanPage> {
           leading: IconButton(
             icon: const Icon(Icons.close),
             tooltip: l10n.close,
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => popDialog(),
           ),
           actions: [
             if (getIt<ScuAuthProvider>().isLoggedIn &&
