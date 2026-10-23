@@ -1844,7 +1844,6 @@
     }
   },
   "graduateScheduleImportFailed": "Import failed, please try again",
-  "graduateScheduleImportWebUnsupported": "Recognising the page requires script injection, which browsers block across origins. Please use this feature on Android, iOS or Windows.",
   "graduateScheduleImportNoWebView": "Direct connection failed and this platform has no in-app web fallback. Check your network and retry, or import on Android, iOS or desktop.",
   "graduateScheduleImportRetryDirect": "I have signed in, retry",
   "graduateScheduleImportSessionExpired": "The graduate system session is missing or expired — sign in with SCU Unified Identity first",
@@ -1875,79 +1874,6 @@
     }
   },
   "graduateTrainPlanNoCourses": "No courses in this module",
-  "labAttendance": "Lab Attendance",
-  "labAttendanceDesc": "Record lab attendance",
-  "labAttendanceMonthDay": "Today",
-  "labAttendanceEmpty": "No attendance records this month",
-  "labAttendanceDays": "Days",
-  "labAttendanceHours": "Hours",
-  "labCheckIn": "Check in",
-  "labCheckOut": "Check out",
-  "thesisProgress": "Thesis Progress",
-  "thesisProgressDesc": "Track thesis progress",
-  "thesisProgressEmpty": "No thesis stages",
-  "thesisProgressOverview": "Thesis Overview",
-  "thesisProgressText": "{completed} / {total} stages done",
-  "@thesisProgressText": {
-    "placeholders": {
-      "completed": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "thesisStageNotStarted": "Not started",
-  "thesisStageInProgress": "In progress",
-  "thesisStageCompleted": "Done",
-  "thesisStageName": "Stage name",
-  "thesisStageNameHint": "e.g. Proposal, Mid-term, Defense",
-  "thesisStageNote": "Note",
-  "thesisStageNoPlanDate": "Set a plan date",
-  "thesisStagePlanDate": "Plan date: {date}",
-  "@thesisStagePlanDate": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "thesisStagePlan": "Plan",
-  "addThesisStage": "Add Stage",
-  "editThesisStage": "Edit Stage",
-  "mentorTasks": "Mentor Tasks",
-  "mentorTasksDesc": "View tasks from your mentor",
-  "mentorTasksEmpty": "No mentor tasks",
-  "mentorTaskPending": "Pending",
-  "mentorTaskOverdue": "Overdue",
-  "mentorTaskDueSoon": "Due soon",
-  "mentorTaskPriorityLow": "Low",
-  "mentorTaskPriorityMedium": "Medium",
-  "mentorTaskPriorityHigh": "High",
-  "mentorTaskNoDueDate": "No due date",
-  "mentorTaskDueDate": "Due: {date}",
-  "@mentorTaskDueDate": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "mentorTaskDaysText": "{days} day(s) left",
-  "@mentorTaskDaysText": {
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
-  },
-  "mentorTaskTitle": "Task title",
-  "mentorTaskNote": "Note",
-  "addMentorTask": "Add Task",
-  "editMentorTask": "Edit Task",
-  "mentorTaskLoginRequired": "Log in to view mentor tasks",
-  "graduateLoginRequired": "Please log in via the unified identity on the Profile page to use graduate features",
   "userManual": "User Manual",
   "officialWebsite": "Website",
   "showCourseWeeks": "Show Course Weeks",

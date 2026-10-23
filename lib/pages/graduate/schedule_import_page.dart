@@ -323,7 +323,7 @@ class _GraduateScheduleImportPageState
           content: Text(l10n.graduateScheduleImportDoneTo(scheduleName)),
         ),
       );
-      Navigator.of(context).pop();
+      popDialog(context: context);
     } catch (e, logStackTrace) {
       AppLog.e(_tag, '_import 失败', error: e, stackTrace: logStackTrace);
 
@@ -456,7 +456,7 @@ class _GraduateScheduleImportPageState
       leading: IconButton(
         icon: const Icon(Icons.close),
         tooltip: l10n.close,
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () => popDialog(context: context),
       ),
       actions: [
         IconButton(

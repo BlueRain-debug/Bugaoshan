@@ -30,13 +30,9 @@ const String dockIdLeave = 'leave';
 const String dockIdRepair = 'repair';
 
 // ── 研究生（gsapp）dock 项 ─────────────────────────────────────
-const String dockIdGraduateSection = 'graduate';
 const String dockIdGraduateGrades = 'graduate_grades';
 const String dockIdGraduateTrainPlan = 'graduate_train_plan';
 const String dockIdGraduateScheduleImport = 'graduate_schedule_import';
-const String dockIdLabAttendance = 'lab_attendance';
-const String dockIdThesisProgress = 'thesis_progress';
-const String dockIdMentorTasks = 'mentor_tasks';
 
 const Duration kHttpTimeout = Duration(seconds: 15);
 
@@ -53,18 +49,18 @@ const String kDefaultUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
 
-/// 研教务 SSO 入口（真实地址待抓包确认，见 TODO(gs-api)）。
+/// 研教务 SSO 入口（gsapp 域）。
+///
+/// 2026-09-20 实测该域在公网 / 校园网均不可达；当前研究生功能（课表、
+/// 成绩、培养进度）全部部署在 ehall 域，这里仅保留给 [GsAuth] 的
+/// best-effort 预热，失败不阻断 ehall 主链路。
 const String kGsSsoUrl = 'https://gsapp.scu.edu.cn/';
-
-/// 研教务 API 基址（gsapp 应用组）。
-const String kGsApiBaseUrl = 'https://gsapp.scu.edu.cn';
 
 /// 研教务在「网上办事大厅」域名下的基址。
 ///
 /// 研究生「我的课表」应用实测部署在该域名下（用户抓包确认，第三方课程表
 /// 亦从这里取数）：
 /// `https://ehall.scu.edu.cn/gsapp/sys/wdkbapp/*default/index.do#/xskcb`
-/// 与 [kGsApiBaseUrl] 是否共用同一套 cookie 尚未验证，见 TODO(gs-api)。
 const String kGsEhallBaseUrl = 'https://ehall.scu.edu.cn';
 
 /// 研究生「我的课表」页面地址（我的课表 app，路由 `#/xskcb`）。
