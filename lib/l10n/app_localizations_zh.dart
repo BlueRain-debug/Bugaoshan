@@ -2793,6 +2793,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockLabelLeave => '办事大厅';
 
   @override
+  String get dockLabelReservation => '活动室';
+
+  @override
   String get dockLabelRepair => '报修';
 
   @override
@@ -3000,6 +3003,72 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get leaveDesc => '办事大厅内可在线办理请假、报备等事项';
+
+  @override
+  String get reservationTitle => '活动室预约';
+
+  @override
+  String get reservationDesc => '查看望江研究生活动室空闲时段';
+
+  @override
+  String get reservationChooseRoom => '选择活动室';
+
+  @override
+  String get reservationAvailability => '空闲时段';
+
+  @override
+  String get reservationTimeColumn => '时段';
+
+  @override
+  String get reservationNoResources => '暂无可用活动室';
+
+  @override
+  String get reservationNoSlots => '该时间段暂无可预约时段';
+
+  @override
+  String get reservationSessionExpired => '预约系统会话未建立或已过期，请先完成统一身份认证登录';
+
+  @override
+  String get reservationPreviousWeek => '前 7 天';
+
+  @override
+  String get reservationBackToToday => '回到今天';
+
+  @override
+  String get reservationNextWeek => '后 7 天';
+
+  @override
+  String reservationRemaining(int count) {
+    return '余 $count';
+  }
+
+  @override
+  String get reservationStatusAvailable => '可预约';
+
+  @override
+  String get reservationStatusFull => '约满';
+
+  @override
+  String get reservationStatusUnavailable => '不可预约';
+
+  @override
+  String get reservationNeedsApproval => '需审批';
+
+  @override
+  String reservationDailyLimit(int count) {
+    return '每天最多 $count 段';
+  }
+
+  @override
+  String get reservationGoOfficial => '去官方页面预约';
+
+  @override
+  String get reservationGoOfficialTitle => '前往官方页面';
+
+  @override
+  String reservationGoOfficialBody(String slot) {
+    return '「$slot」可预约。正式预约需在官方页面完成（含验证码与申请表上传），是否现在前往？';
+  }
 
   @override
   String get leaveApply => '请假申请';

@@ -28,6 +28,7 @@ const String dockIdExamPlan = 'exam_plan';
 const String dockIdZysc = 'zysc';
 const String dockIdLeave = 'leave';
 const String dockIdRepair = 'repair';
+const String dockIdReservation = 'reservation';
 
 // ── 研究生（gsapp）dock 项 ─────────────────────────────────────
 const String dockIdGraduateGrades = 'graduate_grades';
@@ -129,6 +130,39 @@ const String kGsFirstClassPath = '/gsapp/sys/wdkbapp/modules/xskcb/xsjxrwcx.do';
 /// 如「免修通过」)/SFJG(是否及格)/SFYX(是否有效)/BZSM(备注)。
 const String kGsGradesEndpointPath =
     '/gsapp/sys/wdcjapp/modules/wdcj/xscjcx.do';
+
+// ── 预约系统（service.scu.edu.cn/reservation，2026-10-23 抓包定案）──────
+//
+// 独立部署的预约系统（Nuxt SPA），与办事大厅同域但**会话独立**：
+// 登录后 service.scu.edu.cn 域下持有 `reservation_uid`（办事大厅是
+// `vjuid`）。接口统一信封 `{e, m, d}`，`e == "OK"` 为成功，
+// `UN_AUTH` 表示会话未建立 / 已过期。
+
+/// 预约系统根路径（业务接口与页面都在其下）。
+const String kReservationBaseUrl = 'https://service.scu.edu.cn/reservation';
+
+/// 「望江校区研究生活动室」专题 id（#347 的入口专题）。
+const String kReservationTopicId = '37';
+
+/// 专题页面地址（兼作 SSO 的 redirect_url 与业务请求的 Referer）。
+const String kReservationSpecialPageUrl =
+    '$kReservationBaseUrl/fe/site/special/m_special'
+    '?id=$kReservationTopicId&platform_id=28';
+
+/// 预约系统 SSO 入口：`/api/login/main` 302 到 id.scu.edu.cn 的 CAS
+/// plugin，回跳 `/api/login/cas` 时下发 `reservation_uid`。
+final String kReservationSsoUrl = Uri.parse(
+  '$kReservationBaseUrl/api/login/main',
+).replace(queryParameters: {'redirect_url': kReservationSpecialPageUrl}).toString();
+
+/// 专题资源列表（`d.data[].base` 为资源定义，`time` / `appointmen_list_info`
+/// 在列表接口里恒为空，时段要单独查 calendar）。
+const String kReservationTopicResourceListPath =
+    '/api/topic/resource-list';
+
+/// 资源日历：`id`(资源) + `date`(JSON 字符串 `{start_date,end_date}`)
+/// + `collective`(0)。返回 `{time:[时段], day:[日期], data:{日期:{时段id:{status,total,num,amount}}}}`。
+const String kReservationCalendarPath = '/site/resource/calendar';
 
 const MethodChannel kUpdateMethodChannel = MethodChannel('bugaoshan/update');
 const MethodChannel kDynamicIconMethodChannel = MethodChannel(

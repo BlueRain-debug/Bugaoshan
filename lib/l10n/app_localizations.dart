@@ -5371,6 +5371,12 @@ abstract class AppLocalizations {
   /// **'Service Hall'**
   String get dockLabelLeave;
 
+  /// Short dock label for the activity room reservation entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Rooms'**
+  String get dockLabelReservation;
+
   /// Short dock label for the online repair entry.
   ///
   /// In en, this message translates to:
@@ -5784,6 +5790,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Handle leave requests, check-ins and more in the service hall'**
   String get leaveDesc;
+
+  /// Title of the Wangjiang activity room reservation page.
+  ///
+  /// In en, this message translates to:
+  /// **'Room Reservation'**
+  String get reservationTitle;
+
+  /// Description shown on the campus entry card for room reservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Check free slots of Wangjiang activity rooms'**
+  String get reservationDesc;
+
+  /// Heading of the room picker section.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a room'**
+  String get reservationChooseRoom;
+
+  /// Heading of the availability table.
+  ///
+  /// In en, this message translates to:
+  /// **'Free slots'**
+  String get reservationAvailability;
+
+  /// First column header of the availability table.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get reservationTimeColumn;
+
+  /// Empty state when the topic has no resources.
+  ///
+  /// In en, this message translates to:
+  /// **'No rooms available'**
+  String get reservationNoResources;
+
+  /// Empty state when the calendar returns no slots.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookable slots in this range'**
+  String get reservationNoSlots;
+
+  /// Shown when the reservation session is invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The reservation session is missing or expired. Please sign in with the unified identity first.'**
+  String get reservationSessionExpired;
+
+  /// Tooltip of the previous range button.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous 7 days'**
+  String get reservationPreviousWeek;
+
+  /// Resets the availability range back to today.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to today'**
+  String get reservationBackToToday;
+
+  /// Tooltip of the next range button.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 7 days'**
+  String get reservationNextWeek;
+
+  /// Remaining capacity shown on a bookable slot.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String reservationRemaining(int count);
+
+  /// Legend: bookable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get reservationStatusAvailable;
+
+  /// Legend: fully booked.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get reservationStatusFull;
+
+  /// Legend: not open / expired / disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get reservationStatusUnavailable;
+
+  /// Chip on the resource info card.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval required'**
+  String get reservationNeedsApproval;
+
+  /// Chip showing the daily slot limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {count} slots per day'**
+  String reservationDailyLimit(int count);
+
+  /// Button opening the official reservation page.
+  ///
+  /// In en, this message translates to:
+  /// **'Book on the official page'**
+  String get reservationGoOfficial;
+
+  /// Title of the dialog shown after tapping a bookable slot.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to the official page'**
+  String get reservationGoOfficialTitle;
+
+  /// Body of the dialog, {slot} is the date and time range.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{slot}\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?'**
+  String reservationGoOfficialBody(String slot);
 
   /// Tab label for the leave application form.
   ///

@@ -1334,6 +1334,11 @@
     "description": "办事大厅入口的短 dock 标签。",
     "type": "text"
   },
+  "dockLabelReservation": "活动室",
+  "@dockLabelReservation": {
+    "description": "望江研究生活动室预约入口的短 dock 标签。",
+    "type": "text"
+  },
   "dockLabelRepair": "报修",
   "@dockLabelRepair": {
     "description": "在线报修入口的短 dock 标签。",
@@ -1684,6 +1689,118 @@
   "@leaveDesc": {
     "description": "校园入口卡片上显示的办事大厅功能描述。",
     "type": "text"
+  },
+  "reservationTitle": "活动室预约",
+  "@reservationTitle": {
+    "description": "望江校区研究生活动室预约页标题。",
+    "type": "text"
+  },
+  "reservationDesc": "查看望江研究生活动室空闲时段",
+  "@reservationDesc": {
+    "description": "校园入口卡片上显示的活动室预约功能描述。",
+    "type": "text"
+  },
+  "reservationChooseRoom": "选择活动室",
+  "@reservationChooseRoom": {
+    "description": "活动室选择区标题。",
+    "type": "text"
+  },
+  "reservationAvailability": "空闲时段",
+  "@reservationAvailability": {
+    "description": "空闲时段表格标题。",
+    "type": "text"
+  },
+  "reservationTimeColumn": "时段",
+  "@reservationTimeColumn": {
+    "description": "空闲时段表格第一列表头。",
+    "type": "text"
+  },
+  "reservationNoResources": "暂无可用活动室",
+  "@reservationNoResources": {
+    "description": "专题下没有资源时的空态文案。",
+    "type": "text"
+  },
+  "reservationNoSlots": "该时间段暂无可预约时段",
+  "@reservationNoSlots": {
+    "description": "日历返回空时段时的空态文案。",
+    "type": "text"
+  },
+  "reservationSessionExpired": "预约系统会话未建立或已过期，请先完成统一身份认证登录",
+  "@reservationSessionExpired": {
+    "description": "预约系统会话失效时的提示。",
+    "type": "text"
+  },
+  "reservationPreviousWeek": "前 7 天",
+  "@reservationPreviousWeek": {
+    "description": "空闲时段向前翻页按钮提示。",
+    "type": "text"
+  },
+  "reservationBackToToday": "回到今天",
+  "@reservationBackToToday": {
+    "description": "把空闲时段区间重置回今天。",
+    "type": "text"
+  },
+  "reservationNextWeek": "后 7 天",
+  "@reservationNextWeek": {
+    "description": "空闲时段向后翻页按钮提示。",
+    "type": "text"
+  },
+  "reservationRemaining": "余 {count}",
+  "@reservationRemaining": {
+    "description": "可预约时段显示的剩余名额。",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reservationStatusAvailable": "可预约",
+  "@reservationStatusAvailable": {
+    "description": "时段状态图例：可预约。",
+    "type": "text"
+  },
+  "reservationStatusFull": "约满",
+  "@reservationStatusFull": {
+    "description": "时段状态图例：约满。",
+    "type": "text"
+  },
+  "reservationStatusUnavailable": "不可预约",
+  "@reservationStatusUnavailable": {
+    "description": "时段状态图例：未开放 / 已过期 / 已禁用。",
+    "type": "text"
+  },
+  "reservationNeedsApproval": "需审批",
+  "@reservationNeedsApproval": {
+    "description": "资源信息卡上的标签：需要审批。",
+    "type": "text"
+  },
+  "reservationDailyLimit": "每天最多 {count} 段",
+  "@reservationDailyLimit": {
+    "description": "资源信息卡上的标签：每天最多可预约时段数。",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reservationGoOfficial": "去官方页面预约",
+  "@reservationGoOfficial": {
+    "description": "跳转到官方预约页面的按钮文案。",
+    "type": "text"
+  },
+  "reservationGoOfficialTitle": "前往官方页面",
+  "@reservationGoOfficialTitle": {
+    "description": "点击可预约时段后弹窗的标题。",
+    "type": "text"
+  },
+  "reservationGoOfficialBody": "「{slot}」可预约。正式预约需在官方页面完成（含验证码与申请表上传），是否现在前往？",
+  "@reservationGoOfficialBody": {
+    "description": "点击可预约时段后弹窗的正文，{slot} 为日期与时段。",
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
   },
   "leaveApply": "请假申请",
   "@leaveApply": {
