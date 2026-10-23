@@ -88,7 +88,7 @@ class _GraduateGradesPageState extends State<GraduateGradesPage> {
           leading: IconButton(
             icon: const Icon(Icons.close),
             tooltip: l10n.close,
-            onPressed: () => popDialog(),
+            onPressed: () => popDialog(context: context),
           ),
           actions: [
             if (getIt<ScuAuthProvider>().isLoggedIn &&

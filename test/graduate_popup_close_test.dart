@@ -144,6 +144,70 @@ void main() {
     expect(find.byType(GraduateGradesPage), findsNothing);
     expect(find.text('open'), findsOneWidget);
   });
+
+  testWidgets('弹窗内还压着上一页时：只退出当前页，保留弹窗与下层页面', (tester) async {
+    // 复现场景：课表页的导入方式 sheet 打开 ImportSchedulePage（占住弹窗
+    // 初始路由），再从中进入研究生导入页。此时关闭研究生页应回到
+    // ImportSchedulePage，而不是把整个 Dialog 弹掉、连它的状态一起丢。
+    getIt.registerSingleton<GraduateGradesProvider>(
+      GraduateGradesProvider(_EmptyGradesApi()),
+    );
+    getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => popupOrNavigate(
+                  context,
+                  Builder(
+                    builder: (inner) => Scaffold(
+                      body: Center(
+                        child: TextButton(
+                          onPressed: () => popupOrNavigate(
+                            inner,
+                            const GraduateGradesPage(),
+                          ),
+                          child: const Text('open-graduate'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsOneWidget);
+
+    await tester.tap(find.text('open-graduate'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GraduateGradesPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+
+    // 只退回弹窗内的上一层，Dialog 仍在。
+    expect(find.byType(GraduateGradesPage), findsNothing);
+    expect(find.text('open-graduate'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
+  });
 }
 
 // ── 假实现（不发网络请求）──────────────────────────────────────────────
