@@ -5845,6 +5845,12 @@ abstract class AppLocalizations {
   /// **'Previous 7 days'**
   String get reservationPreviousWeek;
 
+  /// Resets the availability range back to today.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to today'**
+  String get reservationBackToToday;
+
   /// Tooltip of the next range button.
   ///
   /// In en, this message translates to:

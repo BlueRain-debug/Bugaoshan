@@ -1811,6 +1811,11 @@
     "description": "Tooltip of the previous range button.",
     "type": "text"
   },
+  "reservationBackToToday": "Back to today",
+  "@reservationBackToToday": {
+    "description": "Resets the availability range back to today.",
+    "type": "text"
+  },
   "reservationNextWeek": "Next 7 days",
   "@reservationNextWeek": {
     "description": "Tooltip of the next range button.",

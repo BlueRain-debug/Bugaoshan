@@ -190,7 +190,8 @@ void _configureAsyncDependencies() {
     await getIt.isReady<ZhhqAuth>();
     await getIt.isReady<NewServiceAuth>();
     await getIt.isReady<GsAuth>();
-    await getIt.isReady<ReservationAuth>();
+    // 预约系统不参与登录后预热：本科生也用不到它，冷启动多打一次只是浪费。
+    // 页面首次进入时由 ReservationProvider 的 `ensureLoaded` 触发懒加载。
     return AuthCoordinator([
       getIt<ZhjwAuth>(),
       getIt<WfwAuth>(),
@@ -201,7 +202,6 @@ void _configureAsyncDependencies() {
       getIt<ZhhqAuth>(),
       getIt<NewServiceAuth>(),
       getIt<GsAuth>(),
-      getIt<ReservationAuth>(),
     ]);
   });
 
@@ -540,6 +540,11 @@ void _configureAsyncDependencies() {
         }
         if (getIt.isRegistered<GraduateTrainPlanProvider>()) {
           getIt<GraduateTrainPlanProvider>().clear();
+        }
+        // 预约系统是独立的 reservation_uid 会话，换号后必须丢弃上一个账号
+        // 的活动室与时段缓存，否则会继续展示过期数据。
+        if (getIt.isRegistered<ReservationProvider>()) {
+          getIt<ReservationProvider>().clear();
         }
         if (getIt.isRegistered<ServiceApplicationsProvider>()) {
           getIt<ServiceApplicationsProvider>().clear();

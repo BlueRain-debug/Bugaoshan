@@ -111,20 +111,36 @@ class ReservationProvider extends ChangeNotifier {
   }
 
   /// 日历区间前移 / 后移 [visibleDays] 天。
+  ///
+  /// 不允许翻到「今天」之前：服务端对过去日期只会返回「已过期」，
+  /// 翻过去是纯噪音，还会让「回到今天」失去意义。
   Future<void> shiftRange(int days) async {
     final resourceId = _selectedResourceId;
     if (resourceId == null) return;
-    _rangeStart = _rangeStart.add(Duration(days: days));
+
+    final today = _dateOnly(DateTime.now());
+    final next = _rangeStart.add(Duration(days: days));
+    if (next.isBefore(today)) {
+      if (_rangeStart.isAtSameMomentAs(today)) return;
+      _rangeStart = today;
+    } else {
+      _rangeStart = next;
+    }
     _calendar = null;
     notifyListeners();
     await _loadCalendar(resourceId, generation: ++_generation);
   }
 
+  /// 区间是否已经在「今天」这一屏（用于禁用「回到今天」按钮）。
+  bool get isAtTodayRange => _rangeStart.isAtSameMomentAs(_dateOnly(DateTime.now()));
+
   /// 回到以今天为起点的区间。
   Future<void> resetRange() async {
     final resourceId = _selectedResourceId;
     if (resourceId == null) return;
-    _rangeStart = _dateOnly(DateTime.now());
+    final today = _dateOnly(DateTime.now());
+    if (_rangeStart.isAtSameMomentAs(today)) return;
+    _rangeStart = today;
     _calendar = null;
     notifyListeners();
     await _loadCalendar(resourceId, generation: ++_generation);

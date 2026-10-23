@@ -42,7 +42,6 @@ void main() {
       expect(resources, hasLength(2));
       expect(resources.first.id, '493');
       expect(resources.first.name, '党建活动室');
-      expect(resources.first.attributeValue('容量/人数'), '28');
       expect(resources.last.id, '490');
     });
 
@@ -235,12 +234,8 @@ void main() {
 
       expect(resource.id, '493');
       expect(resource.name, '党建活动室');
-      expect(resource.attributeValue('容量/人数'), '28');
-      expect(resource.attributeValue('校区'), '望江校区');
-      expect(resource.attributeValue('不存在'), isNull);
       expect(resource.needsApproval, isTrue);
       expect(resource.maxPeriodsPerDay, 2);
-      expect(resource.bookable, isTrue);
     });
 
     test('无 approval / 无 rule 时安全降级', () {
@@ -276,7 +271,8 @@ void main() {
         'config': {'book': true},
       })!;
 
-      expect(resource.attributeValue('分区'), '学术交流研讨区');
+      expect(resource.attributes.single.name, '分区');
+      expect(resource.attributes.single.value, '学术交流研讨区');
     });
 
     test('缺 id 返回 null', () {

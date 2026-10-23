@@ -168,7 +168,6 @@ class _FakeReservationApi implements ReservationApi {
             ],
             needsApproval: true,
             maxPeriodsPerDay: 2,
-            bookable: true,
           ),
           const ReservationResource(
             id: '490',
@@ -176,19 +175,10 @@ class _FakeReservationApi implements ReservationApi {
             attributes: [],
             needsApproval: true,
             maxPeriodsPerDay: 2,
-            bookable: true,
           ),
         ];
   }
 
-  @override
-  Future<ReservationResource?> fetchResourceDetail(String resourceId) async {
-    final list = await fetchResources();
-    for (final resource in list) {
-      if (resource.id == resourceId) return resource;
-    }
-    return null;
-  }
 
   @override
   Future<ReservationCalendar> fetchCalendar({

@@ -250,11 +250,20 @@ class _ReservationPageState extends State<ReservationPage> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
+            // 翻走之后给一条回到今天的捷径；已经在今天这一屏时禁用。
+            TextButton(
+              onPressed: _provider.isAtTodayRange
+                  ? null
+                  : () => _provider.resetRange(),
+              child: Text(l10n.reservationBackToToday),
+            ),
             IconButton(
               tooltip: l10n.reservationPreviousWeek,
-              onPressed: () => _provider.shiftRange(
-                -ReservationProvider.visibleDays,
-              ),
+              onPressed: _provider.isAtTodayRange
+                  ? null
+                  : () => _provider.shiftRange(
+                      -ReservationProvider.visibleDays,
+                    ),
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
@@ -413,21 +422,26 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-  void _onSlotTap(
+  Future<void> _onSlotTap(
     String day,
     ReservationTimeSlot slot,
     ReservationCalendar calendar,
-  ) {
+  ) async {
     final state = calendar.stateOf(day, slot.id);
     if (!state.bookable) return;
+
+    final l10n = AppLocalizations.of(context)!;
     // 只读页面：可预约时引导去官方页面完成提交（含验证码与申请表上传）。
-    showInfoDialog(
-      title: AppLocalizations.of(context)!.reservationGoOfficialTitle,
-      content: AppLocalizations.of(context)!.reservationGoOfficialBody(
-        '${_dayLabel(day)} ${slot.label}',
-      ),
-      button: AppLocalizations.of(context)!.reservationGoOfficial,
-    ).then((_) => _openOfficialPage());
+    //
+    // 用 `showYesNoDialog` 而不是 `showInfoDialog`：后者只有一个按钮，且
+    // `barrierDismissible: true` 时点遮罩同样会完成 future —— 用户只是想把
+    // 弹窗关掉，却会被直接拉起浏览器。这里必须拿到明确的「确认」意图。
+    final confirmed = await showYesNoDialog(
+      title: l10n.reservationGoOfficialTitle,
+      content: l10n.reservationGoOfficialBody('${_dayLabel(day)} ${slot.label}'),
+    );
+    if (confirmed != true || !mounted) return;
+    await _openOfficialPage();
   }
 
   Widget _buildLegend(AppLocalizations l10n) {

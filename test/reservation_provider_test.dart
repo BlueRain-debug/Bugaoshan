@@ -66,6 +66,53 @@ void main() {
       expect(api.calendarCalls, 3);
     });
 
+    test('shiftRange：不允许翻到今天之前', () async {
+      final api = _FakeReservationApi(resources: [_resource('493', '党建活动室')]);
+      final provider = ReservationProvider(api);
+      await provider.refresh();
+      final today = provider.rangeStart;
+
+      await provider.shiftRange(-7);
+
+      expect(provider.rangeStart, today);
+      // 已经在今天这一屏，无需重复请求。
+      expect(api.calendarCalls, 1);
+      expect(provider.isAtTodayRange, isTrue);
+    });
+
+    test('shiftRange：从下一屏往回翻会夹到今天而不是更早', () async {
+      final api = _FakeReservationApi(resources: [_resource('493', '党建活动室')]);
+      final provider = ReservationProvider(api);
+      await provider.refresh();
+      final today = provider.rangeStart;
+
+      await provider.shiftRange(7);
+      expect(provider.isAtTodayRange, isFalse);
+
+      await provider.shiftRange(-7);
+      expect(provider.rangeStart, today);
+      expect(provider.isAtTodayRange, isTrue);
+    });
+
+    test('resetRange：翻走后可回到今天，已在今天时不重复请求', () async {
+      final api = _FakeReservationApi(resources: [_resource('493', '党建活动室')]);
+      final provider = ReservationProvider(api);
+      await provider.refresh();
+      final today = provider.rangeStart;
+
+      await provider.resetRange();
+      expect(provider.rangeStart, today);
+      expect(api.calendarCalls, 1);
+
+      await provider.shiftRange(14);
+      expect(provider.isAtTodayRange, isFalse);
+
+      await provider.resetRange();
+      expect(provider.rangeStart, today);
+      expect(provider.isAtTodayRange, isTrue);
+      expect(api.calendarCalls, 3);
+    });
+
     test('资源列表为空：loaded 且不查日历', () async {
       final api = _FakeReservationApi(resources: const []);
       final provider = ReservationProvider(api);
@@ -143,7 +190,6 @@ ReservationResource _resource(String id, String name) => ReservationResource(
   attributes: const [],
   needsApproval: true,
   maxPeriodsPerDay: 2,
-  bookable: true,
 );
 
 /// 可编排的假 API：记录调用参数，按需抛错。
@@ -170,13 +216,6 @@ class _FakeReservationApi implements ReservationApi {
     return resources;
   }
 
-  @override
-  Future<ReservationResource?> fetchResourceDetail(String resourceId) async {
-    for (final resource in resources) {
-      if (resource.id == resourceId) return resource;
-    }
-    return null;
-  }
 
   @override
   Future<ReservationCalendar> fetchCalendar({

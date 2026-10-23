@@ -3134,6 +3134,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reservationPreviousWeek => 'Previous 7 days';
 
   @override
+  String get reservationBackToToday => 'Back to today';
+
+  @override
   String get reservationNextWeek => 'Next 7 days';
 
   @override

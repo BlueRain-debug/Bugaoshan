@@ -245,7 +245,6 @@ class ReservationResource {
     required this.attributes,
     required this.needsApproval,
     required this.maxPeriodsPerDay,
-    required this.bookable,
   });
 
   final String id;
@@ -259,17 +258,6 @@ class ReservationResource {
 
   /// 每天最多可预约时段数（`ResourceUseDayTimesRule.times`）；0 表示未限制。
   final int maxPeriodsPerDay;
-
-  /// `config.book` 是否允许预约。
-  final bool bookable;
-
-  /// 取指定属性名的展示值。
-  String? attributeValue(String name) {
-    for (final attribute in attributes) {
-      if (attribute.name == name) return attribute.value;
-    }
-    return null;
-  }
 
   static ReservationResource? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -304,7 +292,6 @@ class ReservationResource {
       attributes: attributes,
       needsApproval: configMap['approval'] is Map,
       maxPeriodsPerDay: maxPeriods,
-      bookable: safeBool(configMap['book'], fallback: true),
     );
   }
 }

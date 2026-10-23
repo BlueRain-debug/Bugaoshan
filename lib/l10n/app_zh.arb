@@ -1735,6 +1735,11 @@
     "description": "空闲时段向前翻页按钮提示。",
     "type": "text"
   },
+  "reservationBackToToday": "回到今天",
+  "@reservationBackToToday": {
+    "description": "把空闲时段区间重置回今天。",
+    "type": "text"
+  },
   "reservationNextWeek": "后 7 天",
   "@reservationNextWeek": {
     "description": "空闲时段向后翻页按钮提示。",

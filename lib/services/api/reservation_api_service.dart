@@ -13,9 +13,6 @@ abstract interface class ReservationApi {
   /// 专题下的资源（活动室）列表。
   Future<List<ReservationResource>> fetchResources();
 
-  /// 单个资源详情（比列表多 `exclusive` 等字段，这里只取展示所需）。
-  Future<ReservationResource?> fetchResourceDetail(String resourceId);
-
   /// 资源在 [startDate]..[endDate]（含端点）区间的日历。
   Future<ReservationCalendar> fetchCalendar({
     required String resourceId,
@@ -50,18 +47,6 @@ class ReservationApiService implements ReservationApi {
       );
       // 抓包结构：`d = {data: [ {base: {...}} ], resources: [], total, ... }`。
       return reservationResourcesFromJson(json);
-    });
-  }
-
-  @override
-  Future<ReservationResource?> fetchResourceDetail(String resourceId) {
-    return _request((client) async {
-      final json = await _getJson(
-        client,
-        kReservationResourceDetailPath,
-        query: {'id': resourceId},
-      );
-      return ReservationResource.fromJson(json);
     });
   }
 
