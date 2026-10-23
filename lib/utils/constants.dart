@@ -164,9 +164,6 @@ final String kReservationSsoUrl = Uri.parse(
 const String kReservationTopicResourceListPath =
     '/api/topic/resource-list';
 
-/// 单个资源详情（含 config：审批、规则、日历设置）。
-const String kReservationResourceDetailPath = '/site/resource/detail';
-
 /// 资源日历：`id`(资源) + `date`(JSON 字符串 `{start_date,end_date}`)
 /// + `collective`(0)。返回 `{time:[时段], day:[日期], data:{日期:{时段id:{status,total,num,amount}}}}`。
 const String kReservationCalendarPath = '/site/resource/calendar';

@@ -38,6 +38,10 @@ import 'package:bugaoshan/utils/constants.dart';
   dockIdExamPlan => (normal: 'doc.text', selected: 'doc.text.fill'),
   dockIdZysc => (normal: 'heart', selected: 'heart.fill'),
   dockIdLeave => (normal: 'checklist', selected: 'checklist'),
+  dockIdReservation => (
+    normal: 'door.left.hand.closed',
+    selected: 'door.left.hand.open',
+  ),
   dockIdRepair => (
     normal: 'wrench.and.screwdriver',
     selected: 'wrench.and.screwdriver.fill',

@@ -113,6 +113,23 @@ void main() {
       expect(api.calendarCalls, 3);
     });
 
+    test('ensureRangeNotPast：区间已在今天或之后时不动', () async {
+      final api = _FakeReservationApi(resources: [_resource('493', '党建活动室')]);
+      final provider = ReservationProvider(api);
+      await provider.refresh();
+      final today = provider.rangeStart;
+
+      await provider.ensureRangeNotPast();
+      expect(provider.rangeStart, today);
+      expect(api.calendarCalls, 1);
+
+      await provider.shiftRange(7);
+      final shifted = provider.rangeStart;
+      await provider.ensureRangeNotPast();
+      expect(provider.rangeStart, shifted);
+      expect(api.calendarCalls, 2);
+    });
+
     test('资源列表为空：loaded 且不查日历', () async {
       final api = _FakeReservationApi(resources: const []);
       final provider = ReservationProvider(api);

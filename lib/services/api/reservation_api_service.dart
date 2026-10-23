@@ -100,8 +100,11 @@ class ReservationApiService implements ReservationApi {
         statusCode: response.statusCode,
       );
     }
-    if (response.body.isEmpty) {
-      throw const UnauthenticatedException('预约系统返回了空响应');
+
+    // 空 body 不直接判成未登录：网关偶发剥 body 时会白白触发一次重认证。
+    // 先按「无数据」处理，只有带登录页特征或业务码明确 UN_AUTH 才转认证异常。
+    if (response.body.trim().isEmpty) {
+      throw ServiceException('预约系统返回了空响应');
     }
 
     final Object? decoded;

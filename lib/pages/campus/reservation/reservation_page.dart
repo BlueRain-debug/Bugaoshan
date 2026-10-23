@@ -31,7 +31,8 @@ class ReservationPage extends StatefulWidget {
   State<ReservationPage> createState() => _ReservationPageState();
 }
 
-class _ReservationPageState extends State<ReservationPage> {
+class _ReservationPageState extends State<ReservationPage>
+    with WidgetsBindingObserver {
   static const String _tag = 'ReservationPage';
 
   late final ReservationProvider _provider;
@@ -41,6 +42,7 @@ class _ReservationPageState extends State<ReservationPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _provider = getIt<ReservationProvider>();
     _auth = getIt<ScuAuthProvider>();
     _auth.addListener(_onAuthChanged);
@@ -51,8 +53,17 @@ class _ReservationPageState extends State<ReservationPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _auth.removeListener(_onAuthChanged);
     super.dispose();
+  }
+
+  /// 页面跨夜挂着再回到前台时，把区间夹回今天，避免继续展示昨天的日历。
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _provider.ensureRangeNotPast();
+    }
   }
 
   void _onAuthChanged() {
@@ -445,20 +456,21 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   Widget _buildLegend(AppLocalizations l10n) {
+    final scheme = Theme.of(context).colorScheme;
     return Wrap(
       spacing: AppShapes.large,
       runSpacing: AppShapes.small,
       children: [
         _LegendDot(
-          color: Theme.of(context).colorScheme.primary,
+          color: _slotStatusColor(scheme, ReservationSlotStatus.available),
           label: l10n.reservationStatusAvailable,
         ),
         _LegendDot(
-          color: Theme.of(context).colorScheme.outline,
+          color: _slotStatusColor(scheme, ReservationSlotStatus.full),
           label: l10n.reservationStatusFull,
         ),
         _LegendDot(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: _slotStatusColor(scheme, ReservationSlotStatus.notOpen),
           label: l10n.reservationStatusUnavailable,
         ),
       ],
@@ -495,6 +507,17 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 }
 
+/// 时段状态 → 展示色。图例与格子共用同一套取色，避免「图例一个色、
+/// 格子另一个色」对不上号。
+Color _slotStatusColor(ColorScheme scheme, ReservationSlotStatus status) =>
+    switch (status) {
+      ReservationSlotStatus.available => scheme.primary,
+      ReservationSlotStatus.full => scheme.error,
+      ReservationSlotStatus.notOpen ||
+      ReservationSlotStatus.expired ||
+      ReservationSlotStatus.disabled => scheme.onSurfaceVariant,
+    };
+
 /// 单元格：可约显示剩余数，约满显示「满」，其余显示「—」。
 class _SlotCell extends StatelessWidget {
   const _SlotCell({required this.state, required this.onTap});
@@ -518,7 +541,10 @@ class _SlotCell extends StatelessWidget {
           ),
           child: Text(
             l10n.reservationRemaining(state.remaining),
-            style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: _slotStatusColor(scheme, ReservationSlotStatus.available),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       );
@@ -538,7 +564,7 @@ class _SlotCell extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: scheme.onSurfaceVariant),
+        style: TextStyle(color: _slotStatusColor(scheme, state.status)),
       ),
     );
   }

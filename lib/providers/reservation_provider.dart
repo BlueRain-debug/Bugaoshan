@@ -132,7 +132,24 @@ class ReservationProvider extends ChangeNotifier {
   }
 
   /// 区间是否已经在「今天」这一屏（用于禁用「回到今天」按钮）。
+  ///
+  /// 每次读取都重新取当天日期：页面跨过午夜后，原来的「今天」会变成
+  /// 昨天，这里会返回 false，「回到今天」随之可用。
   bool get isAtTodayRange => _rangeStart.isAtSameMomentAs(_dateOnly(DateTime.now()));
+
+  /// 页面回到前台时调用：若区间起点已早于今天（典型场景是页面跨夜挂着），
+  /// 把它夹回今天并重新拉取，避免继续展示昨天的日历。
+  Future<void> ensureRangeNotPast() async {
+    final resourceId = _selectedResourceId;
+    if (resourceId == null) return;
+    final today = _dateOnly(DateTime.now());
+    if (!_rangeStart.isBefore(today)) return;
+
+    _rangeStart = today;
+    _calendar = null;
+    notifyListeners();
+    await _loadCalendar(resourceId, generation: ++_generation);
+  }
 
   /// 回到以今天为起点的区间。
   Future<void> resetRange() async {
