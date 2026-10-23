@@ -10,6 +10,7 @@ import 'package:bugaoshan/providers/graduate_grades_provider.dart';
 import 'package:bugaoshan/providers/graduate_train_plan_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/api/gs_api_service.dart';
+import 'package:bugaoshan/services/auth/scu_auth.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/widgets/route/router_utils.dart';
 import 'package:flutter/material.dart';
@@ -174,10 +175,65 @@ class _FailingScheduleApi implements GsApiService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// 显式实现 [ScuAuthProvider] 的全部成员。
+///
+/// 刻意不用 `noSuchMethod` 兜底：页面将来多读一个成员时，这里会编译失败，
+/// 而不是等到运行时才抛 `NoSuchMethodError`。
 class _LoggedInAuth extends ChangeNotifier implements ScuAuthProvider {
   @override
   bool get isLoggedIn => true;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  bool get isAutoLoggingIn => false;
+
+  @override
+  bool get isExpired => false;
+
+  @override
+  String? get accessToken => 'test-token';
+
+  @override
+  String? get userRealname => '测试用户';
+
+  @override
+  String? get userNumber => '202600000';
+
+  @override
+  void setUserInfo(String? realname, String? number) {}
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> login({
+    required String username,
+    required String password,
+    required String captchaCode,
+    required String captchaText,
+  }) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<CaptchaResult> fetchCaptcha() async =>
+      const CaptchaResult(code: '', captchaBase64: '');
+
+  @override
+  Future<Map<String, String>?> getSavedCredentials() async => null;
+
+  @override
+  Future<void> saveCredentials(String username, String password) async {}
+
+  @override
+  Future<void> clearCredentials() async {}
+
+  @override
+  Future<bool> isAutoLoginEnabled() async => false;
+
+  @override
+  Future<void> setAutoLogin(bool enabled) async {}
+
+  @override
+  Future<bool> autoLogin() async => false;
 }

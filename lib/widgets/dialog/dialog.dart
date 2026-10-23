@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
@@ -213,10 +213,14 @@ Future showLoadingDialogWithErrorString({
 ///
 /// 宽屏 / 横屏下 [popupOrNavigate] 把页面放进 `Dialog` 的内层 `Navigator`，
 /// 页面内直接 `Navigator.of(context).pop()` 只会弹掉内层路由，外层
-/// `Dialog` 与遮罩仍在（#331 研究生课表导入）。这里统一 pop 根导航器，
+/// `Dialog` 与遮罩仍在（#331 研究生课表导入）。这里统一操作根导航器，
 /// 弹窗与手机竖屏直接 push 两种打开方式都正确关闭当前页。
+///
+/// 走 [NavigatorState.maybePop] 而非硬 `pop`：与鼠标侧键 / 系统返回键
+/// 那条链路（`mouse_back_handler.dart`）保持同一套语义，尊重页面
+/// `PopScope(canPop: false)` 的拦截，栈底时也不会产生副作用。
 void popDialog([dynamic result]) {
   if (logicRootContext.mounted) {
-    Navigator.of(logicRootContext).pop(result);
+    Navigator.of(logicRootContext).maybePop(result);
   }
 }
