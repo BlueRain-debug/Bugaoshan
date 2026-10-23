@@ -362,74 +362,104 @@ class _ReservationPageState extends State<ReservationPage>
   ///
   /// 时段列固定在左侧，只有日期列横向滚动——否则横滑后连「几点到几点」
   /// 都被滚走，用户不知道看的是哪一行。
+  ///
+  /// 不用 `DataTable`：它在横屏 / 小高度弹窗里会被父级压扁（实测行高
+  /// 只剩 11px），`dataRowMinHeight` 也兜不住。这里用手工 Row/Column
+  /// 布局，行高由 `SizedBox` 写死，超出部分交给外层 ListView 滚动。
   Widget _buildCalendarGrid(ReservationCalendar calendar, AppLocalizations l10n) {
     final scheme = Theme.of(context).colorScheme;
     final textStyle = Theme.of(context).textTheme.bodyMedium;
+    const headingHeight = 44.0;
+    const rowHeight = 48.0;
+    const dayWidth = 72.0;
+    final gridHeight = headingHeight + calendar.slots.length * rowHeight;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 固定列：时段
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 44,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  l10n.reservationTimeColumn,
-                  style: Theme.of(context).textTheme.labelMedium,
+    return SizedBox(
+      height: gridHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 固定列：时段
+          SizedBox(
+            width: 108,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: headingHeight,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      l10n.reservationTimeColumn,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            for (final slot in calendar.slots)
-              SizedBox(
-                height: 48,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(slot.label, style: textStyle),
-                ),
-              ),
-          ],
-        ),
-        Container(
-          width: 1,
-          height: 44 + calendar.slots.length * 48,
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ),
-        // 可滚动列：日期
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columnSpacing: AppShapes.large,
-              horizontalMargin: AppShapes.small,
-              headingRowHeight: 44,
-              dataRowMinHeight: 48,
-              dataRowMaxHeight: 48,
-              columns: [
-                for (final day in calendar.days)
-                  DataColumn(label: Text(_dayLabel(day))),
-              ],
-              rows: [
                 for (final slot in calendar.slots)
-                  DataRow(
-                    cells: [
-                      for (final day in calendar.days)
-                        DataCell(
-                          _SlotCell(
-                            state: calendar.stateOf(day, slot.id),
-                            onTap: () => _onSlotTap(day, slot, calendar),
-                          ),
-                        ),
-                    ],
+                  SizedBox(
+                    height: rowHeight,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(slot.label, style: textStyle),
+                    ),
                   ),
               ],
             ),
           ),
-        ),
-      ],
+          Container(
+            width: 1,
+            height: gridHeight,
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+          // 可滚动列：日期
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: headingHeight,
+                    child: Row(
+                      children: [
+                        for (final day in calendar.days)
+                          SizedBox(
+                            width: dayWidth,
+                            child: Center(
+                              child: Text(
+                                _dayLabel(day),
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  for (final slot in calendar.slots)
+                    SizedBox(
+                      height: rowHeight,
+                      child: Row(
+                        children: [
+                          for (final day in calendar.days)
+                            SizedBox(
+                              width: dayWidth,
+                              child: Center(
+                                child: _SlotCell(
+                                  state: calendar.stateOf(day, slot.id),
+                                  onTap: () =>
+                                      _onSlotTap(day, slot, calendar),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
