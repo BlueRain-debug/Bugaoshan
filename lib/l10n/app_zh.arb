@@ -1740,6 +1740,16 @@
     "description": "把空闲时段区间重置回今天。",
     "type": "text"
   },
+  "reservationScrollLeft": "向左查看更多活动室",
+  "@reservationScrollLeft": {
+    "description": "活动室标签条左翻箭头提示。",
+    "type": "text"
+  },
+  "reservationScrollRight": "向右查看更多活动室",
+  "@reservationScrollRight": {
+    "description": "活动室标签条右翻箭头提示。",
+    "type": "text"
+  },
   "reservationNextWeek": "后 7 天",
   "@reservationNextWeek": {
     "description": "空闲时段向后翻页按钮提示。",

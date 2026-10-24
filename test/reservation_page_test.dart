@@ -1,3 +1,4 @@
+import 'package:bugaoshan/app.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/reservation/models/reservation_models.dart';
@@ -6,6 +7,7 @@ import 'package:bugaoshan/providers/reservation_provider.dart';
 import 'package:bugaoshan/providers/scu_auth_provider.dart';
 import 'package:bugaoshan/services/api/reservation_api_service.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -107,9 +109,85 @@ void main() {
     expect(api.calendarCalls, 2);
     expect(api.lastResourceId, '490');
   });
+
+  testWidgets('活动室标签条：右箭头可翻页，左箭头初始禁用', (tester) async {
+    getIt.registerSingleton<ReservationProvider>(
+      ReservationProvider(_FakeReservationApi(resources: _manyResources())),
+    );
+    getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+    _useNarrowScreen(tester);
+
+    await tester.pumpWidget(_wrap());
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ReservationPage)),
+    )!;
+
+    expect(_arrow(tester, l10n.reservationScrollLeft).onPressed, isNull);
+    expect(_arrow(tester, l10n.reservationScrollRight).onPressed, isNotNull);
+
+    await tester.tap(_arrowFinder(l10n.reservationScrollRight));
+    await tester.pumpAndSettle();
+
+    expect(_arrow(tester, l10n.reservationScrollLeft).onPressed, isNotNull);
+  });
+
+  testWidgets('桌面端鼠标拖动可滚动活动室标签条', (tester) async {
+    getIt.registerSingleton<ReservationProvider>(
+      ReservationProvider(_FakeReservationApi(resources: _manyResources())),
+    );
+    getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+    _useNarrowScreen(tester);
+
+    await tester.pumpWidget(_wrap());
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ReservationPage)),
+    )!;
+    expect(_arrow(tester, l10n.reservationScrollLeft).onPressed, isNull);
+
+    // 默认 ScrollBehavior 不含 mouse，这一拖会毫无反应；带上 AppScrollBehavior
+    // 之后应能把标签条拖出偏移。
+    final strip = find.byWidgetPredicate(
+      (widget) => widget is ListView && widget.scrollDirection == Axis.horizontal,
+    );
+    await tester.drag(strip, const Offset(-220, 0), kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+
+    expect(_arrow(tester, l10n.reservationScrollLeft).onPressed, isNotNull);
+  });
 }
 
+/// 足够多的活动室，保证窄屏下标签条横向溢出。
+List<ReservationResource> _manyResources() => [
+  for (var i = 0; i < 8; i++)
+    ReservationResource(
+      id: '$i',
+      name: '活动室$i',
+      attributes: const [],
+      needsApproval: false,
+      maxPeriodsPerDay: 0,
+    ),
+];
+
+void _useNarrowScreen(WidgetTester tester) {
+  tester.view.physicalSize = const Size(420, 900);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Finder _arrowFinder(String tooltip) => find.byWidgetPredicate(
+  (widget) => widget is IconButton && widget.tooltip == tooltip,
+);
+
+IconButton _arrow(WidgetTester tester, String tooltip) =>
+    tester.widget<IconButton>(_arrowFinder(tooltip));
+
 Widget _wrap() => MaterialApp(
+  scrollBehavior: const AppScrollBehavior(),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: const ReservationPage(),

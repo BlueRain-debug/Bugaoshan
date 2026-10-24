@@ -3035,6 +3035,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reservationBackToToday => '回到今天';
 
   @override
+  String get reservationScrollLeft => '向左查看更多活动室';
+
+  @override
+  String get reservationScrollRight => '向右查看更多活动室';
+
+  @override
   String get reservationNextWeek => '后 7 天';
 
   @override
