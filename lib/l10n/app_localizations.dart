@@ -5851,6 +5851,18 @@ abstract class AppLocalizations {
   /// **'Back to today'**
   String get reservationBackToToday;
 
+  /// Tooltip of the room strip left arrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll left for more rooms'**
+  String get reservationScrollLeft;
+
+  /// Tooltip of the room strip right arrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll right for more rooms'**
+  String get reservationScrollRight;
+
   /// Tooltip of the next range button.
   ///
   /// In en, this message translates to:

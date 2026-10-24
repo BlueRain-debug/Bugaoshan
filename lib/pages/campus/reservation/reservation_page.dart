@@ -37,6 +37,11 @@ class _ReservationPageState extends State<ReservationPage>
 
   late final ReservationProvider _provider;
   late final ScuAuthProvider _auth;
+  final ScrollController _resourceScrollController = ScrollController();
+
+  /// 活动室标签条当前能否继续向左右滚动（用于箭头置灰）。
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
   bool _recoveringSession = false;
 
   @override
@@ -46,6 +51,7 @@ class _ReservationPageState extends State<ReservationPage>
     _provider = getIt<ReservationProvider>();
     _auth = getIt<ScuAuthProvider>();
     _auth.addListener(_onAuthChanged);
+    _resourceScrollController.addListener(_updateResourceScrollState);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onAuthChanged();
     });
@@ -55,7 +61,23 @@ class _ReservationPageState extends State<ReservationPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _auth.removeListener(_onAuthChanged);
+    _resourceScrollController.removeListener(_updateResourceScrollState);
+    _resourceScrollController.dispose();
     super.dispose();
+  }
+
+  /// 同步箭头可用状态。只在边界状态变化时 setState，滚动过程中不反复重建。
+  void _updateResourceScrollState() {
+    final controller = _resourceScrollController;
+    if (!controller.hasClients) return;
+    final position = controller.position;
+    final canLeft = position.pixels > position.minScrollExtent + 0.5;
+    final canRight = position.pixels < position.maxScrollExtent - 0.5;
+    if (canLeft == _canScrollLeft && canRight == _canScrollRight) return;
+    setState(() {
+      _canScrollLeft = canLeft;
+      _canScrollRight = canRight;
+    });
   }
 
   /// 页面跨夜挂着再回到前台时，把区间夹回今天，避免继续展示昨天的日历。
@@ -211,8 +233,16 @@ class _ReservationPageState extends State<ReservationPage>
     );
   }
 
-  /// 资源选择：横向滚动的胶囊。
+  /// 资源选择：横向滚动的胶囊，两侧带翻页箭头。
+  ///
+  /// 桌面端只靠滚轮或拖拽不好发现「右边还有活动室」，所以显式给左右箭头，
+  /// 并按滚动位置禁用（到头了就不再可点）。
   Widget _buildResourcePicker(AppLocalizations l10n) {
+    final controller = _resourceScrollController;
+    // 首帧拿到布局后才能判断两端是否可滚，这里补一次同步。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateResourceScrollState();
+    });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,24 +251,61 @@ class _ReservationPageState extends State<ReservationPage>
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: AppShapes.small),
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _provider.resources.length,
-            separatorBuilder: (_, _) => const SizedBox(width: AppShapes.small),
-            itemBuilder: (context, index) {
-              final resource = _provider.resources[index];
-              final selected = resource.id == _provider.selectedResourceId;
-              return ChoiceChip(
-                label: Text(resource.name),
-                selected: selected,
-                onSelected: (_) => _provider.selectResource(resource.id),
-              );
-            },
-          ),
+        Row(
+          children: [
+            _ScrollArrow(
+              icon: Icons.chevron_left,
+              tooltip: l10n.reservationScrollLeft,
+              enabled: _canScrollLeft,
+              onPressed: () => _scrollResources(-1),
+            ),
+            Expanded(
+              child: SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _provider.resources.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: AppShapes.small),
+                  itemBuilder: (context, index) {
+                    final resource = _provider.resources[index];
+                    final selected = resource.id == _provider.selectedResourceId;
+                    return ChoiceChip(
+                      label: Text(resource.name),
+                      selected: selected,
+                      onSelected: (_) => _provider.selectResource(resource.id),
+                    );
+                  },
+                ),
+              ),
+            ),
+            _ScrollArrow(
+              icon: Icons.chevron_right,
+              tooltip: l10n.reservationScrollRight,
+              enabled: _canScrollRight,
+              onPressed: () => _scrollResources(1),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  /// 按一屏宽度翻页；到达两端时箭头置灰。
+  void _scrollResources(int direction) {
+    final controller = _resourceScrollController;
+    if (!controller.hasClients) return;
+    final position = controller.position;
+    final page = position.viewportDimension * 0.8;
+    final target = (position.pixels + direction * page).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -646,6 +713,33 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
+    );
+  }
+}
+
+/// 活动室标签条两侧的翻页箭头，到达两端时置灰。
+class _ScrollArrow extends StatelessWidget {
+  const _ScrollArrow({
+    required this.icon,
+    required this.tooltip,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon),
+      tooltip: tooltip,
+      onPressed: enabled ? onPressed : null,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      padding: EdgeInsets.zero,
     );
   }
 }

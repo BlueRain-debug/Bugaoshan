@@ -1816,6 +1816,16 @@
     "description": "Resets the availability range back to today.",
     "type": "text"
   },
+  "reservationScrollLeft": "Scroll left for more rooms",
+  "@reservationScrollLeft": {
+    "description": "Tooltip of the room strip left arrow.",
+    "type": "text"
+  },
+  "reservationScrollRight": "Scroll right for more rooms",
+  "@reservationScrollRight": {
+    "description": "Tooltip of the room strip right arrow.",
+    "type": "text"
+  },
   "reservationNextWeek": "Next 7 days",
   "@reservationNextWeek": {
     "description": "Tooltip of the next range button.",

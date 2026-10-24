@@ -3137,6 +3137,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reservationBackToToday => 'Back to today';
 
   @override
+  String get reservationScrollLeft => 'Scroll left for more rooms';
+
+  @override
+  String get reservationScrollRight => 'Scroll right for more rooms';
+
+  @override
   String get reservationNextWeek => 'Next 7 days';
 
   @override
