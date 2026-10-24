@@ -163,6 +163,103 @@ class ReservationProvider extends ChangeNotifier {
     await _loadCalendar(resourceId, generation: ++_generation);
   }
 
+  /// 提交预约：为当前选中资源预约 [slots]（日期 + 时段 id），[number] 为人数。
+  ///
+  /// 成功返回结果（`needsProcess` 表示还需走审批/流程页）并刷新当前日历；
+  /// 失败抛异常：`ReservationApplyPendingException`（已有未提交预约单）、
+  /// `UnauthenticatedException`（会话失效）或 `ServiceException`（服务端
+  /// 拒绝，`message` 为服务端原文，如「请填写预约事由」）。
+  Future<ReservationLaunchResult> launchReservation({
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    final resourceId = _selectedResourceId;
+    if (resourceId == null) {
+      throw const ServiceException('请先选择活动室');
+    }
+    final result = await _api.launchReservation(
+      resourceId: resourceId,
+      slots: slots,
+      number: number,
+    );
+    // 预约已改变占用情况，刷新当前区间日历；失败由 _loadCalendar 内部
+    // 兜底，不掩盖提交成功的事实。
+    await _loadCalendar(resourceId, generation: ++_generation);
+    return result;
+  }
+
+  // ── 我的预约 ─────────────────────────────────────────────────────────────
+
+  /// 我的预约分页每页条数（与官方「我的预约」一致量级）。
+  static const int _appointmentsPageSize = 20;
+
+  /// 分页拉取的防失控上限：10 页 × 20 条，远超正常账号的量级。
+  static const int _appointmentsMaxPages = 10;
+
+  List<ReservationAppointment> _appointments = const [];
+  bool _appointmentsLoading = false;
+
+  /// 最近一次拉取失败的服务端消息；null 表示无错误。空字符串表示未知
+  /// 异常（UI 落 l10n 兜底文案）。
+  String? _appointmentsError;
+
+  List<ReservationAppointment> get appointments =>
+      List.unmodifiable(_appointments);
+
+  bool get appointmentsLoading => _appointmentsLoading;
+
+  String? get appointmentsError => _appointmentsError;
+
+  /// 拉取我的预约（type=0 全部，自动翻页拉完）。
+  ///
+  /// 失败不抛出：存入 [appointmentsError] 由 UI 展示，避免「拉取失败被
+  /// 当成没有预约记录」；成功前保留旧数据（下拉刷新失败不闪空）。
+  Future<void> loadAppointments() async {
+    _appointmentsLoading = true;
+    _appointmentsError = null;
+    notifyListeners();
+    try {
+      _appointments = await _fetchAllAppointments();
+    } on ScuException catch (e) {
+      _appointmentsError = e.message;
+    } catch (e, logStackTrace) {
+      AppLog.e(_tag, 'loadAppointments 失败', error: e, stackTrace: logStackTrace);
+      // 空串 = 未知异常，UI 走 l10n 兜底。
+      _appointmentsError = '';
+    } finally {
+      _appointmentsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<List<ReservationAppointment>> _fetchAllAppointments() async {
+    final all = <ReservationAppointment>[];
+    var page = 1;
+    while (page <= _appointmentsMaxPages) {
+      final batch = await _api.fetchAppointments(
+        page: page,
+        pageSize: _appointmentsPageSize,
+      );
+      all.addAll(batch);
+      if (batch.length < _appointmentsPageSize) break;
+      page++;
+    }
+    return all;
+  }
+
+  /// 取消一张预约单（整单的全部时段明细）。成功后刷新我的预约与当前日历。
+  Future<void> cancelAppointment(ReservationAppointment appointment) async {
+    await _api.cancelAppointment(
+      appointmentId: appointment.id,
+      detailIds: [for (final d in appointment.details) d.id],
+    );
+    final resourceId = _selectedResourceId;
+    if (resourceId != null) {
+      await _loadCalendar(resourceId, generation: ++_generation);
+    }
+    await loadAppointments();
+  }
+
   Future<void> _loadCalendar(
     String resourceId, {
     required int generation,
@@ -200,6 +297,9 @@ class ReservationProvider extends ChangeNotifier {
     _resources = const [];
     _selectedResourceId = null;
     _calendar = null;
+    _appointments = const [];
+    _appointmentsLoading = false;
+    _appointmentsError = null;
     _state = ReservationLoadState.idle;
     _errorKind = null;
     _errorMessage = null;

@@ -1,4 +1,4 @@
-﻿import 'package:bugaoshan/app.dart';
+import 'package:bugaoshan/app.dart';
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/reservation/models/reservation_models.dart';
@@ -11,15 +11,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Reproduce the real-Windows-device symptom:
-/// inside the reservation popup, the body (strip / chips / arrows) receives
-/// no pointer events, while the AppBar close button works.
-///
-/// Bisect with 4 variants:
-/// 1. direct-home: page as home (same as existing tests) at real dialog size
-/// 2. popup-chain: full popupOrNavigate path (showDialog + Dialog + Fragment nested Navigator)
-/// 3. dialog-no-fragment: showDialog + Dialog, no Fragment
-/// 4. dialog-fragment: showDialog + Dialog + Fragment
+/// 预约页指针交互回归：在真实桌面尺寸（2560×1440 @dpr1.5）下，验证
+/// 鼠标拖动活动室标签条、点选房间芯片、点击翻页箭头在四条承载路径上
+/// 全部可用——直接 home、完整 popupOrNavigate 链路（宽屏弹窗的正式入口）、
+/// showDialog 不套 Fragment、showDialog + Fragment 嵌套 Navigator。
 void main() {
   setUp(() async {
     await getIt.reset();
@@ -48,13 +43,13 @@ void main() {
         ),
       );
 
-  /// Drag + chip tap + right-arrow tap; returns the first failure or null.
+  /// 拖拽 + 芯片点选 + 右箭头点击；返回首个失败项（全过返回 null）。
   Future<String?> probePointerPaths(WidgetTester tester) async {
     final l10n = AppLocalizations.of(
       tester.element(find.byType(ReservationPage)),
     )!;
 
-    // 1) mouse drag on the strip
+    // 1) 鼠标拖动标签条
     await tester.drag(
       stripFinder(),
       const Offset(-220, 0),
@@ -64,7 +59,7 @@ void main() {
     if (arrow(tester, l10n.reservationScrollLeft).onPressed == null) {
       return 'mouse-drag: left arrow still disabled';
     }
-    // drag back to origin for a clean state
+    // 拖回起点，保持后续用例的干净状态
     await tester.drag(
       stripFinder(),
       const Offset(220, 0),
@@ -72,7 +67,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 2) tap the ChoiceChip 'Room2'
+    // 2) 点选芯片「Room2」
     final chip2 = find.widgetWithText(ChoiceChip, 'Room2');
     if (chip2.evaluate().isEmpty) return 'chip Room2 not found';
     await tester.tap(chip2);
@@ -108,7 +103,7 @@ void main() {
     getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
   }
 
-  testWidgets('1 direct-home: all pointer paths alive at desktop size',
+  testWidgets('1 direct-home：真实桌面尺寸下鼠标拖拽/芯片/箭头全部可用',
       (tester) async {
     registerFakes();
     await useRealDesktopSize(tester);
@@ -125,7 +120,8 @@ void main() {
     expect(failure, isNull, reason: failure ?? '');
   });
 
-  testWidgets('2 popup-chain: full popupOrNavigate path', (tester) async {
+  testWidgets('2 popup-chain：完整 popupOrNavigate 链路（宽屏弹窗正式入口）',
+      (tester) async {
     registerFakes();
     await useRealDesktopSize(tester);
 
@@ -147,8 +143,7 @@ void main() {
     expect(failure, isNull, reason: failure ?? '');
   });
 
-  testWidgets('3 dialog-no-fragment: showDialog without Fragment',
-      (tester) async {
+  testWidgets('3 dialog-no-fragment：showDialog 不套 Fragment', (tester) async {
     registerFakes();
     await useRealDesktopSize(tester);
 
@@ -187,7 +182,7 @@ void main() {
     expect(failure, isNull, reason: failure ?? '');
   });
 
-  testWidgets('4 dialog-fragment: showDialog + Fragment nested Navigator',
+  testWidgets('4 dialog-fragment：showDialog + Fragment 嵌套 Navigator',
       (tester) async {
     registerFakes();
     await useRealDesktopSize(tester);
@@ -257,6 +252,28 @@ List<ReservationResource> manyResources() => [
 class _FakeReservationApi implements ReservationApi {
   @override
   Future<List<ReservationResource>> fetchResources() async => manyResources();
+
+  @override
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    return const ReservationLaunchResult(needsProcess: false, processUrl: '');
+  }
+
+  @override
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  }) async => const [];
+
+  @override
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  }) async {}
 
   @override
   Future<ReservationCalendar> fetchCalendar({

@@ -7,6 +7,7 @@ import 'package:bugaoshan/services/auth/reservation_auth.dart';
 import 'package:bugaoshan/services/auth/scu_exceptions.dart';
 import 'package:bugaoshan/utils/app_log.dart';
 import 'package:bugaoshan/utils/constants.dart';
+import 'package:http/http.dart' as http;
 
 /// 预约系统的业务 API 最小契约，供 [ReservationProvider] 注入测试替身。
 abstract interface class ReservationApi {
@@ -18,6 +19,31 @@ abstract interface class ReservationApi {
     required String resourceId,
     required DateTime startDate,
     required DateTime endDate,
+  });
+
+  /// 提交预约：为 [resourceId] 预约 [slots]（日期 + 时段 id），[number] 为人数。
+  ///
+  /// 成功返回结果（`needsProcess` 表示还需走审批/流程页）；存在未提交的
+  /// 预约单时抛 [ReservationApplyPendingException]。
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  });
+
+  /// 我的预约列表：[type] 与官方 tab 一致（0 全部 / 1 待申请 / 2 审核中 /
+  /// 3 已预约 / 4 待签到），[page] 从 1 起。
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  });
+
+  /// 取消预约（传整单全部明细 id 即整单取消）。服务端拒绝（如该单已进入
+  /// 不可取消状态）时抛 [ServiceException] 带服务端原文。
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
   });
 }
 
@@ -71,6 +97,63 @@ class ReservationApiService implements ReservationApi {
     });
   }
 
+  @override
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) {
+    return _request((client) async {
+      final json = await _postJson(
+        client,
+        kReservationLaunchPath,
+        body: buildLaunchBody(
+          resourceId: resourceId,
+          slots: slots,
+          number: number,
+        ),
+      );
+      return ReservationLaunchResult.fromJson(json);
+    });
+  }
+
+  @override
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  }) {
+    return _request((client) async {
+      final json = await _getJson(
+        client,
+        kReservationAppointmentListPath,
+        query: {'p': '$page', 'type': '$type', 'pageSize': '$pageSize'},
+      );
+      final rows = json['data'];
+      if (rows is! List) return const [];
+      return [
+        for (final row in rows) ?ReservationAppointment.fromJson(row),
+      ];
+    });
+  }
+
+  @override
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  }) {
+    return _request((client) async {
+      await _postJson(
+        client,
+        kReservationCancelPath,
+        body: <String, dynamic>{
+          'appointment_id': appointmentId,
+          'appointment_detail_id': jsonEncode(detailIds),
+        },
+      );
+    });
+  }
+
   Future<T> _request<T>(Future<T> Function(CookieClient client) fn) {
     return retryOnUnauthenticated(
       _auth.getClient,
@@ -90,7 +173,30 @@ class ReservationApiService implements ReservationApi {
       queryParameters: query,
     );
     final response = await client.get(uri, headers: _headers);
+    return _decodeEnvelope(response, path);
+  }
 
+  /// POST JSON 预约接口并解包 `{e, m, d}`，成功返回 `d`。
+  Future<Map<String, dynamic>> _postJson(
+    CookieClient client,
+    String path, {
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$kReservationBaseUrl$path');
+    final response = await client.post(
+      uri,
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    return _decodeEnvelope(response, path);
+  }
+
+  /// 解包 `{e, m, d}` 信封：`UN_AUTH` 转认证异常，`APPLY` 转未提交预约单
+  /// 异常，其它非 `OK` 抛 [ServiceException] 带服务端 `m` 原文。
+  Future<Map<String, dynamic>> _decodeEnvelope(
+    http.Response response,
+    String path,
+  ) async {
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw const UnauthenticatedException('预约系统会话未建立或已过期');
     }
@@ -125,6 +231,9 @@ class ReservationApiService implements ReservationApi {
     if (code == 'UN_AUTH') {
       throw const UnauthenticatedException('预约系统会话未建立或已过期');
     }
+    if (code == 'APPLY') {
+      throw const ReservationApplyPendingException();
+    }
     if (code != 'OK') {
       final message = decoded['m']?.toString();
       throw ServiceException(
@@ -147,4 +256,32 @@ class ReservationApiService implements ReservationApi {
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+}
+
+/// 构建 `site/resource/launch` 的请求体，字段与官方前端一致（见
+/// [kReservationLaunchPath] 注释）。`data` / `captcha` 是 JSON **字符串**，
+/// 独立成顶层函数便于单测断言。
+Map<String, dynamic> buildLaunchBody({
+  required String resourceId,
+  required List<ReservationLaunchSlot> slots,
+  required int number,
+}) {
+  final data = jsonEncode([
+    {
+      'resource_id': resourceId,
+      'period': [
+        for (final slot in slots)
+          {'date': slot.date, 'period_id': slot.periodId},
+      ],
+      'number': number,
+    },
+  ]);
+  return {
+    'data': data,
+    'data_colle': '[]',
+    'code': '',
+    'number': number,
+    'collective': 0,
+    'captcha': jsonEncode({'token': '', 'pointJson': ''}),
+  };
 }

@@ -164,6 +164,27 @@ const String kReservationTopicResourceListPath =
 /// + `collective`(0)。返回 `{time:[时段], day:[日期], data:{日期:{时段id:{status,total,num,amount}}}}`。
 const String kReservationCalendarPath = '/site/resource/calendar';
 
+/// 提交预约：`POST`，body 为
+/// `{data, data_colle, code, number, collective, captcha}`，其中 `data` 是
+/// JSON **字符串**：`[{resource_id, period: [{date, period_id}], number}]`
+/// （自由时间段类资源则是 `{start_date,end_date,start_time,end_time}`，
+/// 见 2026-10-24 对官方前端 `site/resourceLaunch` 的分析）。
+/// 成功 `d = {is_relate, process_url, process_id, time}`；`e == "APPLY"`
+/// 表示存在未提交的预约单。
+const String kReservationLaunchPath = '/site/resource/launch';
+
+/// 我的预约列表：`GET`，query `{p, type, pageSize}`；`type` 与官方「我的预约」
+/// tab 一致（0 全部 / 1 待申请 / 2 审核中 / 3 已预约 / 4 待签到）。响应
+/// `d = {data: [预约单], total}`，行含 `id / resource_name / created /
+/// status / type / is_cancel / is_creater / detail`，其中 `detail` 是
+/// `日期 -> [{id, str_time}]` 的对象（可按明细部分取消）。
+const String kReservationAppointmentListPath = '/site/appointment/appointment-list';
+
+/// 取消预约：`POST`，body `{appointment_id, appointment_detail_id}`，其中
+/// `appointment_detail_id` 是**明细 id 的 JSON 字符串**（传整单全部明细
+/// 即整单取消）。服务器要求该单 `is_cancel == 1` 且当前用户是创建者。
+const String kReservationCancelPath = '/site/appointment/appointment-cancel';
+
 const MethodChannel kUpdateMethodChannel = MethodChannel('bugaoshan/update');
 const MethodChannel kDynamicIconMethodChannel = MethodChannel(
   'bugaoshan/dynamic_icon',

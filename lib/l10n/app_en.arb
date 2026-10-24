@@ -1874,19 +1874,129 @@
     "description": "Button opening the official reservation page.",
     "type": "text"
   },
-  "reservationGoOfficialTitle": "Go to the official page",
-  "@reservationGoOfficialTitle": {
-    "description": "Title of the dialog shown after tapping a bookable slot.",
+  "reservationLaunchButton": "Book selected slots",
+  "@reservationLaunchButton": {
+    "description": "Submit button on the bottom bar.",
     "type": "text"
   },
-  "reservationGoOfficialBody": "\"{slot}\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?",
-  "@reservationGoOfficialBody": {
-    "description": "Body of the dialog, {slot} is the date and time range.",
+  "reservationLaunchConfirmTitle": "Confirm booking",
+  "@reservationLaunchConfirmTitle": {
+    "description": "Title of the booking confirmation dialog.",
+    "type": "text"
+  },
+  "reservationPeopleNumber": "People",
+  "@reservationPeopleNumber": {
+    "description": "Label of the people-number stepper in the confirmation dialog.",
+    "type": "text"
+  },
+  "reservationLaunchSubmit": "Book",
+  "@reservationLaunchSubmit": {
+    "description": "Submit button in the confirmation dialog.",
+    "type": "text"
+  },
+  "reservationLaunchSuccess": "Booked successfully",
+  "@reservationLaunchSuccess": {
+    "description": "Toast shown when the booking is accepted.",
+    "type": "text"
+  },
+  "reservationLaunchProcessTitle": "Booking submitted",
+  "@reservationLaunchProcessTitle": {
+    "description": "Title of the dialog after submitting a booking that needs approval.",
+    "type": "text"
+  },
+  "reservationLaunchProcessBody": "The booking has been created. This room requires approval — please continue the application process; the booking takes effect after approval.",
+  "@reservationLaunchProcessBody": {
+    "description": "Body of the dialog after submitting a booking that needs approval.",
+    "type": "text"
+  },
+  "reservationOpenProcess": "Open application",
+  "@reservationOpenProcess": {
+    "description": "Button that opens the approval process page.",
+    "type": "text"
+  },
+  "reservationApplyPendingBody": "This account already has a pending booking. Please submit or cancel it under \"My reservations\" on the official page before making a new one.",
+  "@reservationApplyPendingBody": {
+    "description": "Dialog body when the server returns APPLY (a pending booking exists).",
+    "type": "text"
+  },
+  "reservationDailyLimitReached": "Up to {count} slots per day for this room",
+  "@reservationDailyLimitReached": {
+    "description": "Toast shown when the per-day selection limit is reached.",
     "placeholders": {
-      "slot": {
-        "type": "String"
+      "count": {
+        "type": "int"
       }
     }
+  },
+  "reservationClearSelection": "Clear selected slots",
+  "@reservationClearSelection": {
+    "description": "Tooltip of the clear-selection button.",
+    "type": "text"
+  },
+  "reservationApplyPendingTitle": "Pending booking exists",
+  "@reservationApplyPendingTitle": {
+    "description": "Dialog title when the server returns APPLY (a pending booking exists).",
+    "type": "text"
+  },
+  "reservationLaunchFailedGeneric": "Booking failed, please try again later",
+  "@reservationLaunchFailedGeneric": {
+    "description": "Fallback message when booking fails without a server reason.",
+    "type": "text"
+  },
+  "reservationMyAppointments": "My reservations",
+  "@reservationMyAppointments": {
+    "description": "AppBar button (and dialog title) opening my reservation list.",
+    "type": "text"
+  },
+  "reservationMyAppointmentsEmpty": "No reservations yet",
+  "@reservationMyAppointmentsEmpty": {
+    "description": "Empty state of my reservation list.",
+    "type": "text"
+  },
+  "reservationMyAppointmentsError": "Failed to load reservations, please retry",
+  "@reservationMyAppointmentsError": {
+    "description": "Fallback error text when loading my reservations fails without a server reason.",
+    "type": "text"
+  },
+  "reservationStatusPendingApply": "Pending application",
+  "@reservationStatusPendingApply": {
+    "description": "Status label: pending application (status=0).",
+    "type": "text"
+  },
+  "reservationStatusReviewing": "Under review",
+  "@reservationStatusReviewing": {
+    "description": "Status label: under review (status=1/2).",
+    "type": "text"
+  },
+  "reservationStatusBooked": "Booked",
+  "@reservationStatusBooked": {
+    "description": "Status label: booked (status=3).",
+    "type": "text"
+  },
+  "reservationStatusCheckInPending": "Awaiting check-in",
+  "@reservationStatusCheckInPending": {
+    "description": "Status label: awaiting check-in (status=4).",
+    "type": "text"
+  },
+  "reservationStatusClosed": "Closed",
+  "@reservationStatusClosed": {
+    "description": "Status label: other (finished/cancelled).",
+    "type": "text"
+  },
+  "reservationCancel": "Cancel reservation",
+  "@reservationCancel": {
+    "description": "Cancel button on a reservation row.",
+    "type": "text"
+  },
+  "reservationCancelConfirm": "Cancel this reservation? The slot is released immediately.",
+  "@reservationCancelConfirm": {
+    "description": "Confirmation text before cancelling.",
+    "type": "text"
+  },
+  "reservationCancelSuccess": "Cancelled",
+  "@reservationCancelSuccess": {
+    "description": "Toast shown after cancelling.",
+    "type": "text"
   },
   "leaveApply": "Apply",
   "@leaveApply": {

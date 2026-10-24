@@ -5911,17 +5911,149 @@ abstract class AppLocalizations {
   /// **'Book on the official page'**
   String get reservationGoOfficial;
 
-  /// Title of the dialog shown after tapping a bookable slot.
+  /// Submit button on the bottom bar.
   ///
   /// In en, this message translates to:
-  /// **'Go to the official page'**
-  String get reservationGoOfficialTitle;
+  /// **'Book selected slots'**
+  String get reservationLaunchButton;
 
-  /// Body of the dialog, {slot} is the date and time range.
+  /// Title of the booking confirmation dialog.
   ///
   /// In en, this message translates to:
-  /// **'\"{slot}\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?'**
-  String reservationGoOfficialBody(String slot);
+  /// **'Confirm booking'**
+  String get reservationLaunchConfirmTitle;
+
+  /// Label of the people-number stepper in the confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get reservationPeopleNumber;
+
+  /// Submit button in the confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Book'**
+  String get reservationLaunchSubmit;
+
+  /// Toast shown when the booking is accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked successfully'**
+  String get reservationLaunchSuccess;
+
+  /// Title of the dialog after submitting a booking that needs approval.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking submitted'**
+  String get reservationLaunchProcessTitle;
+
+  /// Body of the dialog after submitting a booking that needs approval.
+  ///
+  /// In en, this message translates to:
+  /// **'The booking has been created. This room requires approval — please continue the application process; the booking takes effect after approval.'**
+  String get reservationLaunchProcessBody;
+
+  /// Button that opens the approval process page.
+  ///
+  /// In en, this message translates to:
+  /// **'Open application'**
+  String get reservationOpenProcess;
+
+  /// Dialog body when the server returns APPLY (a pending booking exists).
+  ///
+  /// In en, this message translates to:
+  /// **'This account already has a pending booking. Please submit or cancel it under \"My reservations\" on the official page before making a new one.'**
+  String get reservationApplyPendingBody;
+
+  /// Toast shown when the per-day selection limit is reached.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {count} slots per day for this room'**
+  String reservationDailyLimitReached(int count);
+
+  /// Tooltip of the clear-selection button.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selected slots'**
+  String get reservationClearSelection;
+
+  /// Dialog title when the server returns APPLY (a pending booking exists).
+  ///
+  /// In en, this message translates to:
+  /// **'Pending booking exists'**
+  String get reservationApplyPendingTitle;
+
+  /// Fallback message when booking fails without a server reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking failed, please try again later'**
+  String get reservationLaunchFailedGeneric;
+
+  /// AppBar button (and dialog title) opening my reservation list.
+  ///
+  /// In en, this message translates to:
+  /// **'My reservations'**
+  String get reservationMyAppointments;
+
+  /// Empty state of my reservation list.
+  ///
+  /// In en, this message translates to:
+  /// **'No reservations yet'**
+  String get reservationMyAppointmentsEmpty;
+
+  /// Fallback error text when loading my reservations fails without a server reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load reservations, please retry'**
+  String get reservationMyAppointmentsError;
+
+  /// Status label: pending application (status=0).
+  ///
+  /// In en, this message translates to:
+  /// **'Pending application'**
+  String get reservationStatusPendingApply;
+
+  /// Status label: under review (status=1/2).
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get reservationStatusReviewing;
+
+  /// Status label: booked (status=3).
+  ///
+  /// In en, this message translates to:
+  /// **'Booked'**
+  String get reservationStatusBooked;
+
+  /// Status label: awaiting check-in (status=4).
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting check-in'**
+  String get reservationStatusCheckInPending;
+
+  /// Status label: other (finished/cancelled).
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get reservationStatusClosed;
+
+  /// Cancel button on a reservation row.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel reservation'**
+  String get reservationCancel;
+
+  /// Confirmation text before cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this reservation? The slot is released immediately.'**
+  String get reservationCancelConfirm;
+
+  /// Toast shown after cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get reservationCancelSuccess;
 
   /// Tab label for the leave application form.
   ///
