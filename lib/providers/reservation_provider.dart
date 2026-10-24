@@ -163,6 +163,31 @@ class ReservationProvider extends ChangeNotifier {
     await _loadCalendar(resourceId, generation: ++_generation);
   }
 
+  /// 提交预约：为当前选中资源预约 [slots]（日期 + 时段 id），[number] 为人数。
+  ///
+  /// 成功返回结果（`needsProcess` 表示还需走审批/流程页）并刷新当前日历；
+  /// 失败抛异常：`ReservationApplyPendingException`（已有未提交预约单）、
+  /// `UnauthenticatedException`（会话失效）或 `ServiceException`（服务端
+  /// 拒绝，`message` 为服务端原文，如「请填写预约事由」）。
+  Future<ReservationLaunchResult> launchReservation({
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    final resourceId = _selectedResourceId;
+    if (resourceId == null) {
+      throw const ServiceException('请先选择活动室');
+    }
+    final result = await _api.launchReservation(
+      resourceId: resourceId,
+      slots: slots,
+      number: number,
+    );
+    // 预约已改变占用情况，刷新当前区间日历；失败由 _loadCalendar 内部
+    // 兜底，不掩盖提交成功的事实。
+    await _loadCalendar(resourceId, generation: ++_generation);
+    return result;
+  }
+
   Future<void> _loadCalendar(
     String resourceId, {
     required int generation,

@@ -158,6 +158,189 @@ void main() {
 
     expect(_arrow(tester, l10n.reservationScrollLeft).onPressed, isNotNull);
   });
+
+  group('应用内提交预约', () {
+    testWidgets('点选可约时段：出现提交条，再点取消选中', (tester) async {
+      final api = _FakeReservationApi();
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      // 初始只有「去官方页面」按钮。
+      expect(find.text(l10n.reservationLaunchButton), findsNothing);
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationLaunchButton), findsOneWidget);
+      expect(find.byTooltip(l10n.reservationClearSelection), findsOneWidget);
+
+      // 再点一次取消选中，回到默认底栏。
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reservationGoOfficial), findsOneWidget);
+      expect(api.launchCalls, 0);
+    });
+
+    testWidgets('超出每日上限：提示且不再加选', (tester) async {
+      final api = _FakeReservationApi(allSlotsAvailable: true);
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      // 党建活动室 maxPeriodsPerDay = 2：点满两格后再点第三格被拒。
+      await tester.tap(find.text(l10n.reservationRemaining(1)).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationRemaining(1)).at(1));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reservationLaunchButton), findsOneWidget);
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)).at(2));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationDailyLimitReached(2)), findsOneWidget);
+
+      // 打开确认弹窗核对：仍只有两个时段被选中（5103 与 5104）。
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+      expect(find.text('10/23 08:00-12:00'), findsOneWidget);
+      expect(find.text('10/23 12:00-18:00'), findsOneWidget);
+      expect(find.text('10/23 18:00-22:00'), findsNothing);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('确认弹窗：人数步进后提交成功，清空选择并刷新日历', (tester) async {
+      final api = _FakeReservationApi();
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+      final calendarCallsBefore = api.calendarCalls;
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+
+      // 弹窗：默认 1 人，加到 2 人后提交。
+      expect(find.text(l10n.reservationLaunchConfirmTitle), findsOneWidget);
+      expect(find.text(l10n.reservationPeopleNumber), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchSubmit));
+      await tester.pumpAndSettle();
+
+      expect(api.launchCalls, 1);
+      expect(api.lastLaunchResourceId, '493');
+      expect(api.lastLaunchSlots, hasLength(1));
+      expect(api.lastLaunchSlots!.single.periodId, '5104');
+      expect(api.lastLaunchNumber, 2);
+      expect(find.text(l10n.reservationLaunchSuccess), findsOneWidget);
+      // 选择清空、日历刷新。
+      expect(find.text(l10n.reservationGoOfficial), findsOneWidget);
+      expect(api.calendarCalls, calendarCallsBefore + 1);
+    });
+
+    testWidgets('服务端拒绝：SnackBar 显示服务端原文', (tester) async {
+      final api = _FakeReservationApi(
+        launchError: const ServiceException('请填写预约事由'),
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchSubmit));
+      await tester.pumpAndSettle();
+
+      expect(api.launchCalls, 1);
+      expect(find.text('请填写预约事由'), findsOneWidget);
+      // 提交失败不清空选择，方便改完直接重试。
+      expect(find.text(l10n.reservationLaunchButton), findsOneWidget);
+    });
+
+    testWidgets('已有未提交预约单：弹窗引导去官方页面', (tester) async {
+      final api = _FakeReservationApi(
+        launchError: const ReservationApplyPendingException(),
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchSubmit));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationApplyPendingTitle), findsOneWidget);
+      expect(find.text(l10n.reservationApplyPendingBody), findsOneWidget);
+      // 弹窗里的主按钮（底栏还有一个同名 OutlinedButton）。
+      expect(
+        find.widgetWithText(FilledButton, l10n.reservationGoOfficial),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('需审批的资源：提交成功后引导完成申请流程', (tester) async {
+      final api = _FakeReservationApi(
+        launchResult: const ReservationLaunchResult(
+          needsProcess: true,
+          processUrl: 'https://service.scu.edu.cn/reservation/fe/process/1',
+        ),
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchSubmit));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationLaunchProcessTitle), findsOneWidget);
+      expect(find.text(l10n.reservationOpenProcess), findsOneWidget);
+      // 不真的打开链接：点取消收尾。
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+    });
+  });
 }
 
 /// 足够多的活动室，保证窄屏下标签条横向溢出。
@@ -223,13 +406,45 @@ class _LoggedOutAuth extends ChangeNotifier implements ScuAuthProvider {
 
 /// 两间活动室、一天三个时段（含约满与可约）。
 class _FakeReservationApi implements ReservationApi {
-  _FakeReservationApi({this.resources, this.error});
+  _FakeReservationApi({
+    this.resources,
+    this.error,
+    this.launchError,
+    this.launchResult,
+    this.allSlotsAvailable = false,
+  });
 
   final List<ReservationResource>? resources;
   final Object? error;
+  final Object? launchError;
+  final ReservationLaunchResult? launchResult;
+
+  /// true 时三个时段全部「余 1」可约（用于每日上限用例）。
+  final bool allSlotsAvailable;
 
   int calendarCalls = 0;
   String? lastResourceId;
+
+  int launchCalls = 0;
+  String? lastLaunchResourceId;
+  List<ReservationLaunchSlot>? lastLaunchSlots;
+  int? lastLaunchNumber;
+
+  @override
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    launchCalls++;
+    lastLaunchResourceId = resourceId;
+    lastLaunchSlots = List<ReservationLaunchSlot>.of(slots);
+    lastLaunchNumber = number;
+    final error = launchError;
+    if (error != null) throw error;
+    return launchResult ??
+        const ReservationLaunchResult(needsProcess: false, processUrl: '');
+  }
 
   @override
   Future<List<ReservationResource>> fetchResources() async {
@@ -266,6 +481,35 @@ class _FakeReservationApi implements ReservationApi {
   }) async {
     calendarCalls++;
     lastResourceId = resourceId;
+    if (allSlotsAvailable) {
+      return const ReservationCalendar(
+        slots: [
+          ReservationTimeSlot(id: '5103', startTime: '08:00:00', endTime: '12:00:00'),
+          ReservationTimeSlot(id: '5104', startTime: '12:00:00', endTime: '18:00:00'),
+          ReservationTimeSlot(id: '5105', startTime: '18:00:00', endTime: '22:00:00'),
+        ],
+        days: ['2026-10-23'],
+        states: {
+          '2026-10-23': {
+            '5103': ReservationSlotState(
+              status: ReservationSlotStatus.available,
+              total: 1,
+              remaining: 1,
+            ),
+            '5104': ReservationSlotState(
+              status: ReservationSlotStatus.available,
+              total: 1,
+              remaining: 1,
+            ),
+            '5105': ReservationSlotState(
+              status: ReservationSlotStatus.available,
+              total: 1,
+              remaining: 1,
+            ),
+          },
+        },
+      );
+    }
     return ReservationCalendar(
       slots: const [
         ReservationTimeSlot(

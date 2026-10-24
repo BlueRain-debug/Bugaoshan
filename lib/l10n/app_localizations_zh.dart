@@ -3069,12 +3069,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reservationGoOfficial => '去官方页面预约';
 
   @override
-  String get reservationGoOfficialTitle => '前往官方页面';
+  String get reservationLaunchButton => '预约所选时段';
 
   @override
-  String reservationGoOfficialBody(String slot) {
-    return '「$slot」可预约。正式预约需在官方页面完成（含验证码与申请表上传），是否现在前往？';
+  String get reservationLaunchConfirmTitle => '确认预约';
+
+  @override
+  String get reservationPeopleNumber => '预约人数';
+
+  @override
+  String get reservationLaunchSubmit => '确认预约';
+
+  @override
+  String get reservationLaunchSuccess => '预约成功';
+
+  @override
+  String get reservationLaunchProcessTitle => '预约已提交';
+
+  @override
+  String get reservationLaunchProcessBody =>
+      '预约单已创建。该活动室需要审批，请继续完成申请流程，审核通过后预约生效。';
+
+  @override
+  String get reservationOpenProcess => '打开审批流程';
+
+  @override
+  String get reservationApplyPendingBody =>
+      '当前账号已有未提交的预约单。请先在预约系统「我的预约」里提交或取消，再发起新的预约。';
+
+  @override
+  String reservationDailyLimitReached(int count) {
+    return '该活动室每天最多可预约 $count 个时段';
   }
+
+  @override
+  String get reservationClearSelection => '清空已选时段';
+
+  @override
+  String get reservationApplyPendingTitle => '存在未提交的预约';
+
+  @override
+  String get reservationLaunchFailedGeneric => '预约失败，请稍后重试';
 
   @override
   String get leaveApply => '请假申请';

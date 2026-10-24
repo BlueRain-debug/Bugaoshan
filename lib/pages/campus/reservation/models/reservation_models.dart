@@ -6,6 +6,44 @@ import 'package:bugaoshan/utils/json_utils.dart';
 /// `topic/resource-list` 的 `d.data[].base` 与 `site/resource/detail` 的 `d`
 /// 里是同一套字段（2026-10-23 抓包确认）。
 
+/// 一次提交预约里的单个选中时段（日期 + 时段 id）。
+class ReservationLaunchSlot {
+  const ReservationLaunchSlot({required this.date, required this.periodId});
+
+  /// `YYYY-MM-DD`。
+  final String date;
+
+  /// 时段 id（calendar `time[].id`，如 `5103`）。
+  final String periodId;
+}
+
+/// 提交预约（`site/resource/launch`）的结果。
+///
+/// `needsProcess == true` 表示该资源走审批/流程（`is_relate`），预约单已创建，
+/// 但还需到 `processUrl` 完成后续申请（如上传申请表），未完成前不算预约成功。
+class ReservationLaunchResult {
+  const ReservationLaunchResult({
+    required this.needsProcess,
+    required this.processUrl,
+  });
+
+  final bool needsProcess;
+  final String processUrl;
+
+  static ReservationLaunchResult fromJson(Object? json) {
+    if (json is! Map) {
+      return const ReservationLaunchResult(needsProcess: false, processUrl: '');
+    }
+    final map = Map<String, dynamic>.from(json);
+    final url = safeString(map['process_url']);
+    return ReservationLaunchResult(
+      needsProcess: safeBool(map['is_relate']) && url.isNotEmpty,
+      processUrl: url,
+    );
+  }
+}
+
+
 /// 解析 `topic/resource-list` 的 `d`（不是整个信封）。
 ///
 /// 抓包结构：

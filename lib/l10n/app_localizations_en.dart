@@ -3171,12 +3171,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reservationGoOfficial => 'Book on the official page';
 
   @override
-  String get reservationGoOfficialTitle => 'Go to the official page';
+  String get reservationLaunchButton => 'Book selected slots';
 
   @override
-  String reservationGoOfficialBody(String slot) {
-    return '\"$slot\" is available. The actual booking (captcha and application form upload) must be completed on the official page. Open it now?';
+  String get reservationLaunchConfirmTitle => 'Confirm booking';
+
+  @override
+  String get reservationPeopleNumber => 'People';
+
+  @override
+  String get reservationLaunchSubmit => 'Book';
+
+  @override
+  String get reservationLaunchSuccess => 'Booked successfully';
+
+  @override
+  String get reservationLaunchProcessTitle => 'Booking submitted';
+
+  @override
+  String get reservationLaunchProcessBody =>
+      'The booking has been created. This room requires approval — please continue the application process; the booking takes effect after approval.';
+
+  @override
+  String get reservationOpenProcess => 'Open application';
+
+  @override
+  String get reservationApplyPendingBody =>
+      'This account already has a pending booking. Please submit or cancel it under \"My reservations\" on the official page before making a new one.';
+
+  @override
+  String reservationDailyLimitReached(int count) {
+    return 'Up to $count slots per day for this room';
   }
+
+  @override
+  String get reservationClearSelection => 'Clear selected slots';
+
+  @override
+  String get reservationApplyPendingTitle => 'Pending booking exists';
+
+  @override
+  String get reservationLaunchFailedGeneric =>
+      'Booking failed, please try again later';
 
   @override
   String get leaveApply => 'Apply';

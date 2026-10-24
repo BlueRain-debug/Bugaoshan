@@ -1798,19 +1798,74 @@
     "description": "跳转到官方预约页面的按钮文案。",
     "type": "text"
   },
-  "reservationGoOfficialTitle": "前往官方页面",
-  "@reservationGoOfficialTitle": {
-    "description": "点击可预约时段后弹窗的标题。",
+  "reservationLaunchButton": "预约所选时段",
+  "@reservationLaunchButton": {
+    "description": "底部提交条上的提交按钮文案。",
     "type": "text"
   },
-  "reservationGoOfficialBody": "「{slot}」可预约。正式预约需在官方页面完成（含验证码与申请表上传），是否现在前往？",
-  "@reservationGoOfficialBody": {
-    "description": "点击可预约时段后弹窗的正文，{slot} 为日期与时段。",
+  "reservationLaunchConfirmTitle": "确认预约",
+  "@reservationLaunchConfirmTitle": {
+    "description": "提交预约前确认弹窗的标题。",
+    "type": "text"
+  },
+  "reservationPeopleNumber": "预约人数",
+  "@reservationPeopleNumber": {
+    "description": "确认弹窗里的预约人数标签。",
+    "type": "text"
+  },
+  "reservationLaunchSubmit": "确认预约",
+  "@reservationLaunchSubmit": {
+    "description": "确认弹窗里的提交按钮文案。",
+    "type": "text"
+  },
+  "reservationLaunchSuccess": "预约成功",
+  "@reservationLaunchSuccess": {
+    "description": "预约提交成功的提示。",
+    "type": "text"
+  },
+  "reservationLaunchProcessTitle": "预约已提交",
+  "@reservationLaunchProcessTitle": {
+    "description": "需要审批的资源提交成功后的弹窗标题。",
+    "type": "text"
+  },
+  "reservationLaunchProcessBody": "预约单已创建。该活动室需要审批，请继续完成申请流程，审核通过后预约生效。",
+  "@reservationLaunchProcessBody": {
+    "description": "需要审批的资源提交成功后的弹窗正文。",
+    "type": "text"
+  },
+  "reservationOpenProcess": "打开审批流程",
+  "@reservationOpenProcess": {
+    "description": "跳转审批流程页面的按钮文案。",
+    "type": "text"
+  },
+  "reservationApplyPendingBody": "当前账号已有未提交的预约单。请先在预约系统「我的预约」里提交或取消，再发起新的预约。",
+  "@reservationApplyPendingBody": {
+    "description": "服务端返回 APPLY（存在未提交预约单）时的弹窗正文。",
+    "type": "text"
+  },
+  "reservationDailyLimitReached": "该活动室每天最多可预约 {count} 个时段",
+  "@reservationDailyLimitReached": {
+    "description": "选择时段超出每日上限时的提示。",
     "placeholders": {
-      "slot": {
-        "type": "String"
+      "count": {
+        "type": "int"
       }
     }
+  },
+  "reservationClearSelection": "清空已选时段",
+  "@reservationClearSelection": {
+    "description": "清空已选时段按钮的提示。",
+    "type": "text"
+  },
+  "reservationApplyPendingTitle": "存在未提交的预约",
+  "@reservationApplyPendingTitle": {
+    "description": "服务端返回 APPLY（存在未提交预约单）时的弹窗标题。",
+    "type": "text"
+  },
+  "reservationLaunchFailedGeneric": "预约失败，请稍后重试",
+  "@reservationLaunchFailedGeneric": {
+    "description": "预约提交失败的兜底提示（服务端未给出原因时）。",
+    "type": "text"
   },
   "leaveApply": "请假申请",
   "@leaveApply": {

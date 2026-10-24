@@ -198,6 +198,103 @@ void main() {
       expect(provider.selectedResourceId, isNull);
       expect(provider.calendar, isNull);
     });
+
+    group('launchReservation', () {
+      test('成功：参数透传给 API，结果返回且日历刷新', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+        final calendarCallsBefore = api.calendarCalls;
+
+        final result = await provider.launchReservation(
+          slots: const [
+            ReservationLaunchSlot(date: '2026-10-24', periodId: '5103'),
+          ],
+          number: 2,
+        );
+
+        expect(result.needsProcess, isFalse);
+        expect(api.launchCalls, 1);
+        expect(api.lastLaunchResourceId, '493');
+        expect(api.lastLaunchSlots, hasLength(1));
+        expect(api.lastLaunchSlots!.single.date, '2026-10-24');
+        expect(api.lastLaunchSlots!.single.periodId, '5103');
+        expect(api.lastLaunchNumber, 2);
+        // 提交后日历刷新了一次。
+        expect(api.calendarCalls, calendarCallsBefore + 1);
+      });
+
+      test('成功（需审批）：is_relate 与流程地址透传', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          launchResult: const ReservationLaunchResult(
+            needsProcess: true,
+            processUrl: 'https://service.scu.edu.cn/reservation/fe/process/1',
+          ),
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        final result = await provider.launchReservation(
+          slots: const [
+            ReservationLaunchSlot(date: '2026-10-24', periodId: '5103'),
+          ],
+          number: 1,
+        );
+
+        expect(result.needsProcess, isTrue);
+        expect(
+          result.processUrl,
+          'https://service.scu.edu.cn/reservation/fe/process/1',
+        );
+      });
+
+      test('已有未提交预约单：原样抛出 APPLY 异常', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          launchError: const ReservationApplyPendingException(),
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await expectLater(
+          provider.launchReservation(
+            slots: const [
+              ReservationLaunchSlot(date: '2026-10-24', periodId: '5103'),
+            ],
+            number: 1,
+          ),
+          throwsA(isA<ReservationApplyPendingException>()),
+        );
+      });
+
+      test('服务端拒绝：原样抛 ServiceException', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          launchError: const ServiceException('请填写预约事由'),
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await expectLater(
+          provider.launchReservation(
+            slots: const [
+              ReservationLaunchSlot(date: '2026-10-24', periodId: '5103'),
+            ],
+            number: 1,
+          ),
+          throwsA(
+            isA<ServiceException>().having(
+              (e) => e.message,
+              'message',
+              '请填写预约事由',
+            ),
+          ),
+        );
+      });
+    });
   });
 }
 
@@ -215,16 +312,25 @@ class _FakeReservationApi implements ReservationApi {
     required this.resources,
     this.error,
     this.calendarError,
+    this.launchError,
+    this.launchResult,
   });
 
   final List<ReservationResource> resources;
   final Object? error;
   final Object? calendarError;
+  final Object? launchError;
+  final ReservationLaunchResult? launchResult;
 
   int calendarCalls = 0;
   String? lastResourceId;
   DateTime? lastStart;
   DateTime? lastEnd;
+
+  int launchCalls = 0;
+  String? lastLaunchResourceId;
+  List<ReservationLaunchSlot>? lastLaunchSlots;
+  int? lastLaunchNumber;
 
   @override
   Future<List<ReservationResource>> fetchResources() async {
@@ -265,5 +371,21 @@ class _FakeReservationApi implements ReservationApi {
         },
       },
     );
+  }
+
+  @override
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    launchCalls++;
+    lastLaunchResourceId = resourceId;
+    lastLaunchSlots = List<ReservationLaunchSlot>.of(slots);
+    lastLaunchNumber = number;
+    final error = launchError;
+    if (error != null) throw error;
+    return launchResult ??
+        const ReservationLaunchResult(needsProcess: false, processUrl: '');
   }
 }

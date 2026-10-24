@@ -259,6 +259,15 @@ class _FakeReservationApi implements ReservationApi {
   Future<List<ReservationResource>> fetchResources() async => manyResources();
 
   @override
+  Future<ReservationLaunchResult> launchReservation({
+    required String resourceId,
+    required List<ReservationLaunchSlot> slots,
+    required int number,
+  }) async {
+    return const ReservationLaunchResult(needsProcess: false, processUrl: '');
+  }
+
+  @override
   Future<ReservationCalendar> fetchCalendar({
     required String resourceId,
     required DateTime startDate,
