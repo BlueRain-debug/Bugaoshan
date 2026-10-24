@@ -351,7 +351,7 @@ void main() {
         ReservationAppointment(
           id: id,
           resourceName: '党建活动室',
-          createdAt: '2026-10-24 21:00',
+          createdAt: '2026-10-24 21:00:00',
           status: status,
           canCancel: canCancel,
           details: const [
@@ -381,9 +381,31 @@ void main() {
       expect(find.text('党建活动室'), findsWidgets);
       expect(find.text(l10n.reservationStatusReviewing), findsOneWidget);
       expect(find.text('2026-10-27 08:00-12:00'), findsOneWidget);
+      // 申请时间（createdAt）也展示。
+      expect(find.text('2026-10-24 21:00:00'), findsOneWidget);
       expect(find.text(l10n.reservationCancel), findsOneWidget);
       await tester.tap(find.text(l10n.close));
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('列表拉取失败：显示错误文案而不是「暂无预约记录」', (tester) async {
+      final api = _FakeReservationApi(
+        appointmentsError: const ServiceException('预约系统请求失败'),
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.byTooltip(l10n.reservationMyAppointments));
+      await tester.pumpAndSettle();
+
+      expect(find.text('预约系统请求失败'), findsOneWidget);
+      expect(find.text(l10n.reservationMyAppointmentsEmpty), findsNothing);
     });
 
     testWidgets('取消预约：确认后调用接口并提示成功', (tester) async {
@@ -552,6 +574,7 @@ class _FakeReservationApi implements ReservationApi {
     this.launchResult,
     this.allSlotsAvailable = false,
     this.appointments = const [],
+    this.appointmentsError,
   });
 
   final List<ReservationResource>? resources;
@@ -564,6 +587,9 @@ class _FakeReservationApi implements ReservationApi {
 
   /// 我的预约列表数据。
   final List<ReservationAppointment> appointments;
+
+  /// 我的预约列表拉取失败时抛出的异常。
+  final Object? appointmentsError;
 
   int calendarCalls = 0;
   String? lastResourceId;
@@ -596,7 +622,11 @@ class _FakeReservationApi implements ReservationApi {
     int type = 0,
     int page = 1,
     int pageSize = 20,
-  }) async => appointmentRows;
+  }) async {
+    final error = appointmentsError;
+    if (error != null) throw error;
+    return appointmentRows;
+  }
 
   int cancelCalls = 0;
   String? lastCancelAppointmentId;

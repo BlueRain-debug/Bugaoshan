@@ -1877,6 +1877,11 @@
     "description": "我的预约列表为空时的文案。",
     "type": "text"
   },
+  "reservationMyAppointmentsError": "预约记录加载失败，请重试",
+  "@reservationMyAppointmentsError": {
+    "description": "我的预约列表拉取失败时的兜底文案（无服务端原因时）。",
+    "type": "text"
+  },
   "reservationStatusPendingApply": "待申请",
   "@reservationStatusPendingApply": {
     "description": "我的预约状态标签：待申请（status=0）。",

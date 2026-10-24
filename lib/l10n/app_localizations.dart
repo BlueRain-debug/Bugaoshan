@@ -6001,6 +6001,12 @@ abstract class AppLocalizations {
   /// **'No reservations yet'**
   String get reservationMyAppointmentsEmpty;
 
+  /// Fallback error text when loading my reservations fails without a server reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load reservations, please retry'**
+  String get reservationMyAppointmentsError;
+
   /// Status label: pending application (status=0).
   ///
   /// In en, this message translates to:

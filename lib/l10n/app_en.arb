@@ -1953,6 +1953,11 @@
     "description": "Empty state of my reservation list.",
     "type": "text"
   },
+  "reservationMyAppointmentsError": "Failed to load reservations, please retry",
+  "@reservationMyAppointmentsError": {
+    "description": "Fallback error text when loading my reservations fails without a server reason.",
+    "type": "text"
+  },
   "reservationStatusPendingApply": "Pending application",
   "@reservationStatusPendingApply": {
     "description": "Status label: pending application (status=0).",

@@ -369,6 +369,7 @@ class _ReservationPageState extends State<ReservationPage>
   // ── 我的预约 ─────────────────────────────────────────────────────────────
 
   Future<void> _openMyAppointments() async {
+    // 失败在 provider 内转 appointmentsError 状态，不会成为未捕获异常。
     unawaited(_provider.loadAppointments());
     await showDialog(
       context: context,
@@ -1090,14 +1091,34 @@ class _MyAppointmentsDialog extends StatelessWidget {
           ),
         ],
       ),
-      content: SizedBox(
-        width: 420,
-        child: ListenableBuilder(
+      content: ConstrainedBox(
+        // 手机窄屏随弹窗收缩，桌面宽屏封顶 420。内层 maxFinite 占满可用宽，
+        // 避免 AlertDialog 对 shrinkWrap 列表做 intrinsic 测量。
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SizedBox(
+          width: double.maxFinite,
+          child: ListenableBuilder(
           listenable: provider,
           builder: (context, _) {
             if (provider.appointmentsLoading &&
                 provider.appointments.isEmpty) {
               return const Center(child: CircularProgressIndicator());
+            }
+            final error = provider.appointmentsError;
+            if (error != null && provider.appointments.isEmpty) {
+              // 拉取失败 ≠ 没有预约：明确给出错误文案，标题行的刷新即重试。
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  error.isNotEmpty
+                      ? error
+                      : l10n.reservationMyAppointmentsError,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.error,
+                  ),
+                ),
+              );
             }
             final items = provider.appointments;
             if (items.isEmpty) {
@@ -1129,6 +1150,7 @@ class _MyAppointmentsDialog extends StatelessWidget {
               ),
             );
           },
+          ),
         ),
       ),
       actions: [
@@ -1196,6 +1218,15 @@ class _AppointmentTile extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+          ],
+          if (appointment.createdAt.isNotEmpty) ...[
+            const SizedBox(height: AppShapes.xs),
+            Text(
+              appointment.createdAt,
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
             ),
           ],
           if (appointment.canCancel)

@@ -328,6 +328,46 @@ void main() {
         expect(provider.appointmentsLoading, isFalse);
       });
 
+      test('loadAppointments：失败不抛出，错误入状态（不再静默成空列表）', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          listError: const ServiceException('预约系统请求失败'),
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await provider.loadAppointments();
+
+        expect(provider.appointmentsError, '预约系统请求失败');
+        expect(provider.appointments, isEmpty);
+        expect(provider.appointmentsLoading, isFalse);
+      });
+
+      test('loadAppointments：超过一页时自动翻页合并', () async {
+        ReservationAppointment row(int i) => ReservationAppointment(
+          id: '$i',
+          resourceName: '活动室$i',
+          createdAt: '',
+          status: 3,
+          canCancel: false,
+          details: const [],
+        );
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          pagesOf: {
+            1: [for (var i = 0; i < 20; i++) row(i)],
+            2: [row(20), row(21), row(22)],
+          },
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await provider.loadAppointments();
+
+        expect(api.listPages, [1, 2]);
+        expect(provider.appointments, hasLength(23));
+      });
+
       test('cancelAppointment：传整单全部明细 id，成功后刷新列表与日历', () async {
         final appointment = ReservationAppointment(
           id: '9001',
@@ -418,6 +458,8 @@ class _FakeReservationApi implements ReservationApi {
     this.launchResult,
     this.appointments = const [],
     this.cancelError,
+    this.listError,
+    this.pagesOf = const {},
   });
 
   final List<ReservationResource> resources;
@@ -427,6 +469,10 @@ class _FakeReservationApi implements ReservationApi {
   final ReservationLaunchResult? launchResult;
   final List<ReservationAppointment> appointments;
   final Object? cancelError;
+  final Object? listError;
+
+  /// 按页码编排的多页数据（page -> 行）；配置后优先于 [appointments]。
+  final Map<int, List<ReservationAppointment>> pagesOf;
 
   int calendarCalls = 0;
   String? lastResourceId;
@@ -496,6 +542,7 @@ class _FakeReservationApi implements ReservationApi {
   }
 
   int listCalls = 0;
+  List<int> listPages = [];
 
   @override
   Future<List<ReservationAppointment>> fetchAppointments({
@@ -504,7 +551,11 @@ class _FakeReservationApi implements ReservationApi {
     int pageSize = 20,
   }) async {
     listCalls++;
-    return appointments;
+    listPages.add(page);
+    final error = listError;
+    if (error != null) throw error;
+    // 未配置分页数据时单页返回（不足一页即终止翻页）。
+    return pagesOf[page] ?? appointments;
   }
 
   int cancelCalls = 0;

@@ -3118,6 +3118,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reservationMyAppointmentsEmpty => '暂无预约记录';
 
   @override
+  String get reservationMyAppointmentsError => '预约记录加载失败，请重试';
+
+  @override
   String get reservationStatusPendingApply => '待申请';
 
   @override

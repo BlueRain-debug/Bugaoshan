@@ -3221,6 +3221,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reservationMyAppointmentsEmpty => 'No reservations yet';
 
   @override
+  String get reservationMyAppointmentsError =>
+      'Failed to load reservations, please retry';
+
+  @override
   String get reservationStatusPendingApply => 'Pending application';
 
   @override
