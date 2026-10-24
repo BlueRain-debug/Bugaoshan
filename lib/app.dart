@@ -163,17 +163,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 /// 全局滚动行为：桌面端允许鼠标左键拖动滚动视图。
 ///
 /// Flutter 默认的 [ScrollBehavior.dragDevices] 不含 [PointerDeviceKind.mouse]，
-/// 桌面 / Web 上按住鼠标拖不动任何列表与横向标签条（只能滚轮）。这里把鼠标
-/// 加进可拖拽设备，与触摸、触控笔保持一致。
+/// 桌面 / Web 上按住鼠标拖不动任何列表与横向标签条（只能滚轮）。在默认集合
+/// 基础上追加鼠标，不手动抄整套——默认值里的 `unknown` 是 Android 无障碍
+/// 语音滚动（VoiceAccess）依赖的，漏掉会让 TalkBack 用户滑不动列表，以后
+/// Flutter 新增设备类型也不会在这里漏跟。
 class AppScrollBehavior extends MaterialScrollBehavior {
   const AppScrollBehavior();
 
   @override
-  Set<PointerDeviceKind> get dragDevices => {
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-    PointerDeviceKind.trackpad,
-    PointerDeviceKind.stylus,
-    PointerDeviceKind.invertedStylus,
-  };
+  Set<PointerDeviceKind> get dragDevices =>
+      {...super.dragDevices, PointerDeviceKind.mouse};
 }
