@@ -3215,6 +3215,37 @@ class AppLocalizationsEn extends AppLocalizations {
       'Booking failed, please try again later';
 
   @override
+  String get reservationMyAppointments => 'My reservations';
+
+  @override
+  String get reservationMyAppointmentsEmpty => 'No reservations yet';
+
+  @override
+  String get reservationStatusPendingApply => 'Pending application';
+
+  @override
+  String get reservationStatusReviewing => 'Under review';
+
+  @override
+  String get reservationStatusBooked => 'Booked';
+
+  @override
+  String get reservationStatusCheckInPending => 'Awaiting check-in';
+
+  @override
+  String get reservationStatusClosed => 'Closed';
+
+  @override
+  String get reservationCancel => 'Cancel reservation';
+
+  @override
+  String get reservationCancelConfirm =>
+      'Cancel this reservation? The slot is released immediately.';
+
+  @override
+  String get reservationCancelSuccess => 'Cancelled';
+
+  @override
   String get leaveApply => 'Apply';
 
   @override

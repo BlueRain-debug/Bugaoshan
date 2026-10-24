@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 观测 AppScrollBehavior（dragDevices 加 mouse）与
-/// SelectableText / TextField 的手势仲裁行为：
-/// - 按住鼠标拖文本：应产生文本选择，父列表不应滚动；
-/// - 按住鼠标拖空白区：列表应滚动（本次 PR 的目标能力）；
-/// - 拖输入框：应是光标/选择，列表不应滚动。
+/// 全局开启鼠标拖拽（AppScrollBehavior）后，与文本选择 / 输入框手势的
+/// 仲裁回归：在文本上按住鼠标拖动应产生选区且父列表不滚动；在列表空白区
+/// 拖动应滚动列表。三种承载分别对应环境信息页（ListView + SelectableText）、
+/// 登录页（ListView + TextField）与崩溃页（SingleChildScrollView +
+/// SelectableText）。
 void main() {
   Future<void> mouseDrag(
     WidgetTester tester,
@@ -26,7 +26,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('SelectableText: mouse drag on text selects, list stays put',
+  RenderEditable findRenderEditable(WidgetTester tester) {
+    final root = tester.renderObject(find.byType(EditableText));
+    RenderEditable? found;
+    void visit(RenderObject node) {
+      if (node is RenderEditable) {
+        found = node;
+        return;
+      }
+      node.visitChildren(visit);
+    }
+
+    visit(root);
+    return found!;
+  }
+
+  testWidgets('ListView + SelectableText：拖文本产生选区，列表不动；空白区拖动滚动',
       (tester) async {
     final controller = ScrollController();
     await tester.pumpWidget(MaterialApp(
@@ -50,42 +65,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.offset, 0);
 
-    // 在文本上按住鼠标拖动 → 选区出现，列表不动
     final textTopLeft = tester.getTopLeft(find.byType(SelectableText));
     await mouseDrag(
         tester, textTopLeft + const Offset(30, 8), const Offset(60, 12));
-    // ignore: avoid_print
-    print('OBSERVE selectable-text-drag offset=${controller.offset}');
 
-    final root = tester.renderObject(find.byType(EditableText));
-    RenderEditable? findRenderEditable(RenderObject node) {
-      if (node is RenderEditable) return node;
-      RenderEditable? found;
-      node.visitChildren((child) {
-        found ??= findRenderEditable(child);
-      });
-      return found;
-    }
-
-    final renderEditable = findRenderEditable(root)!;
-    // ignore: avoid_print
-    print(
-        'OBSERVE selection=${renderEditable.selection} offset=${controller.offset}');
-    expect(renderEditable.selection?.isCollapsed, isFalse,
-        reason: 'mouse drag on SelectableText should create a selection');
+    expect(
+      findRenderEditable(tester).selection?.isCollapsed,
+      isFalse,
+      reason: 'mouse drag on SelectableText should create a selection',
+    );
     expect(controller.offset, 0,
         reason: 'dragging on SelectableText must not scroll the list');
 
-    // 在空白区（蓝色容器）按住鼠标拖动 → 列表滚动
     final blueCenter = tester.getCenter(find.byType(Container).last);
     await mouseDrag(tester, blueCenter, const Offset(0, -120));
-    // ignore: avoid_print
-    print('OBSERVE empty-area-drag offset=${controller.offset}');
     expect(controller.offset, greaterThan(0),
         reason: 'dragging on empty list area must scroll the list');
   });
 
-  testWidgets('TextField: mouse drag inside field does not scroll list',
+  testWidgets('ListView + TextField：框内拖动聚焦且列表不动；空白区拖动滚动',
       (tester) async {
     final controller = ScrollController();
     final fieldFocus = FocusNode();
@@ -110,28 +108,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.offset, 0);
 
-    // 在输入框内按住鼠标拖动 → 光标/选择，列表不动
     final fieldTopLeft = tester.getTopLeft(find.byType(TextField));
     await mouseDrag(
         tester, fieldTopLeft + const Offset(40, 20), const Offset(50, 4));
-    // ignore: avoid_print
-    print(
-        'OBSERVE textfield-drag offset=${controller.offset} focused=${fieldFocus.hasFocus}');
+    expect(fieldFocus.hasFocus, isTrue);
     expect(controller.offset, 0,
         reason: 'dragging inside a TextField must not scroll the list');
-    expect(fieldFocus.hasFocus, isTrue);
 
-    // 在输入框外的空白区拖动 → 列表滚动
     final blueCenter = tester.getCenter(find.byType(Container).last);
     await mouseDrag(tester, blueCenter, const Offset(0, -120));
-    // ignore: avoid_print
-    print('OBSERVE textfield-empty-drag offset=${controller.offset}');
     expect(controller.offset, greaterThan(0),
         reason: 'dragging on empty list area must scroll the list');
   });
 
-  testWidgets(
-      'SingleChildScrollView + SelectableText (崩溃页同构): drag selects, empty area scrolls',
+  testWidgets('SingleChildScrollView + SelectableText（崩溃页同构）：选择与滚动互不干扰',
       (tester) async {
     final controller = ScrollController();
     await tester.pumpWidget(MaterialApp(
@@ -160,21 +150,13 @@ void main() {
     await mouseDrag(
         tester, textTopLeft + const Offset(30, 8), const Offset(60, 12));
 
-    final root = tester.renderObject(find.byType(EditableText));
-    RenderEditable? findRenderEditable(RenderObject node) {
-      if (node is RenderEditable) return node;
-      RenderEditable? found;
-      node.visitChildren((child) {
-        found ??= findRenderEditable(child);
-      });
-      return found;
-    }
-
-    final renderEditable = findRenderEditable(root)!;
-    expect(renderEditable.selection?.isCollapsed, isFalse,
-        reason: 'mouse drag on SelectableText should create a selection');
+    expect(
+      findRenderEditable(tester).selection?.isCollapsed,
+      isFalse,
+      reason: 'mouse drag on SelectableText should create a selection',
+    );
     expect(controller.offset, 0,
-        reason: 'dragging on SelectableText must not scroll the list');
+        reason: 'dragging on SelectableText must not scroll the view');
 
     final blueCenter = tester.getCenter(find.byType(Container).last);
     await mouseDrag(tester, blueCenter, const Offset(0, -120));

@@ -35,13 +35,99 @@ class ReservationLaunchResult {
       return const ReservationLaunchResult(needsProcess: false, processUrl: '');
     }
     final map = Map<String, dynamic>.from(json);
-    final url = safeString(map['process_url']);
     return ReservationLaunchResult(
-      needsProcess: safeBool(map['is_relate']) && url.isNotEmpty,
-      processUrl: url,
+      // 只看 is_relate：url 缺失不代表无需审批，展示层会降级到官方页。
+      needsProcess: safeBool(map['is_relate']),
+      processUrl: safeString(map['process_url']),
     );
   }
 }
+
+/// 我的预约单里单个时段明细（某日某时段，可被部分取消）。
+class ReservationAppointmentDetail {
+  const ReservationAppointmentDetail({
+    required this.id,
+    required this.date,
+    required this.timeLabel,
+  });
+
+  final String id;
+
+  /// 所属日期 `YYYY-MM-DD`（来自 `detail` 的键）。
+  final String date;
+
+  /// `str_time` 原文，如 `08:00-12:00`。
+  final String timeLabel;
+
+  String get label => '$date $timeLabel';
+}
+
+/// 我的预约单（`site/appointment/appointment-list` 的行）。
+class ReservationAppointment {
+  const ReservationAppointment({
+    required this.id,
+    required this.resourceName,
+    required this.createdAt,
+    required this.status,
+    required this.canCancel,
+    required this.details,
+  });
+
+  final String id;
+  final String resourceName;
+
+  /// `created` 原文（申请时间）。
+  final String createdAt;
+
+  /// 服务端状态码，与官方 tab 对应：0 待申请 / 1、2 审核中 / 3 已预约 /
+  /// 4 待签到；其它视为已结束。
+  final int status;
+
+  /// `is_cancel == 1`：当前可取消。
+  final bool canCancel;
+
+  /// 时段明细（拍平自 `detail` 对象）。
+  final List<ReservationAppointmentDetail> details;
+
+  static ReservationAppointment? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final map = Map<String, dynamic>.from(json);
+    final id = safeString(map['id']);
+    if (id.isEmpty) return null;
+
+    final details = <ReservationAppointmentDetail>[];
+    final rawDetail = map['detail'];
+    if (rawDetail is Map) {
+      for (final entry in rawDetail.entries) {
+        final date = entry.key.toString();
+        final rows = entry.value;
+        if (rows is! List) continue;
+        for (final row in rows) {
+          if (row is! Map) continue;
+          final detailId = safeString(row['id']);
+          if (detailId.isEmpty) continue;
+          details.add(
+            ReservationAppointmentDetail(
+              id: detailId,
+              date: date,
+              timeLabel: safeString(row['str_time']),
+            ),
+          );
+        }
+      }
+    }
+
+    return ReservationAppointment(
+      id: id,
+      resourceName: safeString(map['resource_name']),
+      createdAt: safeString(map['created']),
+      status: safeInt(map['status']),
+      canCancel: safeInt(map['is_cancel']) == 1,
+      details: details,
+    );
+  }
+}
+
 
 
 /// 解析 `topic/resource-list` 的 `d`（不是整个信封）。
@@ -283,6 +369,7 @@ class ReservationResource {
     required this.attributes,
     required this.needsApproval,
     required this.maxPeriodsPerDay,
+    this.capacity,
   });
 
   final String id;
@@ -296,6 +383,9 @@ class ReservationResource {
 
   /// 每天最多可预约时段数（`ResourceUseDayTimesRule.times`）；0 表示未限制。
   final int maxPeriodsPerDay;
+
+  /// 容量（属性名含「容量」的数值，如 28）；未提供时为 null（不限人数）。
+  final int? capacity;
 
   static ReservationResource? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -330,6 +420,17 @@ class ReservationResource {
       attributes: attributes,
       needsApproval: configMap['approval'] is Map,
       maxPeriodsPerDay: maxPeriods,
+      capacity: _capacityOf(attributes),
     );
+  }
+
+  /// 从展示属性里提容量：属性名含「容量」且值为整数（如「容量/人数: 28」）。
+  static int? _capacityOf(List<ReservationAttribute> attributes) {
+    for (final attribute in attributes) {
+      if (!attribute.name.contains('容量')) continue;
+      final value = int.tryParse(attribute.value);
+      if (value != null && value > 0) return value;
+    }
+    return null;
   }
 }

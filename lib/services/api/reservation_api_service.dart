@@ -30,6 +30,21 @@ abstract interface class ReservationApi {
     required List<ReservationLaunchSlot> slots,
     required int number,
   });
+
+  /// 我的预约列表：[type] 与官方 tab 一致（0 全部 / 1 待申请 / 2 审核中 /
+  /// 3 已预约 / 4 待签到），[page] 从 1 起。
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  });
+
+  /// 取消预约（传整单全部明细 id 即整单取消）。服务端拒绝（如该单已进入
+  /// 不可取消状态）时抛 [ServiceException] 带服务端原文。
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  });
 }
 
 /// 预约系统 API Service（第 1 层）。
@@ -99,6 +114,43 @@ class ReservationApiService implements ReservationApi {
         ),
       );
       return ReservationLaunchResult.fromJson(json);
+    });
+  }
+
+  @override
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  }) {
+    return _request((client) async {
+      final json = await _getJson(
+        client,
+        kReservationAppointmentListPath,
+        query: {'p': '$page', 'type': '$type', 'pageSize': '$pageSize'},
+      );
+      final rows = json['data'];
+      if (rows is! List) return const [];
+      return [
+        for (final row in rows) ?ReservationAppointment.fromJson(row),
+      ];
+    });
+  }
+
+  @override
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  }) {
+    return _request((client) async {
+      await _postJson(
+        client,
+        kReservationCancelPath,
+        body: <String, dynamic>{
+          'appointment_id': appointmentId,
+          'appointment_detail_id': jsonEncode(detailIds),
+        },
+      );
     });
   }
 

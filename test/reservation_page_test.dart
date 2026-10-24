@@ -341,6 +341,145 @@ void main() {
       await tester.pumpAndSettle();
     });
   });
+
+  group('我的预约', () {
+    ReservationAppointment makeAppointment({
+      String id = '9001',
+      int status = 1,
+      bool canCancel = true,
+    }) =>
+        ReservationAppointment(
+          id: id,
+          resourceName: '党建活动室',
+          createdAt: '2026-10-24 21:00',
+          status: status,
+          canCancel: canCancel,
+          details: const [
+            ReservationAppointmentDetail(
+              id: 'd1',
+              date: '2026-10-27',
+              timeLabel: '08:00-12:00',
+            ),
+          ],
+        );
+
+    testWidgets('打开弹窗：列出预约单与状态、时段明细', (tester) async {
+      final api = _FakeReservationApi(appointments: [makeAppointment()]);
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.byTooltip(l10n.reservationMyAppointments));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationMyAppointments), findsOneWidget);
+      expect(find.text('党建活动室'), findsWidgets);
+      expect(find.text(l10n.reservationStatusReviewing), findsOneWidget);
+      expect(find.text('2026-10-27 08:00-12:00'), findsOneWidget);
+      expect(find.text(l10n.reservationCancel), findsOneWidget);
+      await tester.tap(find.text(l10n.close));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('取消预约：确认后调用接口并提示成功', (tester) async {
+      final api = _FakeReservationApi(appointments: [makeAppointment()]);
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.byTooltip(l10n.reservationMyAppointments));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationCancel).first);
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reservationCancelConfirm), findsOneWidget);
+
+      // 确认弹窗里点主按钮（与列表行的取消按钮同名，取 FilledButton）。
+      await tester.tap(
+        find.widgetWithText(FilledButton, l10n.reservationCancel),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.cancelCalls, 1);
+      expect(api.lastCancelAppointmentId, '9001');
+      expect(find.text(l10n.reservationCancelSuccess), findsOneWidget);
+    });
+
+    testWidgets('不可取消的单不显示取消按钮', (tester) async {
+      final api = _FakeReservationApi(
+        appointments: [makeAppointment(status: 3, canCancel: false)],
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.byTooltip(l10n.reservationMyAppointments));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.reservationStatusBooked), findsOneWidget);
+      expect(find.text(l10n.reservationCancel), findsNothing);
+    });
+
+    testWidgets('人数步进受资源容量限制', (tester) async {
+      final api = _FakeReservationApi(
+        resources: const [
+          ReservationResource(
+            id: '493',
+            name: '党建活动室',
+            attributes: [
+              ReservationAttribute(name: '容量/人数', value: '2'),
+            ],
+            needsApproval: true,
+            maxPeriodsPerDay: 2,
+            capacity: 2,
+          ),
+        ],
+      );
+      getIt.registerSingleton<ReservationProvider>(ReservationProvider(api));
+      getIt.registerSingleton<ScuAuthProvider>(_LoggedInAuth());
+
+      await tester.pumpWidget(_wrap());
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ReservationPage)),
+      )!;
+
+      await tester.tap(find.text(l10n.reservationRemaining(1)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.reservationLaunchButton));
+      await tester.pumpAndSettle();
+
+      // 容量 2：加到 2 后加号禁用。
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+      final plus = tester.widget<IconButton>(
+        find.byWidgetPredicate(
+          (w) =>
+              w is IconButton &&
+              w.icon is Icon &&
+              (w.icon as Icon).icon == Icons.add_circle_outline,
+        ),
+      );
+      expect(plus.onPressed, isNull,
+          reason: 'plus button must disable at capacity');
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+    });
+  });
 }
 
 /// 足够多的活动室，保证窄屏下标签条横向溢出。
@@ -412,6 +551,7 @@ class _FakeReservationApi implements ReservationApi {
     this.launchError,
     this.launchResult,
     this.allSlotsAvailable = false,
+    this.appointments = const [],
   });
 
   final List<ReservationResource>? resources;
@@ -421,6 +561,9 @@ class _FakeReservationApi implements ReservationApi {
 
   /// true 时三个时段全部「余 1」可约（用于每日上限用例）。
   final bool allSlotsAvailable;
+
+  /// 我的预约列表数据。
+  final List<ReservationAppointment> appointments;
 
   int calendarCalls = 0;
   String? lastResourceId;
@@ -444,6 +587,27 @@ class _FakeReservationApi implements ReservationApi {
     if (error != null) throw error;
     return launchResult ??
         const ReservationLaunchResult(needsProcess: false, processUrl: '');
+  }
+
+  List<ReservationAppointment> get appointmentRows => appointments;
+
+  @override
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  }) async => appointmentRows;
+
+  int cancelCalls = 0;
+  String? lastCancelAppointmentId;
+
+  @override
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  }) async {
+    cancelCalls++;
+    lastCancelAppointmentId = appointmentId;
   }
 
   @override

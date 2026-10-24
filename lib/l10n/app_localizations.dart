@@ -5989,6 +5989,66 @@ abstract class AppLocalizations {
   /// **'Booking failed, please try again later'**
   String get reservationLaunchFailedGeneric;
 
+  /// AppBar button (and dialog title) opening my reservation list.
+  ///
+  /// In en, this message translates to:
+  /// **'My reservations'**
+  String get reservationMyAppointments;
+
+  /// Empty state of my reservation list.
+  ///
+  /// In en, this message translates to:
+  /// **'No reservations yet'**
+  String get reservationMyAppointmentsEmpty;
+
+  /// Status label: pending application (status=0).
+  ///
+  /// In en, this message translates to:
+  /// **'Pending application'**
+  String get reservationStatusPendingApply;
+
+  /// Status label: under review (status=1/2).
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get reservationStatusReviewing;
+
+  /// Status label: booked (status=3).
+  ///
+  /// In en, this message translates to:
+  /// **'Booked'**
+  String get reservationStatusBooked;
+
+  /// Status label: awaiting check-in (status=4).
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting check-in'**
+  String get reservationStatusCheckInPending;
+
+  /// Status label: other (finished/cancelled).
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get reservationStatusClosed;
+
+  /// Cancel button on a reservation row.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel reservation'**
+  String get reservationCancel;
+
+  /// Confirmation text before cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this reservation? The slot is released immediately.'**
+  String get reservationCancelConfirm;
+
+  /// Toast shown after cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get reservationCancelSuccess;
+
   /// Tab label for the leave application form.
   ///
   /// In en, this message translates to:

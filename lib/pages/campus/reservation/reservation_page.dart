@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/l10n/app_localizations.dart';
 import 'package:bugaoshan/pages/campus/reservation/models/reservation_models.dart';
@@ -61,7 +63,8 @@ class _ReservationPageState extends State<ReservationPage>
       _selectedSlots.values.fold(0, (sum, ids) => sum + ids.length);
 
   void _clearSelection() {
-    if (_selectedSlots.isEmpty) return;
+    // 提交等异步路径会在 await 后调用；页面可能已随弹窗关闭而 dispose。
+    if (!mounted || _selectedSlots.isEmpty) return;
     setState(_selectedSlots.clear);
   }
 
@@ -214,8 +217,12 @@ class _ReservationPageState extends State<ReservationPage>
                         icon: const Icon(Icons.remove_circle_outline),
                       ),
                       Text('$people', style: Theme.of(context).textTheme.titleMedium),
+                      // 容量未提供（null）时不设上限。
                       IconButton(
-                        onPressed: () => setDialogState(() => people++),
+                        onPressed: resource.capacity == null ||
+                                people < resource.capacity!
+                            ? () => setDialogState(() => people++)
+                            : null,
                         icon: const Icon(Icons.add_circle_outline),
                       ),
                     ],
@@ -285,8 +292,8 @@ class _ReservationPageState extends State<ReservationPage>
       // 服务端拒绝（如缺申请表字段）：保留选择便于修改后重试。
       failure = e;
     } catch (e, logStackTrace) {
+      // 未知异常（网络中断等）：不带 message，让展示层落到 l10n 兜底文案。
       AppLog.e(_tag, 'launch 失败', error: e, stackTrace: logStackTrace);
-      failure = ServiceException('launch failed');
     } finally {
       if (mounted) setState(() => _launching = false);
     }
@@ -313,7 +320,13 @@ class _ReservationPageState extends State<ReservationPage>
           ),
         );
         if (openProcess == true && mounted) {
-          await openLink(result.processUrl);
+          // 服务端偶尔只回 is_relate 不带 process_url：降级到官方专题页
+          // （「我的预约」里有申请入口），不能当成「预约成功」。
+          await openLink(
+            result.processUrl.isNotEmpty
+                ? result.processUrl
+                : kReservationSpecialPageUrl,
+          );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -353,6 +366,16 @@ class _ReservationPageState extends State<ReservationPage>
     );
   }
 
+  // ── 我的预约 ─────────────────────────────────────────────────────────────
+
+  Future<void> _openMyAppointments() async {
+    unawaited(_provider.loadAppointments());
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => _MyAppointmentsDialog(provider: _provider),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -370,12 +393,21 @@ class _ReservationPageState extends State<ReservationPage>
           ),
           actions: [
             if (getIt<ScuAuthProvider>().isLoggedIn &&
-                _provider.state != ReservationLoadState.loading)
+                _provider.state != ReservationLoadState.loading) ...[
+              IconButton(
+                tooltip: l10n.reservationMyAppointments,
+                onPressed: _openMyAppointments,
+                icon: const Icon(Icons.event_note_outlined),
+              ),
               IconButton(
                 tooltip: l10n.refresh,
-                onPressed: _provider.refresh,
+                onPressed: () {
+                  _clearSelection();
+                  _provider.refresh();
+                },
                 icon: const Icon(Icons.refresh),
               ),
+            ],
           ],
         ),
         body: _buildBody(l10n),
@@ -424,7 +456,10 @@ class _ReservationPageState extends State<ReservationPage>
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed: _provider.refresh,
+                onPressed: () {
+                  _clearSelection();
+                  _provider.refresh();
+                },
                 icon: const Icon(Icons.refresh),
                 label: Text(l10n.retry),
               ),
@@ -437,7 +472,10 @@ class _ReservationPageState extends State<ReservationPage>
     if (_provider.errorKind != null) {
       return RetryableErrorWidget.message(
         message: _provider.errorMessage ?? l10n.loadFailed,
-        onRetry: _provider.refresh,
+        onRetry: () {
+          _clearSelection();
+          _provider.refresh();
+        },
       );
     }
 
@@ -453,7 +491,11 @@ class _ReservationPageState extends State<ReservationPage>
     }
 
     return RefreshIndicator(
-      onRefresh: _provider.refresh,
+      // 刷新后日历可能已是别人约走的状态，已选时段必须一并清掉。
+      onRefresh: () async {
+        _clearSelection();
+        await _provider.refresh();
+      },
       child: ListView(
         padding: withSystemBottomInset(
           context,
@@ -1023,9 +1065,190 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
+/// 「我的预约」弹窗：列出全部预约单（资源、状态、时段明细），可取消
+/// `is_cancel == 1` 的单（整单取消，传全部明细 id）。
+class _MyAppointmentsDialog extends StatelessWidget {
+  const _MyAppointmentsDialog({required this.provider});
+
+  final ReservationProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Expanded(child: Text(l10n.reservationMyAppointments)),
+          IconButton(
+            tooltip: l10n.refresh,
+            onPressed: provider.appointmentsLoading
+                ? null
+                : () => provider.loadAppointments(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: ListenableBuilder(
+          listenable: provider,
+          builder: (context, _) {
+            if (provider.appointmentsLoading &&
+                provider.appointments.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final items = provider.appointments;
+            if (items.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  l10n.reservationMyAppointmentsEmpty,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              );
+            }
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 420),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppShapes.small),
+                itemBuilder: (context, index) {
+                  final appointment = items[index];
+                  return _AppointmentTile(
+                    appointment: appointment,
+                    provider: provider,
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.close),
+        ),
+      ],
+    );
+  }
+}
+
+/// 单张预约单的行：资源名 + 状态标签 + 时段明细 + 取消按钮。
+class _AppointmentTile extends StatelessWidget {
+  const _AppointmentTile({required this.appointment, required this.provider});
+
+  final ReservationAppointment appointment;
+  final ReservationProvider provider;
+
+  String _statusText(AppLocalizations l10n) => switch (appointment.status) {
+    0 => l10n.reservationStatusPendingApply,
+    1 || 2 => l10n.reservationStatusReviewing,
+    3 => l10n.reservationStatusBooked,
+    4 => l10n.reservationStatusCheckInPending,
+    _ => l10n.reservationStatusClosed,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(AppShapes.small),
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .4)),
+        borderRadius: BorderRadius.circular(AppShapes.small),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  appointment.resourceName,
+                  style: textTheme.titleSmall,
+                ),
+              ),
+              _InfoChip(label: _statusText(l10n)),
+            ],
+          ),
+          if (appointment.details.isNotEmpty) ...[
+            const SizedBox(height: AppShapes.xs),
+            Wrap(
+              spacing: AppShapes.small,
+              runSpacing: AppShapes.xs,
+              children: [
+                for (final detail in appointment.details)
+                  Text(
+                    detail.label,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (appointment.canCancel)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => _confirmCancel(context, l10n),
+                child: Text(l10n.reservationCancel),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmCancel(BuildContext context, AppLocalizations l10n) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.reservationCancel),
+        content: Text(l10n.reservationCancelConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.reservationCancel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await provider.cancelAppointment(appointment);
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.reservationCancelSuccess)),
+      );
+    } on ServiceException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.reservationLaunchFailedGeneric)),
+      );
+    }
+  }
+}
+
 class _LegendDot extends StatelessWidget {
   const _LegendDot({required this.color, required this.label});
-
   final Color color;
   final String label;
 

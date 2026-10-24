@@ -3112,6 +3112,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reservationLaunchFailedGeneric => '预约失败，请稍后重试';
 
   @override
+  String get reservationMyAppointments => '我的预约';
+
+  @override
+  String get reservationMyAppointmentsEmpty => '暂无预约记录';
+
+  @override
+  String get reservationStatusPendingApply => '待申请';
+
+  @override
+  String get reservationStatusReviewing => '审核中';
+
+  @override
+  String get reservationStatusBooked => '已预约';
+
+  @override
+  String get reservationStatusCheckInPending => '待签到';
+
+  @override
+  String get reservationStatusClosed => '已结束';
+
+  @override
+  String get reservationCancel => '取消预约';
+
+  @override
+  String get reservationCancelConfirm => '确定取消这条预约？取消后名额即时释放。';
+
+  @override
+  String get reservationCancelSuccess => '已取消';
+
+  @override
   String get leaveApply => '请假申请';
 
   @override

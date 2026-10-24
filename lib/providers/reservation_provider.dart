@@ -188,6 +188,41 @@ class ReservationProvider extends ChangeNotifier {
     return result;
   }
 
+  // ── 我的预约 ─────────────────────────────────────────────────────────────
+
+  List<ReservationAppointment> _appointments = const [];
+  bool _appointmentsLoading = false;
+
+  List<ReservationAppointment> get appointments =>
+      List.unmodifiable(_appointments);
+
+  bool get appointmentsLoading => _appointmentsLoading;
+
+  /// 拉取我的预约（type=0 全部）。异常向上抛给调用方展示。
+  Future<void> loadAppointments() async {
+    _appointmentsLoading = true;
+    notifyListeners();
+    try {
+      _appointments = await _api.fetchAppointments();
+    } finally {
+      _appointmentsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// 取消一张预约单（整单的全部时段明细）。成功后刷新我的预约与当前日历。
+  Future<void> cancelAppointment(ReservationAppointment appointment) async {
+    await _api.cancelAppointment(
+      appointmentId: appointment.id,
+      detailIds: [for (final d in appointment.details) d.id],
+    );
+    final resourceId = _selectedResourceId;
+    if (resourceId != null) {
+      await _loadCalendar(resourceId, generation: ++_generation);
+    }
+    await loadAppointments();
+  }
+
   Future<void> _loadCalendar(
     String resourceId, {
     required int generation,
@@ -225,6 +260,8 @@ class ReservationProvider extends ChangeNotifier {
     _resources = const [];
     _selectedResourceId = null;
     _calendar = null;
+    _appointments = const [];
+    _appointmentsLoading = false;
     _state = ReservationLoadState.idle;
     _errorKind = null;
     _errorMessage = null;

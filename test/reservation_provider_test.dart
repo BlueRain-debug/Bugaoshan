@@ -295,6 +295,108 @@ void main() {
         );
       });
     });
+
+    group('我的预约', () {
+      test('loadAppointments：透传 API 结果', () async {
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          appointments: [
+            ReservationAppointment(
+              id: '9001',
+              resourceName: '党建活动室',
+              createdAt: '2026-10-24 21:00',
+              status: 1,
+              canCancel: true,
+              details: const [
+                ReservationAppointmentDetail(
+                  id: 'd1',
+                  date: '2026-10-27',
+                  timeLabel: '08:00-12:00',
+                ),
+              ],
+            ),
+          ],
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await provider.loadAppointments();
+
+        expect(api.listCalls, 1);
+        expect(provider.appointments, hasLength(1));
+        expect(provider.appointments.single.resourceName, '党建活动室');
+        expect(provider.appointmentsLoading, isFalse);
+      });
+
+      test('cancelAppointment：传整单全部明细 id，成功后刷新列表与日历', () async {
+        final appointment = ReservationAppointment(
+          id: '9001',
+          resourceName: '党建活动室',
+          createdAt: '2026-10-24 21:00',
+          status: 1,
+          canCancel: true,
+          details: const [
+            ReservationAppointmentDetail(
+              id: 'd1',
+              date: '2026-10-27',
+              timeLabel: '08:00-12:00',
+            ),
+            ReservationAppointmentDetail(
+              id: 'd2',
+              date: '2026-10-27',
+              timeLabel: '12:00-18:00',
+            ),
+          ],
+        );
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          appointments: [appointment],
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+        await provider.loadAppointments();
+        final calendarCallsBefore = api.calendarCalls;
+
+        await provider.cancelAppointment(appointment);
+
+        expect(api.cancelCalls, 1);
+        expect(api.lastCancelAppointmentId, '9001');
+        expect(api.lastCancelDetailIds, ['d1', 'd2']);
+        expect(api.calendarCalls, calendarCallsBefore + 1);
+        expect(api.listCalls, 2);
+      });
+
+      test('cancelAppointment：服务端拒绝时原样抛出', () async {
+        final appointment = ReservationAppointment(
+          id: '9001',
+          resourceName: '党建活动室',
+          createdAt: '2026-10-24 21:00',
+          status: 3,
+          canCancel: true,
+          details: const [
+            ReservationAppointmentDetail(
+              id: 'd1',
+              date: '2026-10-27',
+              timeLabel: '08:00-12:00',
+            ),
+          ],
+        );
+        final api = _FakeReservationApi(
+          resources: [_resource('493', '党建活动室')],
+          appointments: [appointment],
+          cancelError: const ServiceException('该预约不可取消'),
+        );
+        final provider = ReservationProvider(api);
+        await provider.refresh();
+
+        await expectLater(
+          provider.cancelAppointment(appointment),
+          throwsA(
+            isA<ServiceException>().having((e) => e.message, 'message', '该预约不可取消'),
+          ),
+        );
+      });
+    });
   });
 }
 
@@ -314,6 +416,8 @@ class _FakeReservationApi implements ReservationApi {
     this.calendarError,
     this.launchError,
     this.launchResult,
+    this.appointments = const [],
+    this.cancelError,
   });
 
   final List<ReservationResource> resources;
@@ -321,6 +425,8 @@ class _FakeReservationApi implements ReservationApi {
   final Object? calendarError;
   final Object? launchError;
   final ReservationLaunchResult? launchResult;
+  final List<ReservationAppointment> appointments;
+  final Object? cancelError;
 
   int calendarCalls = 0;
   String? lastResourceId;
@@ -387,5 +493,33 @@ class _FakeReservationApi implements ReservationApi {
     if (error != null) throw error;
     return launchResult ??
         const ReservationLaunchResult(needsProcess: false, processUrl: '');
+  }
+
+  int listCalls = 0;
+
+  @override
+  Future<List<ReservationAppointment>> fetchAppointments({
+    int type = 0,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    listCalls++;
+    return appointments;
+  }
+
+  int cancelCalls = 0;
+  String? lastCancelAppointmentId;
+  List<String>? lastCancelDetailIds;
+
+  @override
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    required List<String> detailIds,
+  }) async {
+    cancelCalls++;
+    lastCancelAppointmentId = appointmentId;
+    lastCancelDetailIds = List<String>.of(detailIds);
+    final error = cancelError;
+    if (error != null) throw error;
   }
 }

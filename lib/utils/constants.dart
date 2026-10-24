@@ -173,6 +173,18 @@ const String kReservationCalendarPath = '/site/resource/calendar';
 /// 表示存在未提交的预约单。
 const String kReservationLaunchPath = '/site/resource/launch';
 
+/// 我的预约列表：`GET`，query `{p, type, pageSize}`；`type` 与官方「我的预约」
+/// tab 一致（0 全部 / 1 待申请 / 2 审核中 / 3 已预约 / 4 待签到）。响应
+/// `d = {data: [预约单], total}`，行含 `id / resource_name / created /
+/// status / type / is_cancel / is_creater / detail`，其中 `detail` 是
+/// `日期 -> [{id, str_time}]` 的对象（可按明细部分取消）。
+const String kReservationAppointmentListPath = '/site/appointment/appointment-list';
+
+/// 取消预约：`POST`，body `{appointment_id, appointment_detail_id}`，其中
+/// `appointment_detail_id` 是**明细 id 的 JSON 字符串**（传整单全部明细
+/// 即整单取消）。服务器要求该单 `is_cancel == 1` 且当前用户是创建者。
+const String kReservationCancelPath = '/site/appointment/appointment-cancel';
+
 const MethodChannel kUpdateMethodChannel = MethodChannel('bugaoshan/update');
 const MethodChannel kDynamicIconMethodChannel = MethodChannel(
   'bugaoshan/dynamic_icon',
