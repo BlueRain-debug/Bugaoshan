@@ -114,8 +114,9 @@ class _ReservationPageState extends State<ReservationPage>
     if (_resourceScrollController.hasClients) {
       _updateResourceScrollState();
     } else {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _syncScrollStateAfterLayout());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _syncScrollStateAfterLayout(),
+      );
     }
   }
 
@@ -162,9 +163,7 @@ class _ReservationPageState extends State<ReservationPage>
     final slots = <ReservationLaunchSlot>[];
     for (final day in _selectedSlots.keys) {
       for (final periodId in _selectedSlots[day]!) {
-        slots.add(
-          ReservationLaunchSlot(date: day, periodId: periodId),
-        );
+        slots.add(ReservationLaunchSlot(date: day, periodId: periodId));
       }
     }
     return slots;
@@ -216,10 +215,14 @@ class _ReservationPageState extends State<ReservationPage>
                             : null,
                         icon: const Icon(Icons.remove_circle_outline),
                       ),
-                      Text('$people', style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        '$people',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       // 容量未提供（null）时不设上限。
                       IconButton(
-                        onPressed: resource.capacity == null ||
+                        onPressed:
+                            resource.capacity == null ||
                                 people < resource.capacity!
                             ? () => setDialogState(() => people++)
                             : null,
@@ -276,10 +279,7 @@ class _ReservationPageState extends State<ReservationPage>
     ReservationLaunchResult? result;
     ScuException? failure;
     try {
-      result = await _provider.launchReservation(
-        slots: slots,
-        number: number,
-      );
+      result = await _provider.launchReservation(slots: slots, number: number);
       _clearSelection();
     } on ReservationApplyPendingException catch (e) {
       // 已有未提交预约单：本次选择作废。
@@ -329,9 +329,9 @@ class _ReservationPageState extends State<ReservationPage>
           );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.reservationLaunchSuccess)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.reservationLaunchSuccess)));
       }
       return;
     }
@@ -361,9 +361,9 @@ class _ReservationPageState extends State<ReservationPage>
     }
 
     final message = failure?.message ?? l10n.reservationLaunchFailedGeneric;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ── 我的预约 ─────────────────────────────────────────────────────────────
@@ -544,7 +544,8 @@ class _ReservationPageState extends State<ReservationPage>
                       const SizedBox(width: AppShapes.small),
                   itemBuilder: (context, index) {
                     final resource = _provider.resources[index];
-                    final selected = resource.id == _provider.selectedResourceId;
+                    final selected =
+                        resource.id == _provider.selectedResourceId;
                     return ChoiceChip(
                       label: Text(resource.name),
                       selected: selected,
@@ -621,9 +622,7 @@ class _ReservationPageState extends State<ReservationPage>
                   ? null
                   : () {
                       _clearSelection();
-                      _provider.shiftRange(
-                        -ReservationProvider.visibleDays,
-                      );
+                      _provider.shiftRange(-ReservationProvider.visibleDays);
                     },
               icon: const Icon(Icons.chevron_left),
             ),
@@ -663,7 +662,10 @@ class _ReservationPageState extends State<ReservationPage>
     );
   }
 
-  Widget _buildResourceInfo(ReservationResource resource, AppLocalizations l10n) {
+  Widget _buildResourceInfo(
+    ReservationResource resource,
+    AppLocalizations l10n,
+  ) {
     return StyledCard(
       padding: const EdgeInsets.all(AppShapes.large),
       child: Column(
@@ -671,9 +673,9 @@ class _ReservationPageState extends State<ReservationPage>
         children: [
           Text(
             resource.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           if (resource.attributes.isNotEmpty) ...[
             const SizedBox(height: AppShapes.small),
@@ -717,7 +719,10 @@ class _ReservationPageState extends State<ReservationPage>
   /// 不用 `DataTable`：它在横屏 / 小高度弹窗里会被父级压扁（实测行高
   /// 只剩 11px），`dataRowMinHeight` 也兜不住。这里用手工 Row/Column
   /// 布局，行高由 `SizedBox` 写死，超出部分交给外层 ListView 滚动。
-  Widget _buildCalendarGrid(ReservationCalendar calendar, AppLocalizations l10n) {
+  Widget _buildCalendarGrid(
+    ReservationCalendar calendar,
+    AppLocalizations l10n,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final textStyle = Theme.of(context).textTheme.bodyMedium;
     const headingHeight = 44.0;
@@ -800,8 +805,7 @@ class _ReservationPageState extends State<ReservationPage>
                                   selected:
                                       _selectedSlots[day]?.contains(slot.id) ??
                                       false,
-                                  onTap: () =>
-                                      _onSlotTap(day, slot, calendar),
+                                  onTap: () => _onSlotTap(day, slot, calendar),
                                 ),
                               ),
                             ),
@@ -838,9 +842,7 @@ class _ReservationPageState extends State<ReservationPage>
     if (maxPerDay > 0 && daySelection.length >= maxPerDay) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.reservationDailyLimitReached(maxPerDay)),
-        ),
+        SnackBar(content: Text(l10n.reservationDailyLimitReached(maxPerDay))),
       );
       return;
     }
@@ -1098,58 +1100,58 @@ class _MyAppointmentsDialog extends StatelessWidget {
         child: SizedBox(
           width: double.maxFinite,
           child: ListenableBuilder(
-          listenable: provider,
-          builder: (context, _) {
-            if (provider.appointmentsLoading &&
-                provider.appointments.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final error = provider.appointmentsError;
-            if (error != null && provider.appointments.isEmpty) {
-              // 拉取失败 ≠ 没有预约：明确给出错误文案，标题行的刷新即重试。
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  error.isNotEmpty
-                      ? error
-                      : l10n.reservationMyAppointmentsError,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.error,
+            listenable: provider,
+            builder: (context, _) {
+              if (provider.appointmentsLoading &&
+                  provider.appointments.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final error = provider.appointmentsError;
+              if (error != null && provider.appointments.isEmpty) {
+                // 拉取失败 ≠ 没有预约：明确给出错误文案，标题行的刷新即重试。
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    error.isNotEmpty
+                        ? error
+                        : l10n.reservationMyAppointmentsError,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: scheme.error),
                   ),
+                );
+              }
+              final items = provider.appointments;
+              if (items.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    l10n.reservationMyAppointmentsEmpty,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppShapes.small),
+                  itemBuilder: (context, index) {
+                    final appointment = items[index];
+                    return _AppointmentTile(
+                      appointment: appointment,
+                      provider: provider,
+                    );
+                  },
                 ),
               );
-            }
-            final items = provider.appointments;
-            if (items.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  l10n.reservationMyAppointmentsEmpty,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              );
-            }
-            return ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 420),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: items.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppShapes.small),
-                itemBuilder: (context, index) {
-                  final appointment = items[index];
-                  return _AppointmentTile(
-                    appointment: appointment,
-                    provider: provider,
-                  );
-                },
-              ),
-            );
-          },
+            },
           ),
         ),
       ),
@@ -1242,7 +1244,10 @@ class _AppointmentTile extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmCancel(BuildContext context, AppLocalizations l10n) async {
+  Future<void> _confirmCancel(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
