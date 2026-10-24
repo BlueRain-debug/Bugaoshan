@@ -54,6 +54,7 @@ class _ReservationPageState extends State<ReservationPage>
     _resourceScrollController.addListener(_updateResourceScrollState);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onAuthChanged();
+      _syncScrollStateAfterLayout();
     });
   }
 
@@ -78,6 +79,20 @@ class _ReservationPageState extends State<ReservationPage>
       _canScrollLeft = canLeft;
       _canScrollRight = canRight;
     });
+  }
+
+  /// 标签条首帧进树后同步一次箭头状态。
+  ///
+  /// 资源还在加载时标签条不在树上（hasClients 为 false），推迟到下一帧重试，
+  /// 直到挂载为止；挂载后的滚动变化由 controller 的 listener 覆盖。
+  void _syncScrollStateAfterLayout() {
+    if (!mounted) return;
+    if (_resourceScrollController.hasClients) {
+      _updateResourceScrollState();
+    } else {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _syncScrollStateAfterLayout());
+    }
   }
 
   /// 页面跨夜挂着再回到前台时，把区间夹回今天，避免继续展示昨天的日历。
@@ -239,10 +254,6 @@ class _ReservationPageState extends State<ReservationPage>
   /// 并按滚动位置禁用（到头了就不再可点）。
   Widget _buildResourcePicker(AppLocalizations l10n) {
     final controller = _resourceScrollController;
-    // 首帧拿到布局后才能判断两端是否可滚，这里补一次同步。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _updateResourceScrollState();
-    });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
