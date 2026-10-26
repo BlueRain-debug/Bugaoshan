@@ -28,13 +28,18 @@ bundle/
 ├── data/
 │   ├── icudtl.dat
 │   └── flutter_assets/
-└── lib/
-    ├── libflutter_linux_gtk.so
-    ├── libapp.so
-    └── other plugin/native libraries
+├── lib/
+│   ├── libflutter_linux_gtk.so
+│   ├── libapp.so
+│   └── other plugin/native libraries
+└── share/
+    ├── applications/
+    │   └── io.github.the_brotherhood_of_scu.bugaoshan.desktop
+    └── icons/hicolor/512x512/apps/
+        └── io.github.the_brotherhood_of_scu.bugaoshan.png
 ```
 
-可执行文件使用 `$ORIGIN/lib` RPATH 查找 Flutter engine、AOT 和应用私有插件库。bundle 不包含 desktop entry、AppStream metadata、图标安装规则、依赖声明或 PATH 启动器。
+可执行文件使用 `$ORIGIN/lib` RPATH 查找 Flutter engine、AOT 和应用私有插件库。GTK runner 启动时从 `share/icons/hicolor/512x512/apps/<application-id>.png` 加载窗口图标（X11/XWayland 使用）。Wayland 合成器不读取 GTK 的窗口图标，而是按 desktop entry 匹配应用图标；因此 runner 首次启动时还会读取 bundle 内的 desktop 模板，在 `$XDG_DATA_HOME/applications/<application-id>.desktop` 写入一个 `NoDisplay=true` 的隐藏条目（`Exec` 指向当前可执行文件的绝对路径，`X-Bugaoshan-Generated=true`），并把图标以 `<application-id>.generated` 的私有名称复制到 `$XDG_DATA_HOME/icons/hicolor/512x512/apps/`，避免覆盖系统包安装的同名图标。如果 `XDG_DATA_DIRS` 中已经存在系统包 / Flatpak / Snap 安装的 desktop entry，runner 会跳过我方注册并删除自己生成的条目和图标。bundle 仍不安装 AppStream metadata、可见的启动器条目、依赖声明或 PATH 启动器。
 
 因此直接解压 tar.gz 后运行的是 `./Bugaoshan`，而 `packaging/linux/*.desktop` 中的 `Exec=bugaoshan` 只有在正式安装流程提供小写 PATH 入口后才成立。
 
@@ -59,7 +64,7 @@ Linux 构建由 [`.github/workflows/build-linux.yml`](../../.github/workflows/bu
 
 [`release.yml`](../../.github/workflows/release.yml) 在正式与预览两条通道上都调用它，发布阶段下载为 `linux-release/`；[`release_prepare.py`](../../.github/scripts/release_prepare.py) 将其重命名为 `bugaoshan_<version>_linux_x64.tar.gz` 后随 Release 上传，[`release_body.py`](../../.github/scripts/release_body.py) 在发布正文固定给出该下载链接。
 
-制品是第 2 节描述的裸 bundle：解压后运行 `./Bugaoshan`，没有 desktop entry、依赖声明或 PATH 启动器，目标系统需要自备 GTK 3、libsecret、libepoxy、Wayland 等运行库。当前工作流不额外校验 `ldd` 依赖可解析，也不校验 bundle 内是否残留网页视图原生库（见第 9 节）。
+制品是第 2 节描述的裸 bundle：解压后运行 `./Bugaoshan`，没有可见的桌面菜单条目、依赖声明或 PATH 启动器，目标系统需要自备 GTK 3、libsecret、libepoxy、Wayland 等运行库。首次启动会按第 2 节的规则自动注册一个隐藏的桌面条目和用户级图标，用于 Wayland 下的窗口 / 任务栏图标关联；运行 `./Bugaoshan` 不需要该步骤预先完成。当前工作流不额外校验 `ldd` 依赖可解析，也不校验 bundle 内是否残留网页视图原生库（见第 9 节）。
 
 ## 5. Flatpak
 
@@ -126,7 +131,7 @@ debian/changelog
 | 正式 Release 自动发布 | 是 | 否 | 否 | 否 |
 | 网页视图后端 | 无 | 无 | 无 | 无 |
 | 声明系统依赖 | 否 | manifest | 尚未实现 | 尚未实现 |
-| desktop/AppStream 安装 | 否 | 是 | 尚未实现 | 尚未实现 |
+| desktop/AppStream 安装 | 隐藏 desktop entry（首次启动自动注册）；AppStream 未安装 | 是 | 尚未实现 | 尚未实现 |
 | 当前架构 | x64 | x86_64 / aarch64 manifest | 未定 | 未定 |
 
 ## 9. 已知技术债
