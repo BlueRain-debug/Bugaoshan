@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:bugaoshan/utils/app_log.dart';
@@ -7,6 +8,14 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
+/// 桌面端窗口几何状态持久化。各平台能力差异：
+///
+/// Windows: 物理坐标，支持混合 DPI 多屏，有 onWindowMoved 结束事件。
+/// macOS:   统一逻辑坐标，N/A，有 onWindowMoved。
+/// Linux X11/XWayland: 统一逻辑坐标，scaleFactor 恒 1.0，只有 onWindowMove 过程事件。
+/// Linux Native Wayland: 各屏独立 scaleFactor，混合 DPI 真实存在；
+///   但合成器拒绝 gtk_window_move/getPosition，位置彻底不可控，
+///   所以跳过位置存取，仅记忆尺寸，启动直接居中。
 class WindowStateService with WindowListener {
   static const String _tag = 'WindowStateService';
 
@@ -32,7 +41,10 @@ class WindowStateService with WindowListener {
     final h = prefs.getDouble(_keyH);
     final size = w != null && h != null ? Size(w, h) : null;
     // Windows 下位置以物理像素保存，其他桌面平台为逻辑坐标；尺寸均为逻辑值。
-    final position = x != null && y != null ? Offset(x, y) : null;
+    // 原生 Wayland 下合成器不允许应用读/写窗口全局位置，直接居中。
+    final position = !_isNativeWayland && x != null && y != null
+        ? Offset(x, y)
+        : null;
 
     // Validate saved position against current screen layout.
     // If the display configuration changed (resolution lowered, monitor
@@ -71,6 +83,14 @@ class WindowStateService with WindowListener {
   /// 坐标空间不一致，需要保存物理像素才能跨屏还原；macOS/Linux 使用统一
   /// 的逻辑坐标空间，直接存取逻辑值即可。关闭时的隐藏处理也仅 Windows 需要。
   static bool get _isWindows => defaultTargetPlatform == TargetPlatform.windows;
+
+  /// 原生 Wayland 下合成器不允许应用知道/设置窗口全局位置：
+  /// `gtk_window_get_position()` 恒返回 (0,0)，`gtk_window_move()` 被忽略。
+  /// XWayland 走 x11 backend，不受影响。
+  static bool get _isNativeWayland =>
+      defaultTargetPlatform == TargetPlatform.linux &&
+      Platform.environment['WAYLAND_DISPLAY'] != null &&
+      (Platform.environment['GDK_BACKEND'] ?? 'wayland') != 'x11';
 
   static double _normalizeDpr(num? dpr) {
     return dpr != null && dpr > 0 ? dpr.toDouble() : 1.0;
@@ -183,6 +203,10 @@ class WindowStateService with WindowListener {
     );
   }
 
+  /// 取消上一次保存并重置 300ms 防抖 Timer。
+  /// Linux 的 window_manager 只发 configure-event 对应的 move/resize
+  /// 过程事件，不发结束事件；这里用防抖模拟"停止操作后再落盘"——
+  /// 拖拽过程中持续 cancel + 重置 Timer，真正写盘发生在最后一次事件后。
   void _save() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), _saveNow);
@@ -190,6 +214,16 @@ class WindowStateService with WindowListener {
 
   Future<void> _saveNow() async {
     try {
+      // 最大化时的位置和尺寸都不是用户想要恢复的正常窗口状态，直接跳过。
+      if (await windowManager.isMaximized()) return;
+
+      final size = await windowManager.getSize();
+      await _prefs.setDouble(_keyW, size.width);
+      await _prefs.setDouble(_keyH, size.height);
+
+      // 原生 Wayland 下 getPosition 返回恒为 (0,0)，别写盘污染下次恢复。
+      if (_isNativeWayland) return;
+
       // Windows：getPosition 返回物理像素除以当前屏 DPR 后的逻辑值，
       // 乘回 DPR 保存为物理像素，避免窗口在不同缩放比例的屏幕间移动后
       // 重启时偏移；macOS/Linux 直接保存逻辑坐标。
@@ -197,11 +231,8 @@ class WindowStateService with WindowListener {
           ? _normalizeDpr(windowManager.getDevicePixelRatio())
           : 1.0;
       final pos = await windowManager.getPosition();
-      final size = await windowManager.getSize();
       await _prefs.setDouble(_keyX, pos.dx * dpr);
       await _prefs.setDouble(_keyY, pos.dy * dpr);
-      await _prefs.setDouble(_keyW, size.width);
-      await _prefs.setDouble(_keyH, size.height);
     } catch (logError, logStackTrace) {
       AppLog.e(_tag, '_saveNow 失败', error: logError, stackTrace: logStackTrace);
       // Best-effort save.
@@ -245,8 +276,9 @@ class WindowStateService with WindowListener {
   @override
   void onWindowResized() => _save();
 
-  // Linux 的 window_manager 只发 move/resize（拖拽过程中持续触发），
-  // 没有 moved/resized 结束事件，在这里触发保存（由 300ms 防抖合并）。
+  // Linux 的 window_manager 只发 configure-event 对应的 move/resize
+  // 过程事件，不发结束事件；这里用防抖模拟"停止操作后再落盘"——
+  // 拖拽过程中持续 cancel + 重置 Timer，真正写盘发生在最后一次事件后。
   @override
   void onWindowMove() {
     if (defaultTargetPlatform == TargetPlatform.linux) _save();
