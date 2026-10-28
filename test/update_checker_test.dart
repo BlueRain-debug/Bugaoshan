@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:bugaoshan/injection/injector.dart';
 import 'package:bugaoshan/services/update_checker.dart';
+import 'package:bugaoshan/utils/app_logger.dart';
 import 'package:bugaoshan/utils/release_version.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -37,6 +39,11 @@ void main() {
       expect(checkHasUpdate('v2.5.4-pre9', 'v2.5.4-pre12'), isTrue);
       expect(checkHasUpdate('v2.5.4-rc9', 'v2.5.4-rc10'), isTrue);
       expect(checkHasUpdate('v2.5.4-rc10', 'v2.5.4-rc.10'), isFalse);
+    });
+
+    test('promotes a preview to the stable release of the same version', () {
+      expect(checkHasUpdate('2.5.4-preview.12', '2.5.4'), isTrue);
+      expect(checkHasUpdate('2.5.4', '2.5.4-preview.12'), isFalse);
     });
 
     test('ignores build metadata and optional v prefix', () {
@@ -122,6 +129,19 @@ void main() {
   });
 
   group('GitHub release selection', () {
+    late AppLogger logger;
+
+    setUp(() async {
+      await getIt.reset();
+      logger = AppLogger();
+      getIt.registerSingleton<AppLogger>(logger);
+    });
+
+    tearDown(() async {
+      await getIt.reset();
+      logger.dispose();
+    });
+
     test('selects .12 from the observed 9/8/12/11/10/6 order', () {
       final releases = [
         for (final number in [9, 8, 12, 11, 10, 6])
@@ -140,12 +160,12 @@ void main() {
       );
     });
 
-    test('filters drafts, malformed tags and mismatched channels', () {
+    test('filters drafts and malformed tags and separates tag channels', () {
       final releases = [
         {...release('v9.0.0-preview'), 'draft': true},
         release('invalid'),
-        release('v9.0.0'),
-        release('v9.0.0-preview', preview: false),
+        release('v2.5.1'),
+        release('v2.5.4-preview.8', preview: false),
         release('v2.5.4-preview.12'),
         release('v2.5.2', preview: false),
         release('v2.5.3', preview: false),
@@ -162,7 +182,43 @@ void main() {
       );
     });
 
-    test('uses default pagination and reads only one page', () async {
+    test('uses preview tag semantics and warns about a missing flag', () {
+      final mislabeled = release('v2.5.4-preview', preview: false);
+      final selected = selectLatestGithubRelease(
+        [mislabeled],
+        prerelease: true,
+      );
+      expect(selected?['tag_name'], 'v2.5.4-preview');
+      expect(selected?['prerelease'], isTrue);
+      expect(mislabeled['prerelease'], isFalse);
+      expect(logger.entries.single.level, LogLevel.warn);
+      expect(logger.entries.single.message, contains('tag=v2.5.4-preview'));
+      expect(logger.entries.single.message, contains('prerelease=false'));
+      expect(logger.entries.single.message, contains('tagPrerelease=true'));
+    });
+
+    test('uses stable tag semantics and warns about an extra preview flag', () {
+      final selected = selectLatestGithubRelease(
+        [release('v2.5.4')],
+        prerelease: false,
+      );
+      expect(selected?['tag_name'], 'v2.5.4');
+      expect(selected?['prerelease'], isFalse);
+      expect(logger.entries.single.level, LogLevel.warn);
+      expect(logger.entries.single.message, contains('prerelease=true'));
+      expect(logger.entries.single.message, contains('tagPrerelease=false'));
+    });
+
+    test('accepts a preview tag without a sequence number without warning', () {
+      final selected = selectLatestGithubRelease(
+        [release('v2.5.4-preview')],
+        prerelease: true,
+      );
+      expect(selected?['tag_name'], 'v2.5.4-preview');
+      expect(logger.entries, isEmpty);
+    });
+
+    test('requests 100 results once even when another page exists', () async {
       final requests = <Uri>[];
       final client = MockClient((request) async {
         requests.add(request.url);
@@ -174,7 +230,7 @@ void main() {
           200,
           headers: {
             'link': '<https://api.github.com/repos/$kGithubRepo/releases'
-                '?page=2>; rel="next"',
+                '?per_page=100&page=2>; rel="next"',
           },
         );
       });
@@ -184,7 +240,7 @@ void main() {
         '2.5.4-preview.12',
       );
       expect(requests, hasLength(1));
-      expect(requests.single.queryParameters, isEmpty);
+      expect(requests.single.queryParameters, {'per_page': '100'});
     });
 
     test('propagates an API error without scanning more pages', () async {

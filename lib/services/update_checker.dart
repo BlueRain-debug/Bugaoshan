@@ -50,14 +50,16 @@ Future<String> fetchLatestVersionFromGithub({http.Client? client}) async {
 
 /// 从 GitHub /releases API 获取第一页的 Release 列表。
 ///
-/// 使用 API 默认分页参数，只读取第一页，不继续请求后续分页。
+/// 每次请求最多 100 条记录，只读取第一页，不继续请求后续分页。
 /// 如果响应为空，返回空列表。
 /// 如果传入了 [client]，则使用该 client（方便测试注入 MockClient）；
 /// 否则内部创建默认 [http.Client]，并在请求结束后关闭。
 Future<List<dynamic>> fetchRecentGithubReleases({http.Client? client}) async {
   final effectiveClient = client ?? http.Client();
   try {
-    final uri = Uri.parse(_releasesUrl);
+    final uri = Uri.parse(
+      _releasesUrl,
+    ).replace(queryParameters: {'per_page': '100'});
     final response = await effectiveClient.get(uri, headers: _apiHeaders);
     if (response.statusCode != 200) {
       throw Exception('GitHub API error: ${response.statusCode}');
@@ -73,7 +75,8 @@ Future<List<dynamic>> fetchRecentGithubReleases({http.Client? client}) async {
 ///
 /// [prerelease] 为 `true` 时选择预发布版，为 `false` 时选择正式版。
 /// 只比较传入列表中的有效版本，不依赖条目的排列顺序。
-/// 草稿、无效标签和渠道不匹配的条目会被跳过。
+/// 草稿和无效标签会被跳过，渠道以 tag 语义为准。
+/// 如果 API 标记与 tag 语义不一致，记录警告并修正返回条目的渠道标记。
 /// 如果没有符合条件的版本，返回 `null`。
 Map<String, dynamic>? selectLatestGithubRelease(
   Iterable<dynamic> releases, {
@@ -82,17 +85,24 @@ Map<String, dynamic>? selectLatestGithubRelease(
   Map<String, dynamic>? latest;
   ReleaseVersion? latestVersion;
   for (final release in releases) {
-    if (release is! Map<String, dynamic> ||
-        release['draft'] == true ||
-        (release['prerelease'] == true) != prerelease) {
+    if (release is! Map<String, dynamic> || release['draft'] == true) {
       continue;
     }
     final tag = release['tag_name'];
     if (tag is! String) continue;
     final version = ReleaseVersion.tryParse(tag);
-    if (version == null || version.isPrerelease != prerelease) continue;
+    if (version == null) continue;
+    if ((release['prerelease'] == true) != version.isPrerelease) {
+      AppLog.w(
+        _tag,
+        'Release 渠道标记与 tag 不一致，已按 tag 语义处理：'
+        'tag=$tag prerelease=${release['prerelease']} '
+        'tagPrerelease=${version.isPrerelease}',
+      );
+    }
+    if (version.isPrerelease != prerelease) continue;
     if (latestVersion == null || version.compareTo(latestVersion) > 0) {
-      latest = release;
+      latest = {...release, 'prerelease': version.isPrerelease};
       latestVersion = version;
     }
   }
@@ -101,7 +111,7 @@ Map<String, dynamic>? selectLatestGithubRelease(
 
 /// 从 GitHub /releases API 获取最新预发布版的 tag 名称（不含 `v` 前缀）。
 ///
-/// 仅在默认返回的第一页记录中按完整版本号选择，不依赖页内顺序。
+/// 仅在第一页最多 100 条记录中按完整版本号选择，不依赖页内顺序。
 /// 如果没有符合条件的预发布版，返回 `null`。
 /// 如果传入了 [client]，则使用该 client（方便测试注入 MockClient）；
 /// 否则内部创建默认 [http.Client]，并在请求结束后关闭。
