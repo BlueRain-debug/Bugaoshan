@@ -182,7 +182,7 @@ void main() {
       );
     });
 
-    test('uses preview tag semantics and warns about a missing flag', () {
+    test('uses preview tag semantics and reports a missing flag', () {
       final mislabeled = release('v2.5.4-preview', preview: false);
       final selected = selectLatestGithubRelease(
         [mislabeled],
@@ -191,22 +191,35 @@ void main() {
       expect(selected?['tag_name'], 'v2.5.4-preview');
       expect(selected?['prerelease'], isTrue);
       expect(mislabeled['prerelease'], isFalse);
-      expect(logger.entries.single.level, LogLevel.warn);
+      expect(logger.entries.single.level, LogLevel.info);
       expect(logger.entries.single.message, contains('tag=v2.5.4-preview'));
       expect(logger.entries.single.message, contains('prerelease=false'));
       expect(logger.entries.single.message, contains('tagPrerelease=true'));
     });
 
-    test('uses stable tag semantics and warns about an extra preview flag', () {
+    test('uses stable tag semantics and reports an extra preview flag', () {
       final selected = selectLatestGithubRelease(
         [release('v2.5.4')],
         prerelease: false,
       );
       expect(selected?['tag_name'], 'v2.5.4');
       expect(selected?['prerelease'], isFalse);
-      expect(logger.entries.single.level, LogLevel.warn);
+      expect(logger.entries.single.level, LogLevel.info);
       expect(logger.entries.single.message, contains('prerelease=true'));
       expect(logger.entries.single.message, contains('tagPrerelease=false'));
+    });
+
+    test('repeated channel checks keep mismatch diagnostics at info level', () {
+      final releases = [release('v2.5.4-preview', preview: false)];
+      for (int check = 0; check < 3; check++) {
+        selectLatestGithubRelease(releases, prerelease: false);
+        selectLatestGithubRelease(releases, prerelease: true);
+      }
+      expect(logger.entries, isNotEmpty);
+      expect(
+        logger.entries.every((entry) => entry.level == LogLevel.info),
+        isTrue,
+      );
     });
 
     test('accepts a preview tag without a sequence number without warning', () {

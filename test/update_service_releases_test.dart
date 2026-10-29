@@ -227,4 +227,29 @@ void main() {
     );
     expect(result.noUpdate, isTrue);
   });
+
+  test('newest candidates without packages never fall back to older assets', () async {
+    final requests = <Uri>[];
+    final client = MockClient((request) async {
+      requests.add(request.url);
+      return http.Response(
+        jsonEncode([
+          release('v2.5.4', preview: false),
+          {...release('v2.5.5', preview: false), 'assets': []},
+          release('v2.5.6-preview.9'),
+          {...release('v2.5.6-preview.12'), 'assets': []},
+        ]),
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final (stable, preview) = await http.runWithClient(
+      service.getAllLatestReleases,
+      () => client,
+    );
+    expect(stable, isNull);
+    expect(preview, isNull);
+    expect(requests, hasLength(1));
+    expect(requests.single.path, endsWith('/releases'));
+  });
 }

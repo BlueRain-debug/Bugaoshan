@@ -149,6 +149,7 @@ class UpdateService {
   ///
   /// 保留版本标签、更新说明和匹配安装包的下载地址及校验值。
   /// 如果没有匹配的安装包或有效下载地址，记录警告并返回 `null`。
+  /// 最新候选缺包表示当前平台暂无可安装更新，不继续选择同渠道的旧版本。
   Future<ReleaseInfo?> _releaseInfo(Map<String, dynamic> release) async {
     final asset = await _selectAsset(release['assets'] as List<dynamic>);
     if (asset == null) {
@@ -183,6 +184,9 @@ class UpdateService {
   /// 在第一页最多 100 条记录中分别按完整版本号选择两个渠道的候选。
   /// 如果第一页没有有效的正式版，则通过 /releases/latest 单独获取。
   /// 如果没有有效候选或当前平台可用的安装包，对应渠道的结果为 `null`。
+  ///
+  /// 最新候选缺包不触发 /latest 回退，也不改选同渠道的旧版本，
+  /// 以免将已过时的安装包作为“最新版”推荐给用户。
   Future<(ReleaseInfo? latestStable, ReleaseInfo? latestPreview)>
   getAllLatestReleases() async {
     final releases = await fetchRecentGithubReleases();

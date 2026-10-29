@@ -76,7 +76,8 @@ Future<List<dynamic>> fetchRecentGithubReleases({http.Client? client}) async {
 /// [prerelease] 为 `true` 时选择预发布版，为 `false` 时选择正式版。
 /// 只比较传入列表中的有效版本，不依赖条目的排列顺序。
 /// 草稿和无效标签会被跳过，渠道以 tag 语义为准。
-/// 如果 API 标记与 tag 语义不一致，记录警告并修正返回条目的渠道标记。
+/// 如果 API 标记与 tag 语义不一致，记录 info 日志并修正返回条目的渠道标记。
+/// 此差异可自动纠正，使用 info 级别避免反复检查时重复写入警告文件。
 /// 如果没有符合条件的版本，返回 `null`。
 Map<String, dynamic>? selectLatestGithubRelease(
   Iterable<dynamic> releases, {
@@ -93,7 +94,7 @@ Map<String, dynamic>? selectLatestGithubRelease(
     final version = ReleaseVersion.tryParse(tag);
     if (version == null) continue;
     if ((release['prerelease'] == true) != version.isPrerelease) {
-      AppLog.w(
+      AppLog.i(
         _tag,
         'Release 渠道标记与 tag 不一致，已按 tag 语义处理：'
         'tag=$tag prerelease=${release['prerelease']} '
