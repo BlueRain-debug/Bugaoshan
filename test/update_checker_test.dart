@@ -209,13 +209,13 @@ void main() {
       expect(logger.entries.single.message, contains('tagPrerelease=false'));
     });
 
-    test('repeated channel checks keep mismatch diagnostics at info level', () {
+    test('repeated checks record six info entries without deduplication', () {
       final releases = [release('v2.5.4-preview', preview: false)];
       for (int check = 0; check < 3; check++) {
         selectLatestGithubRelease(releases, prerelease: false);
         selectLatestGithubRelease(releases, prerelease: true);
       }
-      expect(logger.entries, isNotEmpty);
+      expect(logger.entries, hasLength(6));
       expect(
         logger.entries.every((entry) => entry.level == LogLevel.info),
         isTrue,
